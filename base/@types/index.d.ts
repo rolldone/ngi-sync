@@ -5,7 +5,7 @@ interface BaseProtoInterface<T extends BaseProtoInterface<T>> {
    * Direct to be this
    */
   binding?: () => this
-  create?: (props?: any) => this
+  create?: (...props ?: any) => this
   _super?: Function
   /**
    * Use this method

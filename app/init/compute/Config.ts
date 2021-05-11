@@ -7,9 +7,9 @@ const { parse } = require("jsonplus");
 export const CONFIG_FILE_NAME = "sync-config.json";
 
 export interface ConfigInterface extends BaseModelInterface {
-  ready: { (): Promise<void> }
-  _fetch: { (): void }
-  _expand: { (): void }
+  ready ?: { (): Promise<void> }
+  _fetch ?: { (): void }
+  _expand ?: { (): void }
 
   _filename?: string;
   _config?: ConfigInterface;
@@ -33,12 +33,11 @@ const Config = BaseModel.extend<ConfigInterface>({
   construct: function (cli: CliInterface) {
     this.cli = cli;
     this._filename = pathJoin(process.cwd(), cli.getArgument("config", CONFIG_FILE_NAME));
+    this._fetch();
+    this._expand();
   },
   ready: async function () {
     return new Promise<void>((resolve) => {
-      this._fetch();
-      this._expand();
-
       // Temporary
       if (!this.password && !this.privateKey) {
         this.cli.read("Enter password to connect:", true).then(answer => {

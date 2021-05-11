@@ -39,7 +39,7 @@ declare module "scp2" {
       upload(src: string, destination: string, callback: (err: string) => void);
       download(src: string, destination: string, callback: (err: string) => void);
       on(eventName: string, callback: () => void);
-      exec(command:string, options : object, callback : Function); 
+      exec(command:string, callback : Function); 
   }
 
   export interface client {
