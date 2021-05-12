@@ -22,7 +22,7 @@ module.exports = function (config) {
                 } else {
                     event.emit('connected', true);
                     for (var a = 0; a < config.path.length; a++) {
-                        console.log('config.path[a]', config.path[a]);
+                        console.log('watch folder on server -> ', config.path[a],'\n');
                         fileWatcher(sftp, config.path[a]);
                     }
                 }

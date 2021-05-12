@@ -83,13 +83,13 @@ const CommandService = InitConfigService.extend<Omit<CommandServiceInterface, 'r
       commandApp.setOnListener((res : any,err : any)=>{
         // this._cli.write(res.from);
         this._cli.write('\n'+((status)=>{
-          switch(status){
+          switch(status.toUpperCase()){
             case 'STDERR':
             case 'ERROR':
               return chalk.red(res.from+' >> ');
             case 'STDOUT':
               return chalk.cyan(res.from+' >> ');
-            case 'close':
+            case 'CLOSE':
               return chalk.green(res.from+' >> ');
           }
         })(res.status)+res.return);

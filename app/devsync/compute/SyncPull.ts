@@ -7,6 +7,7 @@ import { mkdir, mkdirSync, unlinkSync } from "fs";
 import { join as pathJoin, dirname } from "path";
 
 export interface SftpOptions {
+  port ?: number
   host: string
   username: string
   password: string,
@@ -68,7 +69,6 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
     this._sshConfig = props;
   },
   submitWatch: function () {
-    console.log(this._sshConfig);
     let event = SftpWatcher({
       ...this._sshConfig,
       base_path: this._sshConfig.base_path

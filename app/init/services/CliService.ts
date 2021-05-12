@@ -1,7 +1,7 @@
 import BaseService from "@root/base/BaseService";
 import * as minimist from "minimist";
 import inquirer = require("inquirer");
-import * as chalk from "chalk";
+const chalk = require('chalk');
 
 export enum EXIT_CODE {
   /**

@@ -57,6 +57,7 @@
     "node-redis-pubsub": "^5.0.0",
     "nohm": "^2.2.3",
     "objectmodel": "^4.2.3",
+    "observatory": "^1.0.0",
     "redis-clients": "^0.5.2",
     "scp2": "^0.5.0",
     "serialize-error": "^8.0.1",
