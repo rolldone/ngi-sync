@@ -2,10 +2,11 @@
   "_moduleAliases": {
     "@root": "dist"
   },
-  "name": "image_loader_app",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "ngi-sync",
+  "version": "1.0.2",
+  "description": "Untuk membantu dev sync ke server",
+  "bin": "./bin/ngi-sync",
+  "main": "dist/index.js",
   "scripts": {
     "type-check": "npx tsc --noEmit",
     "dev": "npx tsc -w",
@@ -14,7 +15,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "homepage": "https://github.com/rolldone/ngi-sync",
+  "author": "Donny Rolanda",
   "license": "ISC",
   "dependencies": {
     "@babel/cli": "^7.13.14",

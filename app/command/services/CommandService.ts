@@ -93,16 +93,20 @@ const CommandService = InitConfigService.extend<Omit<CommandServiceInterface, 'r
               return chalk.green(res.from+' >> ');
           }
         })(res.status)+res.return);
-        if(res.status == "close"){
-          this.secondTime();
+        
+        if(answers.target == COMMAND_TARGET.BOTH){
+          if(timeoutnya != null){
+            timeoutnya.cancel();
+          }
+          timeoutnya = _.debounce(()=>{
+            this.secondTime();
+          },5000);
+          timeoutnya();
+        }else{
+          if(res.status == "close"){
+            this.secondTime();
+          }
         }
-        if(timeoutnya != null){
-          timeoutnya.cancel();
-        }
-        timeoutnya = _.debounce(()=>{
-          this.secondTime();
-        },5000);
-        timeoutnya();
       });
       commandApp.submit(answers.target, answers.command);
     });

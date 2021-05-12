@@ -4,6 +4,11 @@ import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 
 export interface ConfigInterface extends InitConfigInterface {}
 
-const Config = InitConfig.extend<Omit<ConfigInterface,'model'>>({});
+const Config = InitConfig.extend<Omit<ConfigInterface,'model'>>({
+  construct: function (cli: CliInterface) {
+    this._super(cli);
+    this._loadConfig();
+  }
+});
 
 export default Config;

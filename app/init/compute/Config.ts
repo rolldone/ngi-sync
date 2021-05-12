@@ -27,6 +27,7 @@ export interface ConfigInterface extends BaseModelInterface {
   downloads ?: Array<string>
   pathMode?: string
   cli?: CliInterface
+  _loadConfig?:{():void}
 }
 
 const Config = BaseModel.extend<ConfigInterface>({
@@ -35,8 +36,7 @@ const Config = BaseModel.extend<ConfigInterface>({
   construct: function (cli: CliInterface) {
     this.cli = cli;
     this._filename = pathJoin(process.cwd(), cli.getArgument("config", CONFIG_FILE_NAME));
-    this._fetch();
-    this._expand();
+    
   },
   ready: async function () {
     return new Promise<void>((resolve) => {
@@ -51,7 +51,12 @@ const Config = BaseModel.extend<ConfigInterface>({
       }
     });
   },
+  _loadConfig : function(){
+    this._fetch();
+    this._expand();
+  },
   _fetch: function () {
+    console.log('this._filename',this._filename);
     if (existsSync(this._filename)) {
       let configraw;
       if (configraw = readFileSync(this._filename)) {

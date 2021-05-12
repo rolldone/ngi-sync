@@ -142,7 +142,7 @@ const CliService = BaseService.extend<CliInterface>({
   },
 
   /**
-   * Display the workspace for syncjs
+   * Display the workspace for ngi-sync
    */
   workspace() {
     // this.clear();
@@ -159,9 +159,9 @@ const CliService = BaseService.extend<CliInterface>({
     }
     this.write(chalk.yellow.underline("\nUSAGE:\n"));
     this.write("Make sure you have the config file by running.\n");
-    this.write(chalk.green("syncjs init\n"));
+    this.write(chalk.green("ngi-sync init\n"));
     this.write("--------------------\n");
-    this.write("For more details please visit. https://github.com/serkanyersen/sync\n");
+    this.write("For more details please visit. https://github.com/rolldone/ngi-sync \n");
     process.exit(code);
   },
 

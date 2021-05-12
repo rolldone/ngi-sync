@@ -102,7 +102,7 @@ const Command = BaseModel.extend<Omit<CommandInterface, 'model'>>({
           status : 'close',
           return : 'Stream :: close :: code: ' + code + ', signal: ' + signal+'\n'
         });
-        clientApp.close();
+        // clientApp.close();
       }).on('data', (data : any) => {
         // console.log('STDOUT: ' + data);
         this._onListener({
