@@ -1,6 +1,5 @@
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 const { exec } = require("child_process");
-// import { Client } from "scp2";
 import { Client } from '@root/tool/scp2/Scp2';
 import { CliInterface } from "../services/CliService";
 export enum COMMAND_TARGET {

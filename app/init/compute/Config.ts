@@ -2,6 +2,7 @@ import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import { CliInterface, EXIT_CODE } from "../services/CliService";
 import { join as pathJoin } from "path";
 import { readFileSync, existsSync } from "fs";
+import { String } from "lodash";
 const { parse } = require("jsonplus");
 
 export const CONFIG_FILE_NAME = "sync-config.json";
@@ -23,6 +24,7 @@ export interface ConfigInterface extends BaseModelInterface {
   remotePath?: string;
   privateKey?: string;
   ignores?: Array<string | RegExp>;
+  downloads ?: Array<string>
   pathMode?: string
   cli?: CliInterface
 }
@@ -70,7 +72,7 @@ const Config = BaseModel.extend<ConfigInterface>({
       [key : string] : any
     } = this;
     ["host", "port", "username", "password", "pathMode",
-      "localPath", "remotePath", "ignores", "privateKey"].forEach(prop => {
+      "localPath", "remotePath", "ignores", "privateKey","downloads"].forEach(prop => {
         self[prop] = self._config[prop] || self[prop];
       });
   },

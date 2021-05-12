@@ -37,6 +37,8 @@ multithread(() => {
         case 'command':
           masterData.saveData('command.command.index', {});
           return;
+        case 'devsync':
+          masterData.saveData('command.devsync.index',{});
       }
     }
   } as AppInterface);
