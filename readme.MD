@@ -1,7 +1,5 @@
 # Base information
-- ngi-sync adalah untuk membantu sync code ke server secara continue
-
-# Still development!!
+ngi-sync is to help sync code to the server continuously
 
 ### Tasks
 - [x] Add feature send command to both target and local.
@@ -39,3 +37,7 @@ sync-config.json
     ]
 }
 ```
+
+# Still development!!
+- Write good documentation for this project "on progress"
+- Use this tool to help work on real project "on progress"
