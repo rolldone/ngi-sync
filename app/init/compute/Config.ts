@@ -28,6 +28,7 @@ export interface ConfigInterface extends BaseModelInterface {
   pathMode?: string
   cli?: CliInterface
   _loadConfig?:{():void}
+  jumps ?: Array<object>
 }
 
 const Config = BaseModel.extend<ConfigInterface>({
@@ -77,7 +78,7 @@ const Config = BaseModel.extend<ConfigInterface>({
       [key : string] : any
     } = this;
     ["host", "port", "username", "password", "pathMode",
-      "localPath", "remotePath", "ignores", "privateKey","downloads"].forEach(prop => {
+      "localPath", "remotePath", "ignores", "privateKey","downloads","jumps"].forEach(prop => {
         self[prop] = self._config[prop] || self[prop];
       });
   },

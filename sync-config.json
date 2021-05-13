@@ -1,8 +1,23 @@
 {
-    "username": "donny",
-    "password": "mvkmvkfv",
-    "host": "vmdfkvm",
-    "port": "vdfmvkfmv",
-    "localPath": "vmdfkvm",
-    "remotePath": "vmkvm"
+    "username": "root",
+    "privateKey": "C:/Users/test/Documents/private_key/openssh_nopassword.key",
+    "host": "localhost",
+    "port": "22",
+    "localPath": "D:/workspace/ngsync/storage_test",
+    "remotePath": "/root/workspaces",
+    "downloads":["tool/test.exe","app/basic"],
+    "jumps": [
+        {
+            "host": "localhost",
+            "port": 22222,
+            "username": "root",
+            "privateKey": "C:/Users/test/Documents/private_key/openssh_nopassword.key"
+        },
+        {
+            "host": "host2",
+            "port": 22,
+            "username": "root",
+            "privateKey": "C:/Users/test/Documents/private_key/openssh_nopassword.key"
+        }
+    ]
 }

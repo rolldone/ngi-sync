@@ -61,7 +61,8 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           return arrayString;
         })(),
         base_path: currentConf.remotePath,
-        local_path: currentConf.localPath
+        local_path: currentConf.localPath,
+        jumps : currentConf.jumps
       });
       
       syncPull.setOnListener((res: any) => {

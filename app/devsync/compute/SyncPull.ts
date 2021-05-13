@@ -14,7 +14,8 @@ export interface SftpOptions {
   privateKey: string,
   path: Array<string>,
   base_path: string,
-  local_path: string
+  local_path: string,
+  jumps : Array<object>
 }
 
 export interface SyncPullInterface extends BaseModelInterface {

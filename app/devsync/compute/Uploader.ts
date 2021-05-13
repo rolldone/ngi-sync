@@ -19,6 +19,7 @@ export default class Uploader {
 			password: this.config.password,
 			// agentForward: true,
 			privateKey: this.config.privateKey ? readFileSync(this.config.privateKey).toString() : undefined,
+			jumps : this.config.jumps
 			// debug: true
 		});
 
