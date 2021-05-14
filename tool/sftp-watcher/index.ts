@@ -1,3 +1,3 @@
-const SftpWatcher = require('./js/SftpWatcher.js');
+import SftpWatcher from './js/SftpWatcher.js' ;
 
 export default SftpWatcher

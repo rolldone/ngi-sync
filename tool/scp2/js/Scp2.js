@@ -1,9 +1,10 @@
 import { Client } from "scp2";
 import _ from 'lodash';
 var Connection = require('ssh2');
-const { readFileSync } = require('fs');
-
+const { readFileSync, createWriteStream } = require('fs');
+process.setMaxListeners(0);
 var recurSived = function(hoopings,connectionsArray,index,parseStream = null,callback){
+  let self = this;
   let masterCon = connectionsArray[index];
   masterCon.on('ready',function(){
     if(index == hoopings.length-1){
@@ -84,7 +85,7 @@ Client.prototype.sftp = function(callback) {
       }
       return theConnData;
     })(hoopings);
-    recurSived(hoopings,connectionsArray,0,null,(masterCon)=>{
+    recurSived.call(this,hoopings,connectionsArray,0,null,(masterCon)=>{
       masterCon.sftp(function(err, sftp) {
         if (err) throw err;
         // save for reuse
@@ -138,6 +139,29 @@ Client.prototype.sftp = function(callback) {
   this.__ssh = ssh;
 };
 
+Client.prototype.download = function(src, dest, callback) {
+  var self = this;
+  self.sftp(function(err,sftp){
+    if (err) {
+      return callback(err);
+    }
+    console.log('sftp.createReadStream',sftp.createReadStream)
+    var sftp_readStream = sftp.createReadStream(src);
+    sftp_readStream.on('error', function(err){
+      callback(err);
+    });
+    sftp_readStream.pipe(createWriteStream(dest))
+    .on('close',function(){
+      // self.emit('read', src);
+      console.log('cloooooooooooooooooooooooooooooooooooooooooose');
+      callback(null);
+    })
+    .on('error', function(err){
+      callback(err);
+    });
+  });
+};
+
 Client.prototype.exec = function(command,callback) {
   var self = this;
   var remote = _.defaults(this.remote, this._options);
@@ -154,7 +178,7 @@ Client.prototype.exec = function(command,callback) {
       }
       return theConnData;
     })(hoopings);
-    recurSived(hoopings,connectionsArray,0,null,(masterCon)=>{
+    recurSived.call(this,hoopings,connectionsArray,0,null,(masterCon)=>{
       self.emit('ready');
       masterCon.exec('cd '+remote.path+' && '+command,callback);
     })

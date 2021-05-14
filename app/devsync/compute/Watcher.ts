@@ -26,7 +26,7 @@ export default class Watcher {
 				newpath.push(this.config.localPath+this.removeSameString(pass[a],this.config.remotePath))
 			}
 			return newpath;
-		})(this.config.downloads);
+		})(this.config.downloads || []);
 		defaultIgnores = [
 			...defaultIgnores,
 			...tt
