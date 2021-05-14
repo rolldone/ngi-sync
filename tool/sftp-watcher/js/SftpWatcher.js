@@ -84,6 +84,7 @@ var recursiveDownload = function(baseObjList={},folderObjList,sftp,folder){
 			if (baseObjList && Object.keys(baseObjList).length != 0) {
 				// console.log('baseObjList -> mau delete',baseObjList);
 				Object.keys(baseObjList).forEach(function (filename) {
+					console.log('folderObjList',filename,'->',folderObjList[filename] != null);
 					if (!folderObjList[filename]) {
 						// console.log('filename',filename);
 						// event.emit("delete", {
@@ -120,7 +121,7 @@ export default function (config) {
 			var job = function (baseObjList) {
 				// console.log('aaaaaaaaaaaa',baseObjList);
 				// console.log('baseObjList',baseObjList);
-				folderObjList = {};
+				// folderObjList = {};
 				// sftp.readdir(folder, function (err, objList) {
 				// 	if (err) {
 				// 		event.emit('error', err.message || err);
@@ -163,9 +164,9 @@ export default function (config) {
 				// 		}
 				// 	}
 				// });
-				recursiveDownload.call(self,baseObjList,folderObjList,sftp,folder);
-			},
-				folderObjList = {};
+				recursiveDownload.call(self,baseObjList,{},sftp,folder);
+			}
+			var folderObjList = {};
 			timeinterval = setInterval(function () {
 				new job(JSON.parse(JSON.stringify(folderObjList)));
 				// event.emit('heartbeat', new Date());
