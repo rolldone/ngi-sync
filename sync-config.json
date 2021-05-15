@@ -1,23 +1,9 @@
 {
     "username": "root",
-    "privateKey": "C:/Users/test/Documents/private_key/openssh_nopassword.key",
+    "privateKey": "openssh_nopassword.key",
     "host": "localhost",
     "port": "22",
     "localPath": "D:/workspace/ngsync/storage_test",
-    "remotePath": "/root/workspaces",
-    "downloads":["tool/test.exe","app/basic"],
-    "jumps": [
-        {
-            "host": "localhost",
-            "port": 22222,
-            "username": "root",
-            "privateKey": "C:/Users/test/Documents/private_key/openssh_nopassword.key"
-        },
-        {
-            "host": "host2",
-            "port": 22,
-            "username": "root",
-            "privateKey": "C:/Users/test/Documents/private_key/openssh_nopassword.key"
-        }
-    ]
+    "remotePath": "/home/ubuntu/workspaces/openssh-server",
+    "downloads":["config"]
 }
