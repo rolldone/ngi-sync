@@ -1,6 +1,6 @@
 {
     "username": "root",
-    "privateKey": "C:/Users/test/Documents/private_key/openssh_nopassword.key",
+    "privateKey": "openssh_nopassword.key",
     "host": "localhost",
     "port": "22",
     "localPath": "D:/workspace/ngsync/storage_test",

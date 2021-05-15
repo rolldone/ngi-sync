@@ -3,11 +3,11 @@ import { CliInterface } from "../services/CliService";
 import SftpWatcher from '@root/tool/sftp-watcher';
 import { Client } from 'scp2';
 import _ from 'lodash';
-import { mkdir, mkdirSync, unlinkSync } from "fs";
+import { mkdir, mkdirSync, unlinkSync, readFile, stat } from "fs";
 import { join as pathJoin, dirname } from "path";
 
 export interface SftpOptions {
-  port ?: number
+  port?: number
   host: string
   username: string
   password: string,
@@ -15,7 +15,7 @@ export interface SftpOptions {
   path: Array<string>,
   base_path: string,
   local_path: string,
-  jumps : Array<object>
+  jumps: Array<object>
 }
 
 export interface SyncPullInterface extends BaseModelInterface {
@@ -31,7 +31,8 @@ export interface SyncPullInterface extends BaseModelInterface {
     (props: {
       folder: string,
       base_path: string,
-      file: string
+      file: string,
+      size: number
     }): void
   }
   _folderQueue?: {
@@ -55,7 +56,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   _folderQueue: {},
   returnClient: function (props) {
     //if (this._clientApp == null) {
-      this._clientApp = new Client(props);
+    this._clientApp = new Client(props);
     //}
     return this._clientApp;
   },
@@ -77,20 +78,21 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
     event.on("upload", (data: any) => {
       // console.log('upload', data)
       this._onListener({
-        status : 'stdout',
-        return : data
+        status: 'stdout',
+        return: data
       });
       this._downloadFile({
         folder: data.folder,
         base_path: data.base_path,
-        file: data.file.filename
+        file: data.file.filename,
+        size: data.file.attrs.size
       })
     });
     event.on("delete", (data: any) => {
       // console.log('delete', data)
       this._onListener({
-        status : 'stdout',
-        return : data
+        status: 'stdout',
+        return: data
       });
       this._deleteFile({
         folder: data.folder,
@@ -98,62 +100,25 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         file: data.file.filename
       })
     });
-    event.on("heartbeat", (data: any)=> {
+    event.on("heartbeat", (data: any) => {
       console.log(data.toString())
     });
-    event.on("close", (data: any)=> {
+    event.on("close", (data: any) => {
       console.log('close', data);
     });
     event.on("error", (data: any) => {
       console.log('error', data.toString())
       this._onListener({
-        status : 'error',
-        return : data
+        status: 'error',
+        return: data
       });
     });
   },
-  // _downloadFile: function (props) {
-  //   console.log('_downloadFile',props);
-  //   let keynya = props.folder+'/' + props.file;
-  //   if (Object.keys(this._folderQueue).length > 0) {
-  //     return;
-  //     this._folderQueue[keynya].cancel();
-  //   }
-  //   console.log('keynya -> ',keynya);
-  //   this._folderQueue[keynya] = _.debounce((props: any) => {
-  //     let fromFilePath = props.folder + '/' + props.file;
-  //     let theLocalPath: string = this._sshConfig.local_path + this._removeSameString(fromFilePath, props.base_path);
-  //     let theClient = this.returnClient({
-  //       ...this._sshConfig,
-  //       path: fromFilePath
-  //     });
-      
-  //     let tt = theLocalPath.substr(0, theLocalPath.lastIndexOf("/"));
-  //     mkdirSync(pathJoin('', tt), { recursive: true });
-  //     theClient.download(fromFilePath,pathJoin("", theLocalPath),  (err: any) => {
-  //       if(err){
-  //         this._onListener({
-  //           status : 'error',
-  //           return : err
-  //         })
-  //         return;
-  //       }
-  //       // delete this._folderQueue[keynya];
-  //       this._folderQueue = {};
-  //     })
-      
-  //   }, 100);
-  //   this._folderQueue[keynya](props);
-  // },
-  _downloadFile : function(props){
-    console.log('_downloadFile',props);
-    let keynya = props.folder+'/' + props.file;
-    // if (Object.keys(this._folderQueue).length > 0) {
-    if(this._folderQueue[keynya] != null){
+  _downloadFile: function (props) {
+    let keynya = props.folder + '/' + props.file;
+    if (this._folderQueue[keynya] != null) {
       return;
-      this._folderQueue[keynya].cancel();
     }
-    console.log('keynya -> ',keynya);
     this._folderQueue[keynya] = _.debounce((props: any) => {
       let fromFilePath = props.folder + '/' + props.file;
       let theLocalPath: string = this._sshConfig.local_path + this._removeSameString(fromFilePath, props.base_path);
@@ -161,40 +126,50 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         ...this._sshConfig,
         path: fromFilePath
       });
-      
       let tt = theLocalPath.substr(0, theLocalPath.lastIndexOf("/"));
       mkdirSync(pathJoin('', tt), { recursive: true });
-      theClient.download(fromFilePath,pathJoin("", theLocalPath),  (err: any) => {
-        if(err){
-          this._onListener({
-            status : 'error',
-            return : err
+      stat(pathJoin("", theLocalPath), (err, data) => {
+        var downloadNow = () => {
+          theClient.download(fromFilePath, pathJoin("", theLocalPath), (err: any) => {
+            if (err) {
+              this._onListener({
+                status: 'error',
+                return: err
+              })
+            }
+            delete this._folderQueue[keynya];
           })
-          return;
         }
-        delete this._folderQueue[keynya];
+        if (err) {
+          return downloadNow();
+        }
+        if (props.size != data.size) {
+          downloadNow();
+        }
       })
-    }, 100);
+    }, (this._folderQueue.length + 1) * 1000);
     this._folderQueue[keynya](props);
   },
   _removeSameString: function (fullPath, basePath) {
     return fullPath.replace(basePath, '');
   },
   _deleteFile: function (props) {
-      if (this._folderQueue[props.base_path + '/' + props.file] != null) {
-        this._folderQueue[props.base_path + '/' + props.file].cancel();
+    let keynya = props.base_path + '/' + props.file;
+    if (this._folderQueue[keynya] != null) {
+      return;
+      this._folderQueue[keynya].cancel();
+    }
+    this._folderQueue[keynya] = _.debounce((props: any) => {
+      try {
+        let fromFilePath = props.folder + '/' + props.file;
+        let theLocalPath: string = this._sshConfig.local_path + this._removeSameString(fromFilePath, props.base_path);
+        unlinkSync(pathJoin('', theLocalPath));
+        delete this._folderQueue[keynya];
+      } catch (ex) {
+        console.log('_deleteFile -> ', ex);
       }
-      this._folderQueue[props.base_path + '/' + props.file] = _.debounce((props: any) => {
-        try{
-          let fromFilePath = props.folder + '/' + props.file;
-          let theLocalPath: string = this._sshConfig.local_path + this._removeSameString(fromFilePath, props.base_path);
-          unlinkSync(pathJoin('', theLocalPath));
-          delete this._folderQueue[props.base_path + '/' + props.file];
-        }catch(ex){
-          console.log('_deleteFile -> ',ex);
-        }
-      }, 100);
-      this._folderQueue[props.base_path + '/' + props.file](props);
+    }, 1000 * Object.keys(this._folderQueue).length);
+    this._folderQueue[keynya](props);
   }
 })
 

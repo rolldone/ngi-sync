@@ -1,8 +1,9 @@
 const EventEmitter = require('events').EventEmitter;
 const Client = require('ssh2').Client;
 const { readFileSync } = require('fs');
+const _ = require('lodash');
 
-var removeDuplicate = (x, theChar)=>{
+var removeDuplicate = (x, theChar) => {
 	let tt = [...x];
 	var old = "";
 	var newS = "";
@@ -20,83 +21,72 @@ var removeDuplicate = (x, theChar)=>{
 	return tt.join("");
 }
 
-var recursiveDownload = function(baseObjList={},folderObjList,sftp,folder){
+var deletedRemainingRecord = function () {
+	let pendingDelete = null;
+	let lastRecord = {};
+	return function (passObject) {
+		let self = this;
+		var config = self._config;
+		if (pendingDelete != null) {
+			pendingDelete.cancel();
+		}
+		pendingDelete = _.debounce(function (remainingObject) {
+			Object.keys(lastRecord).forEach(function (lastFileName) {
+				if (remainingObject[lastFileName] == null) {
+					let theDelete = {
+						host: config.host,
+						user: config.username,
+						folder: lastRecord[lastFileName].folder,
+						base_path: config.base_path,
+						file: lastRecord[lastFileName]
+					};
+					self._event.emit("delete", theDelete);
+				}
+			});
+			lastRecord = remainingObject;
+			self._event.emit('done');
+		}, 5000);
+		pendingDelete(passObject);
+	}
+}
+
+var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, folder) {
 	let self = this;
 	var config = self._config;
 	var event = self._event;
-	console.log('check folder : ', folder);
 	sftp.readdir(folder, function (err, objList) {
 		if (err) {
 			event.emit('error', err.message || err);
 		} else {
-			// if (baseObjList === null) {
-			// 	objList.forEach(function (fileObj) {
-			// 		let theFileName = removeDuplicate(folder+'/'+fileObj.filename,'/');
-			// 		sftp.readdir(theFileName,function(err,objList){
-			// 			if(objList != null){
-			// 				recursiveDownload.call(self,baseObjList,folderObjList,sftp,theFileName);
-			// 			}else{
-			// 				folderObjList[theFileName] = fileObj;
-			// 			}
-			// 		});
-			// 	});
-			// } else {
-				objList.forEach(function (fileObj) {
-					let theFileName = removeDuplicate(folder+'/'+fileObj.filename,'/');
-					sftp.readdir(theFileName,function(err,objList){
-						if(objList != null){
-							console.log('recursiveDownload.call');
-							recursiveDownload.call(self,baseObjList,folderObjList,sftp,theFileName);
-						}else{
-							// console.log('baseObjList')
-							// console.log('baseObjList[fileObj.filename]',theFileName,baseObjList[theFileName] == null,'-',theFileName,baseObjList[theFileName] == null || (baseObjList[theFileName] && fileObj.attrs.size != baseObjList[theFileName].attrs.size));
-							if(baseObjList[theFileName] == null){
-								fileObj.status = "uploading";
-								console.log('uploading 1')
-							}else if(baseObjList[theFileName] != null && fileObj.attrs.size != baseObjList[theFileName].attrs.size){
-							// if (baseObjList[theFileName] == null || (baseObjList[theFileName] && fileObj.attrs.size != baseObjList[theFileName].attrs.size)) {
-								fileObj.status = "uploading";
-								console.log('uploading 2')
-							} else if (baseObjList[theFileName].status == "uploading") {
-								if (fileObj.attrs.size == baseObjList[theFileName].attrs.size) {
-									console.log('lakukan uploader')
-									delete fileObj.status;
-									event.emit("upload", {
-										host: config.host,
-										user: config.username,
-										folder: folder,
-										base_path: config.base_path,
-										file: fileObj
-									});
-								}
-							}
-							folderObjList[theFileName] = fileObj;
-							// folderObjList[fileObj.filename] = fileObj;
-							// console.log('folderObjectList',folderObjList);
-							// console.log('baseObjectList',baseObjList);
+
+			objList.forEach(function (fileObj) {
+				let theFileName = removeDuplicate(folder + '/' + fileObj.filename, '/');
+				sftp.readdir(theFileName, function (err, objList) {
+					if (objList != null) {
+						recursiveDownload.call(self, baseObjList, newEntryObjList, sftp, theFileName);
+					} else {
+						if (baseObjList[theFileName] == null) {
+							fileObj.status = "uploading";
+						} else if (baseObjList[theFileName] != null && fileObj.attrs.size != baseObjList[theFileName].attrs.size) {
+							fileObj.status = "uploading";
+						} else if (baseObjList[theFileName].status == "uploading") {
+							delete fileObj.status;
+							event.emit("upload", {
+								host: config.host,
+								user: config.username,
+								folder: folder,
+								base_path: config.base_path,
+								file: fileObj
+							});
 						}
-					});
-					
-				});
-
-
-			// }
-			if (baseObjList && Object.keys(baseObjList).length != 0) {
-				// console.log('baseObjList -> mau delete',baseObjList);
-				Object.keys(baseObjList).forEach(function (filename) {
-					console.log('folderObjList',filename,'->',folderObjList[filename] != null);
-					if (!folderObjList[filename]) {
-						// console.log('filename',filename);
-						// event.emit("delete", {
-						// 	host: config.host,
-						// 	user: config.username,
-						// 	folder: folder,
-						// 	base_path: config.base_path,
-						// 	file: baseObjList[filename]
-						// });
+						baseObjList[theFileName] = fileObj;
+						baseObjList[theFileName].folder = folder;
+						newEntryObjList[theFileName] = fileObj;
+						newEntryObjList[theFileName].folder = folder;
 					}
+					self._deleteRemainingRecord.call(self, newEntryObjList);
 				});
-			}
+			});
 		}
 	});
 }
@@ -104,14 +94,15 @@ var recursiveDownload = function(baseObjList={},folderObjList,sftp,folder){
 export default function (config) {
 	let self = this;
 	self._config = config;
+	self._deleteRemainingRecord = deletedRemainingRecord();
 	var event = new EventEmitter();
+	self._event = event;
 	var timeinterval = null;
 	var fileWatcher = null;
 	event.on("stop", function () {
 		clearInterval(timeinterval);
 		event.emit("close", "SFTP watcher stopped");
 	});
-	self._event = event;
 	if (!config.host && !config.username) {
 		//return "Invalid input";
 		event.emit("error", "Invalid input");
@@ -119,59 +110,13 @@ export default function (config) {
 		event.emit('heartbeat', true);
 		fileWatcher = function (sftp, folder) {
 			var job = function (baseObjList) {
-				// console.log('aaaaaaaaaaaa',baseObjList);
-				// console.log('baseObjList',baseObjList);
-				// folderObjList = {};
-				// sftp.readdir(folder, function (err, objList) {
-				// 	if (err) {
-				// 		event.emit('error', err.message || err);
-				// 	} else {
-				// 		if (baseObjList === null) {
-				// 			objList.forEach(function (fileObj) {
-				// 				folderObjList[fileObj.filename] = fileObj;
-				// 			});
-				// 		} else {
-				// 			objList.forEach(function (fileObj) {
-				// 				if (!baseObjList[fileObj.filename] || (baseObjList[fileObj.filename] && fileObj.attrs.size != baseObjList[fileObj.filename].attrs.size)) {
-				// 					fileObj.status = "uploading";
-				// 				} else if (baseObjList[fileObj.filename].status == "uploading") {
-				// 					if (fileObj.attrs.size == baseObjList[fileObj.filename].attrs.size) {
-				// 						delete fileObj.status;
-				// 						event.emit("upload", {
-				// 							host: config.host,
-				// 							user: config.username,
-				// 							folder: folder,
-				// 							base_path: config.base_path,
-				// 							file: fileObj
-				// 						});
-				// 					}
-				// 				}
-				// 				folderObjList[fileObj.filename] = fileObj;
-				// 			});
-				// 		}
-				// 		if (baseObjList && Object.keys(baseObjList).length != 0) {
-				// 			Object.keys(baseObjList).forEach(function (filename) {
-				// 				if (!folderObjList[filename]) {
-				// 					event.emit("delete", {
-				// 						host: config.host,
-				// 						user: config.username,
-				// 						folder: folder,
-				// 						base_path: config.base_path,
-				// 						file: baseObjList[filename]
-				// 					});
-				// 				}
-				// 			});
-				// 		}
-				// 	}
-				// });
-				recursiveDownload.call(self,baseObjList,{},sftp,folder);
+				recursiveDownload.call(self, baseObjList, {}, sftp, folder);
 			}
-			var folderObjList = {};
-			timeinterval = setInterval(function () {
-				new job(JSON.parse(JSON.stringify(folderObjList)));
-				// event.emit('heartbeat', new Date());
-			}, 2000);
-	
+			var theSavedJob = {};
+			event.on('done', function () {
+				new job(theSavedJob);
+			})
+			new job(theSavedJob);
 		};
 		config.jumps = config.jumps || [];
 		if (config.jumps.length > 0) {
@@ -277,6 +222,6 @@ export default function (config) {
 			event.emit('error', err.message || err);
 		}).connect(config);
 	};
-	
+
 	return event;
 };

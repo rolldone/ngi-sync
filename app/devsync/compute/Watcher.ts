@@ -29,7 +29,7 @@ export default class Watcher {
 		})(this.config.downloads || []);
 		defaultIgnores = [
 			...defaultIgnores,
-			...tt
+			// ...tt
 		]
 		this.files = chokidar.watch(base, {
 			ignored: defaultIgnores.concat(this.config.ignores),
@@ -109,7 +109,7 @@ export default class Watcher {
 		this.uploader.unlinkFile(path).then(remote => {
 			this.tasks[path].done("Done");
 		}).catch((err) => {
-			this.tasks[path].fail("Fail").details(`Error deleting file ${err}`);
+			this.tasks[path].fail("Fail").details(`Error deleting file ${err} or maybe just deleted from target.`);
 		});
 	};
 
