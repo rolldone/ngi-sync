@@ -2,7 +2,7 @@ import { Client } from "scp2";
 import _ from 'lodash';
 var Connection = require('ssh2');
 const { readFileSync, createWriteStream } = require('fs');
-process.setMaxListeners(0);
+
 var recurSived = function(hoopings,connectionsArray,index,parseStream = null,callback){
   let self = this;
   let masterCon = connectionsArray[index];
@@ -145,15 +145,13 @@ Client.prototype.download = function(src, dest, callback) {
     if (err) {
       return callback(err);
     }
-    console.log('sftp.createReadStream',sftp.createReadStream)
     var sftp_readStream = sftp.createReadStream(src);
     sftp_readStream.on('error', function(err){
       callback(err);
     });
     sftp_readStream.pipe(createWriteStream(dest))
     .on('close',function(){
-      // self.emit('read', src);
-      console.log('cloooooooooooooooooooooooooooooooooooooooooose');
+      self.emit('read', src);
       callback(null);
     })
     .on('error', function(err){
