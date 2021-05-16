@@ -1,6 +1,7 @@
 import MainCommand from "@root/app/command/Main";
 import Main from "@root/app/devsync/Main";
 import MainInit from "@root/app/init/Main";
+import MainDevSyncLocal from '@root/app/devsync_local/Main';
 import BaseRouteCli from "@root/base/BaseRouteCli";
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 
@@ -16,6 +17,7 @@ const Cli = BaseRouteCli.extend<BaseRouteInterface>({
     masterData.setOnListener('command.rsync.upload',function(props : any){});
     masterData.setOnListener('command.rsync.download',function(props : any){});
     masterData.setOnListener('command.devsync.index',Main.binding().index);
+    masterData.setOnListener('command.devsync_local.index',MainDevSyncLocal.binding().index);
   }
 });
 
