@@ -12,7 +12,7 @@ export interface SftpOptions {
   username: string
   password: string,
   privateKey: string,
-  path: Array<string>,
+  paths: Array<string>,
   base_path: string,
   local_path: string,
   jumps: Array<object>
@@ -42,14 +42,14 @@ export interface SyncPullInterface extends BaseModelInterface {
   returnClient: {
     (props: object): Client
   }
-  _deleteFile: {
+  _deleteFile ?: {
     (props: {
       folder: string,
       base_path: string,
       file: string
     }): void
   }
-  _removeSameString: { (fullPath: string, basePath: string): string }
+  _removeSameString?: { (fullPath: string, basePath: string): string }
 }
 
 const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
