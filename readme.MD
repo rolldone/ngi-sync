@@ -14,28 +14,47 @@ ngi-sync is to help sync code to the server continuously
 ```
 sync-config.json
 {
+    "mode": "local|ssh",
     "username": "root",
-    "privateKey": "C:/Users/test/Documents/private_key/openssh_nopassword.key",
+    "privateKey": "openssh_nopassword.key",
     "host": "localhost",
-    "port": "22",
-    "localPath": "D:/workspace/your_project",
-    "remotePath": "/home/ubuntu/workspaces/your_project",
-    "ignores" : ["storage/logs","storage/app"],
-    "downloads":["tool/test.exe","app/basic"],
-    "jumps": [
-        {
-            "host": "localhost",
-            "port": 22222,
-            "username": "root",
-            "privateKey": "C:/Users/test/Documents/private_key/openssh_nopassword.key"
+    "port": "2222",
+    "localPath": "D:\\workspace\\ngsync\\storage_test",
+    "remotePath": "\\\\wsl$\\Ubuntu-20.04\\home\\ubuntu\\workspaces\\test",
+    "downloads": [
+        ".ssh","logs"
+    ],
+    "jumps": [],
+    "backup": {
+        "schedule": {
+            "loop": "1M|4W|1W|1D|4H|2H|1H|M30|M15|M5|timeout|once",
+            "delay": "100000"
         },
-        {
-            "host": "host2",
-            "port": 22,
-            "username": "root",
-            "privateKey": "C:/Users/test/Documents/private_key/openssh_nopassword.key"
-        }
-    ]
+        "rules": [
+            {
+                "command": {
+                    "target": "local|remote",
+                    "prompt": "ls -a -l"
+                }
+            },
+            {
+                "copy": {
+                    "from": "",
+                    "to": "",
+                    "includes": [],
+                    "excludes": []
+                }
+            },
+            {
+                "copy": {
+                    "from": "",
+                    "to": "",
+                    "includes": [],
+                    "excludes": []
+                }
+            }
+        ]
+    }
 }
 ```
 
