@@ -2,12 +2,13 @@
 ngi-sync is to help sync code to the server continuously
 
 ### Tasks
-- [x] Add feature send command to both target and local.
-- [x] Add feature pull syncronize.
-- [x] Add feature sftp to sync by file opened.
-- [x] Support ssh jump for multiple node ssh.
-- [ ] Add feature force sync publish your data to target use rsync.
-- [ ] Add feature force sync download target data to your local machine.
+- [x] Add feature clone directory on local only
+- [x] Add feature send command to both ssh and local.
+- [x] Add feature sftp pull syncronize.
+- [x] Add feature sftp push and watch file by action.
+- [x] Support ssh jump for multiple server.
+- [ ] Add feature backup sync publish your data to target use rsync.
+- [ ] Add feature backup sync download target data to your local machine use rsync.
 
 ### Sample config
 ```
