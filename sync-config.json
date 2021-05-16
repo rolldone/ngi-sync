@@ -1,9 +1,43 @@
 {
+    "mode": "local",
     "username": "root",
     "privateKey": "openssh_nopassword.key",
     "host": "localhost",
-    "port": "22",
-    "localPath": "D:/workspace/ngsync/storage_test",
-    "remotePath": "/home/ubuntu/workspaces/openssh-server",
-    "downloads":["config"]
+    "port": "2222",
+    "localPath": "D:\\workspace\\ngsync\\storage_test",
+    "remotePath": "\\\\wsl$\\Ubuntu-20.04\\home\\ubuntu\\workspaces\\test",
+    "downloads": [
+        ".ssh","logs"
+    ],
+    "jumps": [],
+    "backup": {
+        "schedule": {
+            "loop": "1M|4W|1W|1D|4H|2H|1H|M30|M15|M5|timeout|once",
+            "delay": "100000"
+        },
+        "rules": [
+            {
+                "command": {
+                    "target": "local|remote",
+                    "prompt": "ls -a -l"
+                }
+            },
+            {
+                "copy": {
+                    "from": "",
+                    "to": "",
+                    "includes": [],
+                    "excludes": []
+                }
+            },
+            {
+                "copy": {
+                    "from": "",
+                    "to": "",
+                    "includes": [],
+                    "excludes": []
+                }
+            }
+        ]
+    }
 }

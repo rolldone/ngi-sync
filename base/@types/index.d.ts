@@ -58,8 +58,8 @@ interface BaseQueueInterface extends BaseProtoInterface<BaseQueueInterface> {
 interface BaseServiceInterface extends BaseProtoInterface<BaseServiceInterface> {
   returnValidator?: { (props: object, filter: object): ValidatorInterface }
   returnMoment?: { (): Function }
+  _removeDuplicate ?: { (x: string, theChar: string): string }
 }
-
 
 interface BaseRouteInterface extends BaseProtoInterface<BaseRouteInterface> {
   displayRoute?: { (req: any, res: any): any }
