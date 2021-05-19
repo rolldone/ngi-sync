@@ -317,6 +317,7 @@ Rsync.prototype.args = function () {
 		args = args.concat(this.source().map(function (x) {
 			/* If use windows as source */
 			let tt = x.replace('wsl\\$', 'wsl$');
+			return tt;
 			if (tt.includes('wsl$') == true) {
 				tt = tt.replace('wsl$', '');
 				var gg = new RegExp("\\\\", 'g');
@@ -340,7 +341,7 @@ Rsync.prototype.args = function () {
 				gg = new RegExp(":/", 'g');
 				tt = tt.replace(gg, '/');
 				// Add front to / again;
-				tt = '/'+tt;
+				tt = tt;
 			}
 			return tt;
 		}));
@@ -350,6 +351,7 @@ Rsync.prototype.args = function () {
 		/* If use wsl as target */
 		args.push((() => {
 			let tt = this.destination().replace('wsl\\$', 'wsl$');
+			return tt;
 			if (tt.includes('wsl$') == true) {
 				tt = tt.replace('wsl$', '');
 				var gg = new RegExp("\\\\", 'g');
@@ -373,7 +375,7 @@ Rsync.prototype.args = function () {
 				gg = new RegExp(":/", 'g');
 				tt = tt.replace(gg, '/');
 				// Add front to / again;
-				tt = '/'+tt;
+				tt = tt;
 			}
 			return tt;
 		})());
