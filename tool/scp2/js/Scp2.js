@@ -196,7 +196,7 @@ Client.prototype.exec = function(command,callback) {
     callback(err);
   });
   ssh.on('end', function() {
-    console.log(end);
+    console.log('end');
     self.emit('end');
   });
   ssh.on('close', function() {
