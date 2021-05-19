@@ -1,9 +1,10 @@
 import MainCommand from "@root/app/command/Main";
 import Main from "@root/app/devsync/Main";
 import MainInit from "@root/app/init/Main";
-import MainDevSyncLocal from '@root/app/devsync_local/Main';
+import MainDevSyncLocal from '@root/app/forcersync_local/Main';
 import BaseRouteCli from "@root/base/BaseRouteCli";
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+import MainForceSftp from '@root/app/forcesftp/Main';
 
 declare var masterData : MasterDataInterface;
 
@@ -18,6 +19,7 @@ const Cli = BaseRouteCli.extend<BaseRouteInterface>({
     masterData.setOnListener('command.rsync.download',function(props : any){});
     masterData.setOnListener('command.devsync.index',Main.binding().index);
     masterData.setOnListener('command.devsync_local.index',MainDevSyncLocal.binding().index);
+    masterData.setOnListener('command.forcesftp.index',MainForceSftp.binding().index);
   }
 });
 

@@ -37,6 +37,9 @@ BaseStart({
       case 'devsync':
         masterData.saveData('command.devsync.index',{});
         return;
+      case 'forcesftp':
+        masterData.saveData('command.forcesftp.index',{});
+        return;
     }
   }
 } as AppInterface);

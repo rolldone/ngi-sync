@@ -78,7 +78,8 @@ const CommandService = InitConfigService.extend<Omit<CommandServiceInterface, 'r
         password: currentConf.password,
         privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
         path: currentConf.remotePath,
-        jumps : currentConf.jumps
+        jumps : currentConf.jumps,
+        port: currentConf.port
       });
       let timeoutnya : any = null;
       commandApp.setOnListener((res : any,err : any)=>{
