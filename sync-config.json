@@ -1,13 +1,14 @@
 {
-    "mode": "local",
+    "mode": "ssh",
     "username": "root",
-    "privateKey": "openssh_nopassword.key",
+    "privateKey": "D:\\workspace\\ngsync\\id_rsa_no_password",
     "host": "localhost",
     "port": "2222",
-    "localPath": "D:\\workspace\\ngsync\\storage_test",
-    "remotePath": "\\\\wsl$\\Ubuntu-20.04\\home\\ubuntu\\workspaces\\test",
+    "localPath": "D:\\workspace\\ngsync\\dist",
+    "remotePath": "/root/ngsync/dist",
+    "ignores" : ["bin/"],
     "downloads": [
-        ".ssh","logs"
+        ".ssh/","logs/"
     ],
     "jumps": [],
     "backup": {
