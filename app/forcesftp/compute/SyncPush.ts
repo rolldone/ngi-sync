@@ -67,7 +67,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
   _tasks: {},
   _concurent_listning_dir: 30,
   _lastIndexTemplate: 0,
-  _concurent: 10,
+  _concurent: 15,
   _clients: [],
   _orders: {},
   _orderDeletes: {},
@@ -272,15 +272,17 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
     let lastIndex = index;
     let _client = client;
     if (self._stopListningDirOnTarget == null) {
+      
       self._stopListningDirOnTarget = () => {
         let pending_stop: any = null;
+        let tempIndex = 0;
         return (lastIndex: number) => {
           if (pending_stop != null) {
             pending_stop.cancel();
           }
           pending_stop = _.debounce((lastIndex) => {
             console.log('lastIndex', lastIndex);
-            console.log('dirs', dirs.length);
+            console.log('dirs', dirs.length -1 );
             if (lastIndex >= dirs.length - 1) {
               console.log('selesai!');
               _client.close();
@@ -289,8 +291,11 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
               console.log('belum selesai', lastIndex, '-', dirs.length)
             }
           }, 2000);
+          if(tempIndex < lastIndex){
+            tempIndex = lastIndex;
+          }
           // console.log('lastIndex with date',lastIndex, ' -> ',new Date().getMilliseconds());
-          pending_stop(lastIndex);
+          pending_stop(tempIndex);
         }
       }
       self._stopListningDirOnTarget = self._stopListningDirOnTarget();
@@ -307,9 +312,11 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
           let loopIndex = a;
           // console.log('folderPath', folderPath);
           sftp.readdir(folderPath, (err: any, objList: Array<any>) => {
+            console.log('loopIndex',loopIndex);
             if (err) {
               console.log('err', err.toString());
-              return reject(err);
+              self._stopListningDirOnTarget(loopIndex);
+              return;
             }
             // console.log('objList', objList);
             for (var c = 0; c < objList.length; c++) {
@@ -344,7 +351,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
                 console.log('err', err.toString());
                 setTimeout(() => {
                   self._listningDirOnTarget(_client, dirs, nextnya, resolve, reject);
-                }, 100 * lastIndex);
+                }, 100 * 1);
                 self._stopListningDirOnTarget(lastIndex);
                 return;
               }
@@ -386,7 +393,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
               setTimeout(() => {
                 console.log('err', err.toString());
                 self._listningDirOnTarget(_client, dirs, nextnya, resolve, reject);
-              }, 100 * lastIndex);
+              }, 100 * 1);
               self._stopListningDirOnTarget(lastIndex);
               return;
             }
