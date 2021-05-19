@@ -67,7 +67,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
   _tasks: {},
   _concurent_listning_dir: 30,
   _lastIndexTemplate: 0,
-  _concurent: 30,
+  _concurent: 15,
   _clients: [],
   _orders: {},
   _orderDeletes: {},
