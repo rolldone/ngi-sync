@@ -7,9 +7,17 @@ import { join as pathJoin, dirname } from "path";
 import Uploader from "../compute/Uploader";
 import Watcher from "../compute/Watcher";
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+import _ from 'lodash';
+import inquirer = require("inquirer");
+
 const chalk = require('chalk');
 const observatory = require("observatory");
 declare var masterData: MasterDataInterface
+
+export enum COMMAND_TARGET {
+  SAFE_SYNC = 'DevSync Basic Safe Syncronise',
+  FORCE_PUSH_SYNC = 'DevSync Force Push Data "CAUTION : FORCE CLONE ON TARGET"',
+}
 
 export interface DevSyncServiceInterface extends BaseServiceInterface {
   returnConfig: { (cli: CliInterface): ConfigInterface }
@@ -20,6 +28,8 @@ export interface DevSyncServiceInterface extends BaseServiceInterface {
   uploader?: Uploader
   watcher?: Watcher
   task?: any
+  _promptAction: { (questions: inquirer.QuestionCollection): void }
+  _devSyncSafeSyncronise : {():void}
 }
 
 const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
@@ -32,8 +42,39 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
   construct: function (cli: CliInterface) {
     this._cli = cli;
     this.task = observatory.add("Initializing...");
+
     let currentConf = this.returnConfig(cli);
+    this._currentConf = currentConf;
+    let questions: inquirer.QuestionCollection = [
+      {
+        type: "list",
+        name: "target",
+        message: "Devsync Mode :",
+        choices: [
+          COMMAND_TARGET.SAFE_SYNC,
+          COMMAND_TARGET.FORCE_PUSH_SYNC
+        ]
+      }
+    ];
+    this._promptAction(questions);
+
+
+    return;
+  },
+  _promptAction: function (questions) {
+    let cli = this._cli;
+    let currentConf = this._currentConf;
+    inquirer.prompt(questions)['then']((passAnswer: any) => {
+      if (passAnswer.target == COMMAND_TARGET.FORCE_PUSH_SYNC) {
+        masterData.saveData('command.forcesftp.index',{});
+      } else {
+        this._devSyncSafeSyncronise();
+      }
+    });
+  },
+  _devSyncSafeSyncronise : function(){
     // console.log('currentConf',currentConf);
+    let currentConf = this._currentConf;
     switch (currentConf.mode) {
       case 'local':
         return masterData.saveData('command.devsync_local.index', {});
@@ -68,7 +109,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
       syncPull.setOnListener((res: any) => {
         // console.log('props', res);
-        var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder));
+        var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null?'No Such file of directory':res.return.folder));
         taskWatchOnServer.status(res.status);
       });
       syncPull.submitWatch();

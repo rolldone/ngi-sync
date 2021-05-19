@@ -1,23 +1,24 @@
 import BaseProto from "./BaseProto";
 import staticType from "./StaticType";
 
-export interface BaseModelInterface  extends BaseProtoInterface<BaseModelInterface>{
+export interface BaseModelInterface extends BaseProtoInterface<BaseModelInterface> {
   model: any | null
-  _includes ?: Array<any>
-  _excludes ?: Array<any>
-  _raw ?: boolean
-  _nest ?: boolean
-  getRaw ?: { (): boolean }
-  getNest ?: { (): boolean }
-  getIncludes ?: { (includes ?: Array<any>): void }
-  getExcludes ?: { (excludes ?: Array<any>): void }
+  _includes?: Array<any>
+  _excludes?: Array<any>
+  _raw?: boolean
+  _nest?: boolean
+  getRaw?: { (): boolean }
+  getNest?: { (): boolean }
+  getIncludes?: { (includes?: Array<any>): void }
+  getExcludes?: { (excludes?: Array<any>): void }
   save?: { (props: any, currentModel: any): Promise<object> }
   update?: { (props: any): Promise<object> }
   delete?: { (props: any): Promise<object> }
   first?: { (props: any): Promise<object> }
   get?: { (props: any): Promise<object> }
-  raw ?: boolean | null
-  nest ?: boolean | null
+  raw?: boolean | null
+  nest?: boolean | null
+  _removeSameString?: { (fullPath: string, basePath: string): string }
 }
 
 const BaseModel = BaseProto.extend<BaseModelInterface>({
@@ -26,15 +27,15 @@ const BaseModel = BaseProto.extend<BaseModelInterface>({
   _excludes: [],
   _raw: false,
   _nest: true,
-  raw : null,
-  nest : null,
+  raw: null,
+  nest: null,
   getRaw: function () {
     return this.raw || this._raw;
   },
   getNest: function () {
     return this.nest || this._nest;
   },
-  getIncludes: function (includes=[]) {
+  getIncludes: function (includes = []) {
     includes = [
       ...this._includes,
       ...includes || []
@@ -42,7 +43,7 @@ const BaseModel = BaseProto.extend<BaseModelInterface>({
     console.log('includes', includes);
     return includes;
   },
-  getExcludes: function (excludes=[]) {
+  getExcludes: function (excludes = []) {
     excludes = [
       ...this._excludes,
       ...excludes || []
@@ -120,6 +121,9 @@ const BaseModel = BaseProto.extend<BaseModelInterface>({
     } catch (ex) {
       throw ex;
     }
+  },
+  _removeSameString: function (fullPath, basePath) {
+    return fullPath.replace(basePath, '');
   }
 });
 
