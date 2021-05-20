@@ -7,7 +7,7 @@
     "localPath": "D:\\workspace\\ngsync\\dist_2",
     "remotePath": "/root/ngsync/dist",
     "ignores": [
-        "bin/","storage_test/test.d.ts","app/command/Main.js"
+        "bin/","storage_test/test.d.ts"
     ],
     "downloads": [
         ".ssh/",
