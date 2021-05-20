@@ -10,6 +10,9 @@ import { Client } from "scp2";
 import _ from 'lodash';
 import * as upath from "upath";
 import * as path from 'path';
+import { MasterDataInterface } from '@root/bootstrap/StartMasterData';
+
+declare var masterData : MasterDataInterface;
 
 export interface LocalOptions extends DevSyncPullSftpOptions {
   ignores?: Array<string | RegExp>
@@ -147,6 +150,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
           console.log('UPLOAD :: entry.queue_no : ' + entry.path + ' -> ', entry.queue_no, '  Done');
           console.log('UPLOAD :: sisa -> ', Object.keys(this._queue).length);
           console.log('UPLOAD :: Client Queue No ' + entry.queue_no + ' -> done!');
+          masterData.saveData('forcesftp.syncpush._prepareDelete',{});
           return;
         }
         let oo = Object.assign({}, this._queue[firstKey]);
@@ -573,7 +577,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
     }
     console.log('------------------------------------------------------------------(Waiting Listning Directory on Server)--------------------------------------------------------------------------------------------------');
     await waitingListing();
-    console.log('------------------------------------------------------------------(Upload the file to the server & Prepare Delete & Delete on server running)-------------------------------------------------------------');
+    console.log('------------------------------------------------------------------(Upload the file to the server)-------------------------------------------------------------');
     for (var a = 0; a < this._concurent; a++) {
       this._clients.push(this.returnClient({
         ...this._config,
@@ -601,37 +605,47 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
       }
       index += 1;
     });
-
+    
     /* Queue Deleted */
     if(this._config.mode == "soft"){
       console.log('SyncPush :: Delete Mode is not active! SOFT MODE')
       return;
     }
-    /* Filter deletes with ignores */
-    this._prepareDelete();
-    index = 0;
-    Object.keys(this._deleted_files).forEach((key: any) => {
-      let entry: any = this._deleted_files[key];
-      console.log('entry -> ', this._config.base_path + key);
-      if (index == this._concurent) {
+    let _waitingNextDelete : any = null;
+    masterData.setOnListener('forcesftp.syncpush._prepareDelete',(props : any)=>{
+      if(_waitingNextDelete != null){
+        _waitingNextDelete.cancel();
+      }
+      _waitingNextDelete = _.debounce(()=>{
+        console.log('------------------------------------------------------------------(Prepare Delete & Delete on server running)-------------------------------------------------------------');
+        /* Filter deletes with ignores */
+        this._prepareDelete();
         index = 0;
-      }
-      if (Object.keys(this._orderDeletes).length < this._concurent) {
-        this._handleDelete({
-          ...entry,
-          path: this._config.base_path + key,
-          queue_no: index
+        Object.keys(this._deleted_files).forEach((key: any) => {
+          let entry: any = this._deleted_files[key];
+          console.log('entry -> ', this._config.base_path + key);
+          if (index == this._concurent) {
+            index = 0;
+          }
+          if (Object.keys(this._orderDeletes).length < this._concurent) {
+            this._handleDelete({
+              ...entry,
+              path: this._config.base_path + key,
+              queue_no: index
+            });
+          } else {
+            this._queueDelete[this._config.base_path + key] = {
+              ...entry,
+              path: this._config.base_path + key,
+              queue_no: index
+            };
+            // console.log('vmadkfvmfdkvmfdv', this._queue);
+          }
+          index += 1;
         });
-      } else {
-        this._queueDelete[this._config.base_path + key] = {
-          ...entry,
-          path: this._config.base_path + key,
-          queue_no: index
-        };
-        // console.log('vmadkfvmfdkvmfdv', this._queue);
-      }
-      index += 1;
-    });
+      },5000);
+      _waitingNextDelete();
+    })
   }
 });
 
