@@ -3,9 +3,9 @@ import CliService, { CliInterface } from "./services/CliService";
 import DevSyncService, { DevSyncServiceInterface } from "./services/DevSyncService";
 
 export interface MainControllerInterface extends BaseControllerInterface {
-  index: { (): void }
+  index: { (props ?: any): void }
   returnCliService: { (): CliInterface }
-  returnDevSyncService: { (cli?: CliInterface): DevSyncServiceInterface }
+  returnDevSyncService: { (cli?: CliInterface, props ?: any): DevSyncServiceInterface }
   _devSyncService?: DevSyncServiceInterface
 }
 
@@ -13,20 +13,20 @@ const Main = BaseController.extend<MainControllerInterface>({
   returnCliService: function () {
     return CliService.create();
   },
-  returnDevSyncService: function (cli) {
+  returnDevSyncService: function (cli,props) {
     if (this._devSyncService == null) {
-      this._devSyncService = DevSyncService.create(cli);
+      this._devSyncService = DevSyncService.create(cli,props);
     }
     return this._devSyncService;
   },
-  index: function () {
+  index: function (props) {
     let cliService = this.returnCliService();
     if (cliService.hasStartupCommand('forcesftp')) {
       this.returnDevSyncService(cliService);
       return;
     }
     // Cross Cli
-    this.returnDevSyncService(cliService);
+    this.returnDevSyncService(cliService,props);
   }
 });
 
