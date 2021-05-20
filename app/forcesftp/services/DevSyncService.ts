@@ -10,7 +10,7 @@ const observatory = require("observatory");
 export interface DevSyncServiceInterface extends BaseServiceInterface {
   returnConfig: { (cli: CliInterface): ConfigInterface }
   returnSyncPush: { (cli: CliInterface, localConfig: LocalOptions): SyncPushInterface }
-  create?: (cli: CliInterface) => this
+  create?: (cli: CliInterface, props ?: any) => this
   _cli?: CliInterface
   _currentConf?: ConfigInterface
   task?: any
@@ -23,7 +23,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
   returnSyncPush: function (cli, localConfig) {
     return SyncPush.create(cli, localConfig);
   },
-  construct: function (cli: CliInterface) {
+  construct: function (cli: CliInterface,props : any) {
     this._cli = cli;
     this.task = observatory.add("Initializing...");
     let currentConf = this.returnConfig(cli);
@@ -56,7 +56,8 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         base_path: currentConf.remotePath,
         local_path: currentConf.localPath,
         path_mode: currentConf.pathMode,
-        jumps: currentConf.jumps
+        jumps: currentConf.jumps,
+        mode : props.mode || 'hard'
       });
       _syncPush.submitWatch();
     }).then(() => {

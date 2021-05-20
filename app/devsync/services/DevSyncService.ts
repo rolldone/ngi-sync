@@ -15,8 +15,9 @@ const observatory = require("observatory");
 declare var masterData: MasterDataInterface
 
 export enum COMMAND_TARGET {
-  SAFE_SYNC = 'DevSync Basic Safe Syncronise',
-  FORCE_PUSH_SYNC = 'DevSync Force Push Data "CAUTION : FORCE CLONE ON TARGET"',
+  SAFE_SYNC = 'DevSync Basic Safe Syncronise \n  - Trigger by edit file :)',
+  SOFT_PUSH_SYNC = 'DevSync Soft Push Data. \n  - Your sensitive data will be safe on target :)',
+  FORCE_PUSH_SYNC = 'DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
 }
 
 export interface DevSyncServiceInterface extends BaseServiceInterface {
@@ -52,6 +53,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         message: "Devsync Mode :",
         choices: [
           COMMAND_TARGET.SAFE_SYNC,
+          COMMAND_TARGET.SOFT_PUSH_SYNC,
           COMMAND_TARGET.FORCE_PUSH_SYNC
         ]
       }
@@ -67,6 +69,10 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     inquirer.prompt(questions)['then']((passAnswer: any) => {
       if (passAnswer.target == COMMAND_TARGET.FORCE_PUSH_SYNC) {
         masterData.saveData('command.forcesftp.index',{});
+      } else if (passAnswer.target == COMMAND_TARGET.SOFT_PUSH_SYNC){
+        masterData.saveData('command.forcesftp.index',{
+          mode : 'soft'
+        });
       } else {
         this._devSyncSafeSyncronise();
       }
