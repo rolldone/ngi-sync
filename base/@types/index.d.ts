@@ -17,6 +17,7 @@ interface BaseProtoInterface<T extends BaseProtoInterface<T>> {
   extend?: { <I>(i: I): I }
   __init?: string
   construct?: any
+  _replaceAt ?: {(input : string, search : string, replace : string, start : number, end : number) : string}
 }
 
 interface BaseControllerInterface extends BaseProtoInterface<BaseControllerInterface> {

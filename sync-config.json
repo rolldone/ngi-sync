@@ -4,11 +4,14 @@
     "privateKey": "D:\\workspace\\ngsync\\id_rsa_no_password",
     "host": "localhost",
     "port": "2222",
-    "localPath": "D:\\workspace\\ngsync\\dist",
+    "localPath": "D:\\workspace\\ngsync\\dist_2",
     "remotePath": "/root/ngsync/dist",
-    "ignores" : ["bin/"],
+    "ignores": [
+        "bin/","storage_test/test.d.ts"
+    ],
     "downloads": [
-        ".ssh/","logs/"
+        ".ssh/",
+        "logs/"
     ],
     "jumps": [],
     "backup": {
