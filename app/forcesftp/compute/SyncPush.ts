@@ -226,7 +226,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
         fileFilter: ["*"], // => /* Bad because cannot filter by path */
         alwaysStat: false,
         type: 'directories',
-        directoryFilter: ["*"] // => /* Bad because cannot filter by path */
+        directoryFilter: ["*",".*"] // => /* Bad because cannot filter by path */
       }).on('data', (entry: any) => {
         let isFound : boolean = false;
         let givePath = '/' + upath.normalizeSafe(entry.path);
@@ -274,10 +274,10 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
       console.log('_LISTNINGCURRENTFILES :: ignoreFiles ',ignoreFiles);
       console.log('_LISTNINGCURRENTFILES :: ignoreDirectories ',ignoreDirectories);
       readdirp(this._config.local_path, {
-        fileFilter: ["*"],// => /* Bad because cannot filter by path */
+        fileFilter: ["*",".*"],// => /* Bad because cannot filter by path */
         alwaysStat: true,
         type: 'all',
-        directoryFilter: ["*"] // => /* Bad because cannot filter by path */
+        directoryFilter: ["*",".*"] // => /* Bad because cannot filter by path */
       }).on('data', (entry: any) => {
         let isFound : boolean = false;
         let tempSetPath = '/' + upath.normalizeSafe(entry.path);
