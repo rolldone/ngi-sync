@@ -4,6 +4,10 @@ import { Client } from "scp2";
 import Config, { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
 import _ from 'lodash';
+import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+
+declare var masterData : MasterDataInterface;
+
 export default class Uploader {
 	client: Client;
 
@@ -105,6 +109,19 @@ export default class Uploader {
 							error: err
 						});
 					} else {
+						/* Dont let file edited by server upload to server again! */
+						let fileEditFromServer : any = masterData.getData('file_edit_from_server',{});
+						if(fileEditFromServer[upath.normalizeSafe(fileName)] != null){
+							if(fileEditFromServer[upath.normalizeSafe(fileName)] == true){
+								console.log('File edited by system dont let uploaded : ',upath.normalizeSafe(fileName));
+								delete this._pendingQueue[_queueKey];
+								masterData.updateData('file_edit_from_server',{
+									[upath.normalizeSafe(fileName)] : false
+								});
+								resolve(remote);
+								return;
+							}
+						}
 						// Uplad the file
 						this.client.upload(fileName, remote, err => {
 							if (err) {
