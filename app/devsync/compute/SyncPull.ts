@@ -20,6 +20,13 @@ export interface SftpOptions {
   jumps: Array<object>
 }
 
+type propsDownload =  {
+  folder: string;
+  base_path: string;
+  file: string;
+  size: number;
+};
+
 export interface SyncPullInterface extends BaseModelInterface {
   construct: { (cli: CliInterface, jsonConfig: SftpOptions): void }
   create?: (cli: CliInterface, jsonConfig: object) => this
@@ -30,12 +37,7 @@ export interface SyncPullInterface extends BaseModelInterface {
   _sshConfig?: SftpOptions | null
   submitWatch: { (): void }
   _downloadFile: {
-    (props: {
-      folder: string,
-      base_path: string,
-      file: string,
-      size: number
-    }): void
+    (props: propsDownload): void
   }
   _folderQueue?: {
     [key: string]: any
@@ -121,19 +123,17 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
     if (this._folderQueue[keynya] != null) {
       return;
     }
-    this._folderQueue[keynya] = _.debounce((props: any) => {
+    this._folderQueue[keynya] = _.debounce((props: propsDownload) => {
       let fromFilePath = props.folder + '/' + props.file;
       let theLocalPath: string = this._sshConfig.local_path + this._removeSameString(fromFilePath, props.base_path);
+      theLocalPath = upath.normalizeSafe(theLocalPath);
       let theClient = this.returnClient({
         ...this._sshConfig,
         path: fromFilePath
       });
-      /* Check is have pattern a directory */
-      if(theLocalPath[Object.keys(theLocalPath).length - 1] == "/"){
-        let tt = theLocalPath;
-        tt = theLocalPath.substr(0, theLocalPath.lastIndexOf("/")); 
-        mkdirSync(pathJoin('', tt), { recursive: true });
-      }
+      /* Check is have pattern a file create directory from dirname */
+      let tt = upath.dirname(theLocalPath);
+      mkdirSync(pathJoin('', tt), { recursive: true });
       stat(pathJoin("", theLocalPath), (err, data) => {
         var downloadNow = () => {
           theClient.download(fromFilePath, pathJoin("", theLocalPath), (err: any) => {
