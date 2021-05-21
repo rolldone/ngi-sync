@@ -7,6 +7,9 @@ import { mkdir, mkdirSync, unlinkSync, readFile, stat } from "fs";
 import { join as pathJoin, dirname } from "path";
 import * as upath from "upath";
 import * as path from 'path';
+import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+
+declare var masterData : MasterDataInterface;
 
 export interface SftpOptions {
   port?: number
@@ -143,6 +146,10 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
                 return: err
               })
             }
+            /* Record this file edited by server so dont let upload it */
+            masterData.updateData('file_edit_from_server',{
+              [theLocalPath] : true,
+            });
             delete this._folderQueue[keynya];
           })
         }
