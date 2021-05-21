@@ -5,6 +5,11 @@ import { Client } from 'scp2';
 import _ from 'lodash';
 import { mkdir, mkdirSync, unlinkSync, readFile, stat } from "fs";
 import { join as pathJoin, dirname } from "path";
+import * as upath from "upath";
+import * as path from 'path';
+import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+
+declare var masterData : MasterDataInterface;
 
 export interface SftpOptions {
   port?: number
@@ -18,6 +23,13 @@ export interface SftpOptions {
   jumps: Array<object>
 }
 
+type propsDownload =  {
+  folder: string;
+  base_path: string;
+  file: string;
+  size: number;
+};
+
 export interface SyncPullInterface extends BaseModelInterface {
   construct: { (cli: CliInterface, jsonConfig: SftpOptions): void }
   create?: (cli: CliInterface, jsonConfig: object) => this
@@ -28,12 +40,7 @@ export interface SyncPullInterface extends BaseModelInterface {
   _sshConfig?: SftpOptions | null
   submitWatch: { (): void }
   _downloadFile: {
-    (props: {
-      folder: string,
-      base_path: string,
-      file: string,
-      size: number
-    }): void
+    (props: propsDownload): void
   }
   _folderQueue?: {
     [key: string]: any
@@ -119,14 +126,16 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
     if (this._folderQueue[keynya] != null) {
       return;
     }
-    this._folderQueue[keynya] = _.debounce((props: any) => {
+    this._folderQueue[keynya] = _.debounce((props: propsDownload) => {
       let fromFilePath = props.folder + '/' + props.file;
       let theLocalPath: string = this._sshConfig.local_path + this._removeSameString(fromFilePath, props.base_path);
+      theLocalPath = upath.normalizeSafe(theLocalPath);
       let theClient = this.returnClient({
         ...this._sshConfig,
         path: fromFilePath
       });
-      let tt = theLocalPath.substr(0, theLocalPath.lastIndexOf("/"));
+      /* Check is have pattern a file create directory from dirname */
+      let tt = upath.dirname(theLocalPath);
       mkdirSync(pathJoin('', tt), { recursive: true });
       stat(pathJoin("", theLocalPath), (err, data) => {
         var downloadNow = () => {
@@ -137,14 +146,23 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
                 return: err
               })
             }
+            /* Record this file edited by server so dont let upload it */
+            masterData.updateData('file_edit_from_server',{
+              [theLocalPath] : true,
+            });
             delete this._folderQueue[keynya];
           })
         }
         if (err) {
           return downloadNow();
         }
+        // console.log('Server Size ',props.size);
+        // console.log('Local size ',data.size);
         if (props.size != data.size) {
           downloadNow();
+        }else{
+          // console.log('Sama');
+          delete this._folderQueue[keynya];
         }
       })
     }, (this._folderQueue.length + 1) * 1000);

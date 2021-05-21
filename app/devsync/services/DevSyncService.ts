@@ -100,11 +100,12 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
             /**
              * Remove if folder have file extention
+             * Not Use anymore just keep it the original
              */
-            var isSame = arrayString[a].substr(arrayString[a].lastIndexOf('.') + 1);
-            if (isSame != arrayString[a]) {
-              arrayString[a] = arrayString[a].split("/").slice(0, -1).join("/");
-            }
+            // var isSame = arrayString[a].substr(arrayString[a].lastIndexOf('.') + 1);
+            // if (isSame != arrayString[a]) {
+            //   arrayString[a] = arrayString[a].split("/").slice(0, -1).join("/");
+            // }
           }
           return arrayString;
         })(),
