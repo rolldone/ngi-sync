@@ -81,6 +81,9 @@ export default function(next : Function){
       }
       switch(true){
         case Object.prototype.toString.call(props)=='[object Object]':
+          if(this.vars[key] == null){
+            this.vars[key] = {};
+          }
           this.vars[key] = {
             ...this.vars[key],
             ...props
