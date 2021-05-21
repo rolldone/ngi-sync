@@ -5,6 +5,8 @@ import { Client } from 'scp2';
 import _ from 'lodash';
 import { mkdir, mkdirSync, unlinkSync, readFile, stat } from "fs";
 import { join as pathJoin, dirname } from "path";
+import * as upath from "upath";
+import * as path from 'path';
 
 export interface SftpOptions {
   port?: number
@@ -126,8 +128,12 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         ...this._sshConfig,
         path: fromFilePath
       });
-      let tt = theLocalPath.substr(0, theLocalPath.lastIndexOf("/"));
-      mkdirSync(pathJoin('', tt), { recursive: true });
+      /* Check is have pattern a directory */
+      if(theLocalPath[Object.keys(theLocalPath).length - 1] == "/"){
+        let tt = theLocalPath;
+        tt = theLocalPath.substr(0, theLocalPath.lastIndexOf("/")); 
+        mkdirSync(pathJoin('', tt), { recursive: true });
+      }
       stat(pathJoin("", theLocalPath), (err, data) => {
         var downloadNow = () => {
           theClient.download(fromFilePath, pathJoin("", theLocalPath), (err: any) => {
@@ -143,8 +149,13 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         if (err) {
           return downloadNow();
         }
+        // console.log('Server Size ',props.size);
+        // console.log('Local size ',data.size);
         if (props.size != data.size) {
           downloadNow();
+        }else{
+          // console.log('Sama');
+          delete this._folderQueue[keynya];
         }
       })
     }, (this._folderQueue.length + 1) * 1000);

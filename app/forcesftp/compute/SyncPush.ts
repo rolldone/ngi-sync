@@ -575,9 +575,9 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
         });
       });
     }
-    console.log('------------------------------------------------------------------(Waiting Listning Directory on Server)--------------------------------------------------------------------------------------------------');
+    console.log('------------------------------------------------------------------(Waiting Listning Directory on Server)-----------------------------------------------------------------------');
     await waitingListing();
-    console.log('------------------------------------------------------------------(Upload the file to the server)-------------------------------------------------------------');
+    console.log('------------------------------------------------------------------(Upload the file to the server)------------------------------------------------------------------------------');
     for (var a = 0; a < this._concurent; a++) {
       this._clients.push(this.returnClient({
         ...this._config,

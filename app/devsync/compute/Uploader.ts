@@ -3,14 +3,15 @@ import { readFileSync } from "fs";
 import { Client } from "scp2";
 import Config, { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
-
+import _ from 'lodash';
 export default class Uploader {
 	client: Client;
 
 	constructor(private config: ConfigInterface, private cli: CliInterface) { 
-
 	}
-
+	_pendingQueue : {
+		[key:string] : any
+	} = {};
 	connect(): Promise<string> {
 		this.client = new Client({
 			port: this.config.port,
@@ -87,31 +88,39 @@ export default class Uploader {
 	uploadFile(fileName: string): Promise<string> {
 		return new Promise<string>((resolve, reject) => {
 			let remote = this.getRemotePath(fileName);
+			let _queueKey = upath.normalizeSafe(remote);
 
 			// Client upload also creates the folder but creates it using local mode
 			// in windows it might mean we won't have permissons to save the fileName
 			// So I create the folder manually here to solve that issue.
 			// Mode we set can be configured from the config file
-			this.client.mkdir(upath.dirname(remote), { mode: this.config.pathMode }, err => {
-				if (err) {
-					reject({
-						message: `Could not create ${upath.dirname(remote)}`,
-						error: err
-					});
-				} else {
-					// Uplad the file
-					this.client.upload(fileName, remote, err => {
-						if (err) {
-							reject({
-								message: `Could not upload ${remote}`,
-								error: err
-							});
-						} else {
-							resolve(remote);
-						}
-					});
-				}
-			});
+			if(this._pendingQueue[_queueKey] != null){
+				this._pendingQueue[remote].cancel();
+			}
+			this._pendingQueue[_queueKey] = _.debounce((remote : string)=>{
+				this.client.mkdir(upath.dirname(remote), { mode: this.config.pathMode }, err => {
+					if (err) {
+						reject({
+							message: `Could not create ${upath.dirname(remote)}`,
+							error: err
+						});
+					} else {
+						// Uplad the file
+						this.client.upload(fileName, remote, err => {
+							if (err) {
+								reject({
+									message: `Could not upload ${remote}`,
+									error: err
+								});
+							} else {
+								resolve(remote);
+							}
+						});
+					}
+					delete this._pendingQueue[_queueKey];
+				});
+			},1000);
+			this._pendingQueue[_queueKey](remote);
 		});
 	}
 }
