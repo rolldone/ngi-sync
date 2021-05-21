@@ -5,6 +5,7 @@ import Uploader from "./Uploader";
 import Config, { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
 const observatory = require("observatory");
+import * as upath from 'upath';
 
 export default class Watcher {
 	files: FSWatcher;
@@ -20,20 +21,39 @@ export default class Watcher {
 	) {
 
 		let defaultIgnores: Array<string | RegExp> = [/node_modules/, /.git/, /.svn/, /bower_components/];
+		let onlyPathStringIgnores : Array<string> = [];
+		let onlyFileStringIgnores : Array<string> = [];
+		let onlyRegexIgnores : Array<RegExp> = [];
+		for(var a=0;a<this.config.ignores.length;a++){
+			if(this.config.ignores[a] instanceof RegExp){
+				onlyRegexIgnores.push(this.config.ignores[a] as RegExp);
+			}else{
+				onlyPathStringIgnores.push(this.config.ignores[a] as string);
+			}
+		}
 		let tt = ((pass : Array<string>) : Array<string> =>{
 			let newpath = [];
 			for(var a=0;a<pass.length;a++){
-				newpath.push(this.config.localPath+this.removeSameString(pass[a],this.config.remotePath))
+				/* Check path is really directory */
+				let thePath = this.config.localPath+'/'+pass[a];
+				if(pass[a][Object.keys(pass[a]).length-1] == '/'){
+					newpath.push(upath.normalizeSafe(this._replaceAt(thePath,'/','',thePath.length-1,thePath.length)));
+				}else{
+					onlyFileStringIgnores.push(upath.normalizeSafe(thePath));
+				}
 			}
 			return newpath;
-		})(this.config.downloads || []);
+		})( onlyPathStringIgnores || []);
 		defaultIgnores = [
 			...defaultIgnores,
 			// ...tt
 		]
 		this.files = chokidar.watch(base, {
-			ignored: defaultIgnores.concat(this.config.ignores),
-			ignoreInitial: true
+			ignored: ((defaultIgnores.concat(tt)).concat(onlyRegexIgnores)).concat(onlyFileStringIgnores),
+			ignoreInitial: true,
+			persistent: true,
+			awaitWriteFinish: false,
+			ignorePermissionErrors: false
 		});
 
 		// Attach events
@@ -41,6 +61,12 @@ export default class Watcher {
 			this.files.on(method, this.handler(method));
 		});
 	}
+
+	_replaceAt(input : string, search : string, replace : string, start : number, end : number) : string {
+    return input.slice(0, start)
+        + input.slice(start, end).replace(search, replace)
+        + input.slice(end);
+  }
 
 	removeSameString(fullPath : string, basePath : string) : string {
     return fullPath.replace(basePath, '');
