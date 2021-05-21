@@ -2,6 +2,7 @@ const EventEmitter = require('events').EventEmitter;
 const Client = require('ssh2').Client;
 const { readFileSync } = require('fs');
 const _ = require('lodash');
+const path = require('path');
 
 var removeDuplicate = (x, theChar) => {
 	let tt = [...x];
@@ -50,12 +51,39 @@ var deletedRemainingRecord = function () {
 	}
 }
 
-var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, folder) {
+var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileOrdFolder) {
 	let self = this;
 	var config = self._config;
 	var event = self._event;
+	
+	/* Check is have pattern a file */
+	if(fileOrdFolder[Object.keys(fileOrdFolder).length - 1] != "/"){
+		let getFolder = path.dirname(fileOrdFolder);
+		sftp.readdir(getFolder, function (err, objList) {
+			for(var a = 0;a<objList.length;a++){
+				let fileObj = objList[a];
+				if(fileObj.filename == path.basename(fileOrdFolder,'')){
+					event.emit("upload", {
+						host: config.host,
+						user: config.username,
+						folder: getFolder,
+						base_path: config.base_path,
+						file: fileObj
+					});
+					/* Call again remaining queue for continue process loop request */
+					self._deleteRemainingRecord.call(self, newEntryObjList);
+					break; false;
+				}
+			}
+		})
+		return;
+	}
+
+	/* Check is have pattern a directory */
+	let folder = fileOrdFolder
 	sftp.readdir(folder, function (err, objList) {
 		if (err) {
+			console.log('RECURSIVEDOWNLOAD :: Folder ',folder);
 			event.emit('error', err.message || err);
 		} else {
 
@@ -108,6 +136,10 @@ export default function (config) {
 		event.emit("error", "Invalid input");
 	} else {
 		event.emit('heartbeat', true);
+		/**
+		 * This is call recursive after emit done 
+		 * call again!!!
+		 */
 		fileWatcher = function (sftp, folder) {
 			var job = function (baseObjList) {
 				recursiveDownload.call(self, baseObjList, {}, sftp, folder);

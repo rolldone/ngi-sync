@@ -11,7 +11,8 @@
     ],
     "downloads": [
         ".ssh/",
-        "logs/"
+        "logs/",
+        "study/JumpRsync.d.ts"
     ],
     "jumps": [],
     "backup": {
