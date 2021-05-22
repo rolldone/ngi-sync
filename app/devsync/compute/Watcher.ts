@@ -21,7 +21,7 @@ export default class Watcher {
 		private base: string = config.localPath
 	) {
 		
-		let gitIgnore : any = parseGitIgnore(readFileSync('.gitignore'));
+		let gitIgnore : Array<any> = parseGitIgnore(readFileSync('.gitignore'));
 		let defaultIgnores: Array<string | RegExp> = [/node_modules/, /.git/, /.svn/, /bower_components/];
 		let onlyPathStringIgnores : Array<string> = [];
 		let onlyFileStringIgnores : Array<string> = [];
@@ -50,8 +50,24 @@ export default class Watcher {
 			...defaultIgnores,
 			// ...tt
 		]
+		let resCHeckGItIgnores = (()=>{
+			let newResGItIngore = [];
+			for(var a=0;a<gitIgnore.length;a++){
+				if(gitIgnore[a] instanceof RegExp){
+					newResGItIngore.push(gitIgnore[a]);
+				}else if(gitIgnore[a][Object.keys(gitIgnore[a]).length-1] == '/'){
+					gitIgnore[a] = this.config.localPath+'/'+gitIgnore[a];
+					newResGItIngore.push(upath.normalizeSafe(this._replaceAt(gitIgnore[a],'/','',gitIgnore[a].length-1,gitIgnore[a].length)));
+				}else{
+					gitIgnore[a] = this.config.localPath+'/'+gitIgnore[a];
+					newResGItIngore.push(upath.normalizeSafe(gitIgnore[a]));
+				}
+			}
+			return newResGItIngore;
+		})();
+		let ignnorelist = ((defaultIgnores.concat(tt)).concat(onlyRegexIgnores)).concat(onlyFileStringIgnores).concat(resCHeckGItIgnores);
 		this.files = chokidar.watch(base, {
-			ignored: ((defaultIgnores.concat(tt)).concat(onlyRegexIgnores)).concat(onlyFileStringIgnores).concat(gitIgnore),
+			ignored: ignnorelist,
 			ignoreInitial: true,
 			persistent: true,
 			awaitWriteFinish: false,
