@@ -255,20 +255,33 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
   _listningCurrentFiles: function () {
     return new Promise((resolve) => {
       /* From file git ignore */
-      let gitIgnores: any = parseGitIgnore(readFileSync('.gitignore'));
-      let gitIgnoreFiles = this._splitIgnoreDatas(gitIgnores, 'file');
-      let gitIgnoreDirectories = this._splitIgnoreDatas(gitIgnores, 'directory');
+      let gitIgnores: Array<any> = parseGitIgnore(readFileSync('.gitignore'));
+      let gitIgnoreFiles : Array<string> = [];
+      let gitIgnoreDirectories : Array<string> = [];
+      for(var a=0;a<gitIgnores.length;a++){
+        if(gitIgnores[a] instanceof RegExp){
+          /* Ignore it */
+        }else if(gitIgnores[a][Object.keys(gitIgnores[a]).length-1] == '/'){
+          // gitIgnores[a] = this._config.base_path+'/'+gitIgnores[a];
+          gitIgnoreDirectories.push(upath.normalizeSafe(gitIgnores[a]));
+        }else{
+          // gitIgnores[a] = this._config.base_path+'/'+gitIgnores[a];
+          gitIgnoreFiles.push(upath.normalizeSafe(gitIgnores[a]));
+        }
+      }
 
       let ignoreDirectories: any = this._splitIgnoreDatas(this._config.ignores, 'directory');
       ignoreDirectories = ((datas: Array<string>) => {
         let _datas: Array<string> = [];
-        datas.forEach((element: any) => {
+        for(var a=0;a<datas.length;a++){
+          let element = datas[a];
           let teString = this._removeSameString(element, this._config.base_path);
           _datas.push(this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length));
-        });
+        }
         return _datas;
       })([...ignoreDirectories, ...gitIgnoreDirectories] as Array<string>);
-
+      /* Remove duplicate */
+      ignoreDirectories = _.uniq(ignoreDirectories);
       let ignoreFiles = this._splitIgnoreDatas(this._config.ignores, 'file');
       ignoreFiles = ((datas: Array<string>) => {
         let _datas: Array<string> = [];
@@ -277,10 +290,12 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
           // teString = '!' + this._replaceAt(teString,'/','',0,1);
           // _datas.push(teString);
           let teString = this._removeSameString(element, this._config.base_path);
-          _datas.push(teString);
+            _datas.push(teString);
         });
         return _datas;
       })([...ignoreFiles, ...gitIgnoreFiles] as Array<string>);
+      /* REmove duplicate */
+      ignoreFiles = _.uniq(ignoreFiles);
       console.log('_LISTNINGCURRENTFILES :: ignoreFiles ', ignoreFiles);
       console.log('_LISTNINGCURRENTFILES :: ignoreDirectories ', ignoreDirectories);
       readdirp(this._config.local_path, {
@@ -509,6 +524,22 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
   },
   _prepareDelete: function () {
     try {
+      /* From file git ignore */
+      let gitIgnores: Array<any> = parseGitIgnore(readFileSync('.gitignore'));
+      let gitIgnoreFiles : Array<string> = [];
+      let gitIgnoreDirectories : Array<string> = [];
+      for(var a=0;a<gitIgnores.length;a++){
+        if(gitIgnores[a] instanceof RegExp){
+          /* Ignore it */
+        }else if(gitIgnores[a][Object.keys(gitIgnores[a]).length-1] == '/'){
+          // gitIgnores[a] = this._config.base_path+'/'+gitIgnores[a];
+          gitIgnoreDirectories.push(upath.normalizeSafe(gitIgnores[a]));
+        }else{
+          // gitIgnores[a] = this._config.base_path+'/'+gitIgnores[a];
+          gitIgnoreFiles.push(upath.normalizeSafe(gitIgnores[a]));
+        }
+      }
+
       let ignoreDirectories: any = this._splitIgnoreDatas(this._config.ignores, 'directory');
       ignoreDirectories = ((datas: Array<string>) => {
         let _datas: {
@@ -520,7 +551,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
           _datas[givePath] = givePath;
         });
         return _datas;
-      })(ignoreDirectories as Array<string>);
+      })([...ignoreDirectories,...gitIgnoreDirectories] as Array<string>);
 
       let ignoreFiles: any = this._splitIgnoreDatas(this._config.ignores, 'file');
       ignoreFiles = ((datas: Array<string>) => {
@@ -537,8 +568,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
 
         });
         return _datas;
-      })(ignoreFiles as Array<string>);
-
+      })([...ignoreFiles,...gitIgnoreFiles] as Array<string>);
       for (var key in ignoreDirectories) {
         for (var key2 in this._deleted_files) {
           // console.log('key',key,' & key2 ', this._config.base_path+key2);
