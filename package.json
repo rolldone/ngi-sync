@@ -61,6 +61,7 @@
     "nohm": "^2.2.3",
     "objectmodel": "^4.2.3",
     "observatory": "^1.0.0",
+    "parse-gitignore": "^1.0.1",
     "readdirp": "^3.6.0",
     "redis-clients": "^0.5.2",
     "rsync": "^0.6.1",
