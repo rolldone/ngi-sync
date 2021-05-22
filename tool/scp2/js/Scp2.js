@@ -191,16 +191,17 @@ Client.prototype.exec = function(command,callback) {
     ssh.exec('cd '+remote.path+' && '+command,callback);
   });
   ssh.on('error', function(err) {
+    console.log('SCP2 :: err ');
     console.log(err);
     self.emit('error', err);
     callback(err);
   });
   ssh.on('end', function() {
-    console.log('end');
+    console.log('SCP2 :: end');
     self.emit('end');
   });
   ssh.on('close', function() {
-    console.log('close');
+    console.log('SCP2 :: Close');
     self.emit('close');
   });
   ssh.on('keyboard-interactive', function(name, instructions, instructionsLang, prompts, finish) {

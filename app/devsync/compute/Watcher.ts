@@ -1,11 +1,12 @@
 import * as chokidar from "chokidar"
 const chalk = require('chalk');
-import { FSWatcher } from "fs";
+import { FSWatcher, readFileSync } from "fs";
 import Uploader from "./Uploader";
 import Config, { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
 const observatory = require("observatory");
 import * as upath from 'upath';
+import parseGitIgnore from '@root/tool/parse-gitignore'
 
 export default class Watcher {
 	files: FSWatcher;
@@ -19,7 +20,8 @@ export default class Watcher {
 		private cli: CliInterface,
 		private base: string = config.localPath
 	) {
-
+		
+		let gitIgnore : any = parseGitIgnore(readFileSync('.gitignore'));
 		let defaultIgnores: Array<string | RegExp> = [/node_modules/, /.git/, /.svn/, /bower_components/];
 		let onlyPathStringIgnores : Array<string> = [];
 		let onlyFileStringIgnores : Array<string> = [];
@@ -49,7 +51,7 @@ export default class Watcher {
 			// ...tt
 		]
 		this.files = chokidar.watch(base, {
-			ignored: ((defaultIgnores.concat(tt)).concat(onlyRegexIgnores)).concat(onlyFileStringIgnores),
+			ignored: ((defaultIgnores.concat(tt)).concat(onlyRegexIgnores)).concat(onlyFileStringIgnores).concat(gitIgnore),
 			ignoreInitial: true,
 			persistent: true,
 			awaitWriteFinish: false,
