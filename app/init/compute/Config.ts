@@ -31,6 +31,7 @@ export interface ConfigInterface extends BaseModelInterface {
   _loadConfig?:{():void}
   jumps ?: Array<object>
   backup ?: object
+  safe_mode ?: Boolean|null
 }
 
 const Config = BaseModel.extend<ConfigInterface>({
