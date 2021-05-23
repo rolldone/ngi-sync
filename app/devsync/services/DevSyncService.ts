@@ -16,6 +16,7 @@ declare var masterData: MasterDataInterface
 
 export enum COMMAND_TARGET {
   SAFE_SYNC = 'DevSync Basic Safe Syncronise \n  - Trigger by edit file :)',
+  SAFE_SYNC_NON_FORCE = 'DevSync Basic with non force file \n  - Trigger by edit file :). Ignored file not activated except pull sync',
   SOFT_PUSH_SYNC = 'DevSync Soft Push Data. \n  - Your sensitive data will be safe on target :)',
   FORCE_PUSH_SYNC = 'DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
 }
@@ -53,6 +54,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         message: "Devsync Mode :",
         choices: [
           COMMAND_TARGET.SAFE_SYNC,
+          COMMAND_TARGET.SAFE_SYNC_NON_FORCE,
           COMMAND_TARGET.SOFT_PUSH_SYNC,
           COMMAND_TARGET.FORCE_PUSH_SYNC
         ]
@@ -73,6 +75,9 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         masterData.saveData('command.forcesftp.index',{
           mode : 'soft'
         });
+      } else if(passAnswer.target == COMMAND_TARGET.SAFE_SYNC_NON_FORCE){
+        this._currentConf.safe_mode = true;
+        this._devSyncSafeSyncronise();
       } else {
         this._devSyncSafeSyncronise();
       }
@@ -80,7 +85,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
   },
   _devSyncSafeSyncronise : function(){
     // console.log('currentConf',currentConf);
-    let currentConf = this._currentConf;
+    let currentConf :ConfigInterface  = this._currentConf;
     switch (currentConf.mode) {
       case 'local':
         return masterData.saveData('command.devsync_local.index', {});
@@ -121,7 +126,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           taskWatchOnServer.status(res.status);
         });
         syncPull.submitWatch();
-  
+        
         this.uploader = new Uploader(currentConf, this._cli);
         this.watcher = new Watcher(this.uploader, currentConf, this._cli);
         return this.watcher.ready();

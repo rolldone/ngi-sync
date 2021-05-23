@@ -66,6 +66,10 @@ export default class Watcher {
 			return newResGItIngore;
 		})();
 		let ignnorelist = ((defaultIgnores.concat(tt)).concat(onlyRegexIgnores)).concat(onlyFileStringIgnores).concat(resCHeckGItIgnores);
+		/* If safe mode activated */
+		if(this.config.safe_mode == true){
+			ignnorelist = [];
+		}
 		this.files = chokidar.watch(base, {
 			ignored: ignnorelist,
 			ignoreInitial: true,
