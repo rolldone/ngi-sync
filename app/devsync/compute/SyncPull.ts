@@ -9,7 +9,7 @@ import * as upath from "upath";
 import * as path from 'path';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 
-declare var masterData : MasterDataInterface;
+declare var masterData: MasterDataInterface;
 
 export interface SftpOptions {
   port?: number
@@ -23,7 +23,7 @@ export interface SftpOptions {
   jumps: Array<object>
 }
 
-type propsDownload =  {
+type propsDownload = {
   folder: string;
   base_path: string;
   file: string;
@@ -49,7 +49,7 @@ export interface SyncPullInterface extends BaseModelInterface {
   returnClient: {
     (props: object): Client
   }
-  _deleteFile ?: {
+  _deleteFile?: {
     (props: {
       folder: string,
       base_path: string,
@@ -147,8 +147,8 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
               })
             }
             /* Record this file edited by server so dont let upload it */
-            masterData.updateData('file_edit_from_server',{
-              [theLocalPath] : true,
+            masterData.updateData('file_edit_from_server', {
+              [theLocalPath]: true,
             });
             delete this._folderQueue[keynya];
           })
@@ -160,7 +160,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         // console.log('Local size ',data.size);
         if (props.size != data.size) {
           downloadNow();
-        }else{
+        } else {
           // console.log('Sama');
           delete this._folderQueue[keynya];
         }

@@ -1,11 +1,12 @@
 import * as chokidar from "chokidar"
 const chalk = require('chalk');
-import { FSWatcher } from "fs";
+import { FSWatcher, readFileSync } from "fs";
 import Uploader from "./Uploader";
 import Config, { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
 const observatory = require("observatory");
 import * as upath from 'upath';
+import parseGitIgnore from '@root/tool/parse-gitignore'
 
 export default class Watcher {
 	files: FSWatcher;
@@ -19,7 +20,8 @@ export default class Watcher {
 		private cli: CliInterface,
 		private base: string = config.localPath
 	) {
-
+		
+		let gitIgnore : Array<any> = parseGitIgnore(readFileSync('.gitignore'));
 		let defaultIgnores: Array<string | RegExp> = [/node_modules/, /.git/, /.svn/, /bower_components/];
 		let onlyPathStringIgnores : Array<string> = [];
 		let onlyFileStringIgnores : Array<string> = [];
@@ -48,8 +50,28 @@ export default class Watcher {
 			...defaultIgnores,
 			// ...tt
 		]
+		let resCHeckGItIgnores = (()=>{
+			let newResGItIngore = [];
+			for(var a=0;a<gitIgnore.length;a++){
+				if(gitIgnore[a] instanceof RegExp){
+					newResGItIngore.push(gitIgnore[a]);
+				}else if(gitIgnore[a][Object.keys(gitIgnore[a]).length-1] == '/'){
+					gitIgnore[a] = this.config.localPath+'/'+gitIgnore[a];
+					newResGItIngore.push(upath.normalizeSafe(this._replaceAt(gitIgnore[a],'/','',gitIgnore[a].length-1,gitIgnore[a].length)));
+				}else{
+					gitIgnore[a] = this.config.localPath+'/'+gitIgnore[a];
+					newResGItIngore.push(upath.normalizeSafe(gitIgnore[a]));
+				}
+			}
+			return newResGItIngore;
+		})();
+		let ignnorelist = ((defaultIgnores.concat(tt)).concat(onlyRegexIgnores)).concat(onlyFileStringIgnores).concat(resCHeckGItIgnores);
+		/* If safe mode activated */
+		if(this.config.safe_mode == true){
+			ignnorelist = [];
+		}
 		this.files = chokidar.watch(base, {
-			ignored: ((defaultIgnores.concat(tt)).concat(onlyRegexIgnores)).concat(onlyFileStringIgnores),
+			ignored: ignnorelist,
 			ignoreInitial: true,
 			persistent: true,
 			awaitWriteFinish: false,

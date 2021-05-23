@@ -60,6 +60,11 @@ var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileO
 	if(fileOrdFolder[Object.keys(fileOrdFolder).length - 1] != "/"){
 		let getFolder = path.dirname(fileOrdFolder);
 		sftp.readdir(getFolder, function (err, objList) {
+			if(err){
+				console.log('RECURSIVEDOWNLOAD :: Folder ',folder);
+				event.emit('error', err.message || err);
+				return;
+			}
 			for(var a = 0;a<objList.length;a++){
 				let fileObj = objList[a];
 				if(fileObj.filename == path.basename(fileOrdFolder,'')){

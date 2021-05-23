@@ -1,4 +1,5 @@
 import { AsyncJs } from "../tool";
+import StartConfig from "./StartConfig";
 import StartMasterData from "./StartMasterData";
 import StartPubSub from "./StartPubSub";
 import StartSerializeError from "./StartSerializeError";
@@ -8,7 +9,7 @@ const task : Array<any> = [
   StartSerializeError,
   StartPubSub,
   StartMasterData,
-  // StartConfig,
+  StartConfig
   // StartRedisPubSub,
   // StartMinIO,
   // StartExpress,

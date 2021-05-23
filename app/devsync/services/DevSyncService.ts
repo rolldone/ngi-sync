@@ -16,6 +16,7 @@ declare var masterData: MasterDataInterface
 
 export enum COMMAND_TARGET {
   SAFE_SYNC = 'DevSync Basic Safe Syncronise \n  - Trigger by edit file :)',
+  SAFE_SYNC_NON_FORCE = 'DevSync Basic with non force file \n  - Trigger by edit file :). Ignored file not activated except pull sync',
   SOFT_PUSH_SYNC = 'DevSync Soft Push Data. \n  - Your sensitive data will be safe on target :)',
   FORCE_PUSH_SYNC = 'DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
 }
@@ -53,6 +54,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         message: "Devsync Mode :",
         choices: [
           COMMAND_TARGET.SAFE_SYNC,
+          COMMAND_TARGET.SAFE_SYNC_NON_FORCE,
           COMMAND_TARGET.SOFT_PUSH_SYNC,
           COMMAND_TARGET.FORCE_PUSH_SYNC
         ]
@@ -73,6 +75,9 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         masterData.saveData('command.forcesftp.index',{
           mode : 'soft'
         });
+      } else if(passAnswer.target == COMMAND_TARGET.SAFE_SYNC_NON_FORCE){
+        this._currentConf.safe_mode = true;
+        this._devSyncSafeSyncronise();
       } else {
         this._devSyncSafeSyncronise();
       }
@@ -80,59 +85,72 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
   },
   _devSyncSafeSyncronise : function(){
     // console.log('currentConf',currentConf);
-    let currentConf = this._currentConf;
+    let currentConf :ConfigInterface  = this._currentConf;
     switch (currentConf.mode) {
       case 'local':
         return masterData.saveData('command.devsync_local.index', {});
     }
-    currentConf.ready().then(() => {
-      this._currentConf = currentConf;
-      let syncPull = this.returnSyncPull(this._cli, {
-        // get ssh config
-        port: currentConf.port,
-        host: currentConf.host,
-        username: currentConf.username,
-        password: currentConf.password,
-        privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
-        paths: (() => {
-          let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;
-          for (var a = 0; a < arrayString.length; a++) {
-            arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
-            /**
-             * Remove if folder have file extention
-             * Not Use anymore just keep it the original
-             */
-            // var isSame = arrayString[a].substr(arrayString[a].lastIndexOf('.') + 1);
-            // if (isSame != arrayString[a]) {
-            //   arrayString[a] = arrayString[a].split("/").slice(0, -1).join("/");
-            // }
-          }
-          return arrayString;
-        })(),
-        base_path: currentConf.remotePath,
-        local_path: currentConf.localPath,
-        jumps: currentConf.jumps
+    
+      currentConf.ready().then(() => {
+        this._currentConf = currentConf;
+        let syncPull = this.returnSyncPull(this._cli, {
+          // get ssh config
+          port: currentConf.port,
+          host: currentConf.host,
+          username: currentConf.username,
+          password: currentConf.password,
+          privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
+          paths: (() => {
+            let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;
+            for (var a = 0; a < arrayString.length; a++) {
+              arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
+              /**
+               * Remove if folder have file extention
+               * Not Use anymore just keep it the original
+               */
+              // var isSame = arrayString[a].substr(arrayString[a].lastIndexOf('.') + 1);
+              // if (isSame != arrayString[a]) {
+              //   arrayString[a] = arrayString[a].split("/").slice(0, -1).join("/");
+              // }
+            }
+            return arrayString;
+          })(),
+          base_path: currentConf.remotePath,
+          local_path: currentConf.localPath,
+          jumps: currentConf.jumps
+        });
+  
+        syncPull.setOnListener((res: any) => {
+          // console.log('props', res);
+          var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null?'No Such file of directory':res.return.folder));
+          taskWatchOnServer.status(res.status);
+        });
+        syncPull.submitWatch();
+        
+        this.uploader = new Uploader(currentConf, this._cli);
+        this.watcher = new Watcher(this.uploader, currentConf, this._cli);
+        return this.watcher.ready();
+      }).then(() => {
+        var reCallCurrentCOnf = ()=>{
+          this.task.status("connecting server");
+          this.uploader.connect((err:any,res:any)=>{
+            if(err){
+              return setTimeout(()=>{
+                reCallCurrentCOnf();
+              },1000);
+            }
+          });
+        
+        }
+        reCallCurrentCOnf();
+      }).then(() => {
+        // All done, stop indicator and show workspace
+        // this.cli.stopProgress();
+        this.task.done("Connected").details(this._currentConf.host);
+        this._cli.workspace();
       });
 
-      syncPull.setOnListener((res: any) => {
-        // console.log('props', res);
-        var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null?'No Such file of directory':res.return.folder));
-        taskWatchOnServer.status(res.status);
-      });
-      syncPull.submitWatch();
-
-      this.uploader = new Uploader(currentConf, this._cli);
-      this.watcher = new Watcher(this.uploader, currentConf, this._cli);
-      return this.watcher.ready();
-    }).then(() => {
-      this.task.status("connecting server");
-      return this.uploader.connect();
-    }).then(() => {
-      // All done, stop indicator and show workspace
-      // this.cli.stopProgress();
-      this.task.done("Connected").details(this._currentConf.host);
-      this._cli.workspace();
-    });
+    
   }
 });
 
