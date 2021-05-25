@@ -3837,6 +3837,10 @@ sprintf-js@~1.0.2:
   version "1.0.3"
   resolved "https://registry.npmjs.org/sprintf-js/-/sprintf-js-1.0.3.tgz"
 
+ssh-config@^4.0.6:
+  version "4.0.6"
+  resolved "https://registry.yarnpkg.com/ssh-config/-/ssh-config-4.0.6.tgz#5cf104157d08702b47a112ae18075e433a6c5e86"
+
 ssh-sync@^1.0.3:
   version "1.0.3"
   resolved "https://registry.npmjs.org/ssh-sync/-/ssh-sync-1.0.3.tgz"
