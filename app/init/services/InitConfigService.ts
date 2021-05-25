@@ -22,6 +22,18 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
     let questions: inquirer.QuestionCollection = [
       {
         type: "input",
+        name: "project_name",
+        message: "What the project name:",
+        validate: (answer: string) => {
+          if (Object.keys(answer).length == 0) {
+            return "Project name is required";
+          }
+          return true;
+        },
+        default: currentConf.project_name
+      },
+      {
+        type: "input",
         name: "username",
         message: "Username to connect:",
         validate: (answer: string) => {

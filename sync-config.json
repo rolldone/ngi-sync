@@ -1,4 +1,5 @@
 {
+    "project_name": "ngisync",
     "mode": "ssh",
     "username": "root",
     "privateKey": "D:\\workspace\\ngsync\\id_rsa_no_password",
@@ -7,7 +8,8 @@
     "localPath": "D:\\workspace\\ngsync\\dist_2",
     "remotePath": "/root/ngsync/dist",
     "ignores": [
-        "bin/","storage_test/test.d.ts",
+        "bin/",
+        "storage_test/test.d.ts",
         ".ssh/"
     ],
     "downloads": [
@@ -15,6 +17,22 @@
         "study/JumpRsync.d.ts"
     ],
     "jumps": [],
+    "direct_access": [
+        {
+            "access_name" : "Jump SSH",
+            "privateKey": "D:\\workspace\\ngsync\\id_rsa_no_password",
+            "command" : "ssh root@artywiz.local -p 2200 -J root@localhost -p 2222"
+        },
+        {
+            "access_name" : "To Docker",
+            "privateKey": "D:\\workspace\\ngsync\\id_rsa_no_password",
+            "command" : "ssh root@artywiz.local -p 2200 -t docker exec -it openssh-server bash "
+        },
+        {
+            "access_name" : "Javascript Execution",
+            "command" : "node test.js"
+        }
+    ],
     "backup": {
         "schedule": {
             "loop": "1M|4W|1W|1D|4H|2H|1H|M30|M15|M5|timeout|once",
