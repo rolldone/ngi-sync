@@ -55,7 +55,7 @@ export interface SyncPushInterface extends BaseModelInterface {
   _orderDeletes?: {
     [key: string]: any
   }
-  _pendingUpload: {
+  _pendingUpload ?: {
     [key: string]: any
   }
   getRemotePath: { (path: string): string }

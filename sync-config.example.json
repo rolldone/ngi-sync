@@ -18,15 +18,16 @@
     ],
     "jumps": [],
     "direct_access": {
-        "config_file" : "C:\\Users\\donny\\.ssh\\config",
+        "config_file" : "C:\\Users\\test\\.ssh\\config",
         "ssh_configs" : [
             {
                 "Host": "wsl_as_jump_rollproject",
                 "HostName": "127.0.0.1",
                 "User": "root",
                 "Port": "2200",
-                "IdentityFile" : "C:\\Users\\donny\\.ssh\\id_rsa",
-                "ProxyCommand" : "ssh -v to_rollproject nc localhost 22"
+                "IdentityFile" : "C:\\Users\\test\\.ssh\\id_rsa",
+                "ProxyCommand" : "ssh -v to_rollproject nc localhost 22",
+                "StrictHostKeyChecking" : "no"
               },
               {
                 "Host": "to_rollproject",
@@ -36,16 +37,36 @@
               },
               {
                 "Host": "wsl",
-                "HostName": "127.0.0.1",
+                "HostName": "artywiz.local",
                 "User": "root",
                 "Port": "2200",
-                "IdentityFile" : "C:\\Users\\donny\\.ssh\\id_rsa"
+                "IdentityFile" : "C:\\Users\\test\\.ssh\\id_rsa",
+                "StrictHostKeyChecking" : "no"
+              },
+              {
+                "Host": "wsl_as_jump_openssh_server",
+                "HostName": "localhost",
+                "User": "root",
+                "Port": "2200",
+                "IdentityFile" : "C:\\Users\\test\\.ssh\\id_rsa",
+                "ProxyCommand" : "ssh -v openssh_server -W %h:22",
+                "StrictHostKeyChecking" : "no"
+              },
+              {
+                "Host": "openssh_server",
+                "HostName": "localhost",
+                "User": "root",
+                "Port": "2222"
               }
         ],
         "ssh_commands" : [
             {
                 "access_name" : "WSL Only",
-                "command" : "ssh root@localhost -p 2200"
+                "command" : "ssh root@localhost -p 2200 docker container ps"
+            },
+            {
+                "access_name" : "WSL as Jump OpenSSH Server Docker",
+                "command" : "ssh -v wsl_as_jump_openssh_server"
             },
             {
                 "access_name" : "WSL as Jump Rollproject",
