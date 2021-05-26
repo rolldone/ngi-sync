@@ -40,6 +40,9 @@ BaseStart({
       case 'forcesftp':
         masterData.saveData('command.forcesftp.index',{});
         return;
+      case 'direct':
+        masterData.saveData('command.direct.index',{});
+        return;
     }
   }
 } as AppInterface);

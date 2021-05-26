@@ -1,36 +1,57 @@
 const SSHConfig = require('ssh-config')
 const fs = require('fs');
-const config = SSHConfig.parse(fs.readFileSync('C:\\Users\\test\\.ssh\\config').toString());
+const config = SSHConfig.parse(fs.readFileSync('C:\\Users\\donny\\.ssh\\config').toString());
 const child_process = require('child_process');
 const projectName = "OPen SSh";
 
 const sshConfig = [
   {
+    Host: 'wsl_as_jump_rollproject',
+    HostName: '127.0.0.1',
+    User: 'root',
+    Port: '2200',
+    IdentityFile : 'C:\\Users\\donny\\.ssh\\id_rsa',
+    /* Cara dengan netcat */
+    ProxyCommand : 'ssh -v rollproject nc localhost 22',
+    // ProxyCommand : 'ssh -v rollproject -W %h:22',
+  },
+  {
     Host: 'wsl',
     HostName: 'localhost',
     User: 'root',
     Port: '2200',
-    IdentityFile : 'C:\\Users\\test\\.ssh\\id_rsa_no_password',
-    StrictHostKeyChecking : "no"
+    IdentityFile : 'C:\\Users\\donny\\.ssh\\id_rsa',
+  },
+  {
+    Host: 'rollproject',
+    HostName: '103.157.97.69',
+    User: 'root',
+    Port: '22'
+  },
+  {
+    Host: 'rollproject_ubuntu',
+    HostName: '103.157.97.69',
+    User: 'ubuntu',
+    Port: '22',
   },
   {
     Host: 'openssh_server',
     HostName: 'localhost',
     User: 'root',
     Port: '2222',
-    IdentityFile : 'C:\\Users\\test\\.ssh\\id_rsa_no_password',
-    StrictHostKeyChecking : "no"
+    IdentityFile : 'C:\\Users\\donny\\.ssh\\id_rsa',
+    // StrictHostKeyChecking : "no"
   }
 ]
 
 const sshCommand = [
   {
       "access_name" : "Ke Wsl aja",
-      "command" : "ssh wsl"
+      "command" : "ssh wsl_ubuntu"
   },
   {
-      "access_name" : "Jumping ke docker",
-      "command" : "ssh wsl -J openssh_server"
+      "access_name" : "Jumping dari wsl ke wsl_root",
+      "command" : "ssh -v wsl_as_jump_rollproject -t docker exec -it astrabpkb_web_1 bash"
   },
   {
       "access_name" : "Nested wsl ke docker",
@@ -53,7 +74,7 @@ for(var a=0;a<sshConfig.length;a++){
   config.append(sshConfig[a]);
 }
 
-fs.writeFileSync('C:\\Users\\test\\.ssh\\config',SSHConfig.stringify(config))
+fs.writeFileSync('C:\\Users\\donny\\.ssh\\config',SSHConfig.stringify(config))
 
 var command = sshCommand[1];
 var child = child_process.spawn(command.command, [''], {
