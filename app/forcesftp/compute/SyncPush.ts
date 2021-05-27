@@ -36,7 +36,7 @@ export interface SyncPushInterface extends BaseModelInterface {
   _files?: {
     [key: string]: any
   },
-  _deleted_files: {
+  _deleted_files ?: {
     [key: string]: any
   },
   // _removeSameString: { (fullPath: string, basePath: string): string }

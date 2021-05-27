@@ -10,15 +10,18 @@ declare var masterData: MasterDataInterface;
 
 export interface SyncPullInterface extends SyncPushInterface {
   _handlePull: { (path: any): void },
-  _pendingDownload : {
+  _pendingDownload: {
+    [key: string]: any
+  },
+  _downloaded_files: {
     [key: string]: any
   }
 }
 
 const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   _files: {},
-  _deleted_files: {},
   _tasks: {},
+  _downloaded_files : {},
   _concurent_listning_dir: 30,
   _lastIndexTemplate: 0,
   _concurent: 15,
@@ -27,7 +30,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   _orderDeletes: {},
   _queue: {},
   _queueDelete: {},
-  _pendingDownload : {},
+  _pendingDownload: {},
   returnClient(props) {
     return this._super(props);
   },
@@ -43,7 +46,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
       let remote = upath.normalizeSafe(entry.path);
       console.log('DELETE :: entry.queue_no -> ', entry.queue_no);
       console.log('DELETE :: entry.path -> ', upath.normalizeSafe(entry.path));
-      unlink(remote,(err)=>{
+      unlink(remote, (err) => {
         if (err) {
           console.error(`DELETE:ERROR :: Could not delete ${remote}`);
           console.error(`DELETE:ERROR :: ${err.toString()}`);
@@ -72,11 +75,196 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   getRemotePath(path) {
     return this._super(path);
   },
-  _listningTemplate: function () {
-    return this._super();
-  },
   _listningDirOnTarget: function (client, dirs, index = 0, resolve = null, reject = null) {
-    return this._super(client, dirs, index, resolve, reject);
+    let self = this;
+    // return new Promise((resolve, reject) => {
+    let lastIndex = index;
+    let _client = client;
+    if (self._stopListningDirOnTarget == null) {
+
+      self._stopListningDirOnTarget = () => {
+        let pending_stop: any = null;
+        let tempIndex = 0;
+        return (lastIndex: number) => {
+          if (pending_stop != null) {
+            pending_stop.cancel();
+          }
+          pending_stop = _.debounce((lastIndex) => {
+            console.log('LISTNING_DIR :: lastIndex ', lastIndex);
+            console.log('LISTNING_DIR :: Total Dirs ', dirs.length - 1);
+            if (lastIndex >= dirs.length - 1) {
+              console.log('LISTNING_DIR :: DONE :)');
+              _client.close();
+              resolve();
+            } else {
+              console.log('LISTNING_DIR :: Not Done Yet -> ', lastIndex, '-', dirs.length);
+            }
+          }, 2000);
+          if (tempIndex < lastIndex) {
+            tempIndex = lastIndex;
+          }
+          // console.log('lastIndex with date',lastIndex, ' -> ',new Date().getMilliseconds());
+          pending_stop(tempIndex);
+        }
+      }
+      self._stopListningDirOnTarget = self._stopListningDirOnTarget();
+    }
+    _client.sftp((err, sftp) => {
+      if (err) {
+        console.log('err', err.toString());
+        return reject(err);
+      }
+      if (dirs.length < this._concurent_listning_dir) {
+        for (var a = 0; a < dirs.length; a++) {
+          const folderPath = upath.normalizeSafe(this._config.base_path + '/' + dirs[a]);
+          let ownDir: any = dirs[a];
+          let loopIndex = a;
+          // console.log('folderPath', folderPath);
+          sftp.readdir(folderPath, (err: any, objList: Array<any>) => {
+            console.log('LISTNING_DIR :: loopIndex ', loopIndex);
+            if (err) {
+              console.log('LISTNING_DIR :: readdir - err ', err.toString());
+              self._stopListningDirOnTarget(loopIndex);
+              return;
+            }
+            // console.log('objList', objList);
+            for (var c = 0; c < objList.length; c++) {
+              let _fileName = upath.normalizeSafe(ownDir + '/' + objList[c].filename);
+              if (self._files[_fileName] != null) {
+                if (objList[c].attrs.size == self._files[_fileName].stats.size) {
+                  console.log('LISTNING_DIR :: Ignore file -> ', _fileName);
+                  if (path.basename(_fileName) != "_ignore") {
+                    delete self._files[_fileName];
+                  }
+                } else {
+                  // console.log('tidak sama -> ', _fileName);
+                }
+              } else {
+                let onlyPath = _fileName.substring(0, _fileName.lastIndexOf('/'));
+                console.log('LISTNING_DIR :: Check Ignored folder ', onlyPath + '/_ignore');
+                if (self._files[onlyPath + '/_ignore'] != null) {
+                  console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
+                } else {
+                  if (self._files[onlyPath + '/_ignore'] != null) {
+                    console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
+                  } else {
+                    console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
+                    self._deleted_files[_fileName] = objList[c];
+                  }
+                }
+              }
+            }
+            self._stopListningDirOnTarget(loopIndex);
+          });
+        }
+      } else {
+        if (lastIndex == 0) {
+
+          for (var a = lastIndex; a < this._concurent_listning_dir; a++) {
+            const folderPath = upath.normalizeSafe(this._config.base_path + '/' + dirs[a]);
+            // console.log('folderPath -> ', folderPath)
+            let ownDir: any = dirs[a];
+            let loopIndex = a;
+            sftp.readdir(folderPath, (err: any, objList: Array<any>) => {
+              let nextnya = lastIndex + this._concurent_listning_dir + loopIndex;
+              // console.log('objList',objList.length);
+              if (err) {
+                console.log('LISTNING_DIR :: readdir - err ', err.toString());
+                setTimeout(() => {
+                  self._listningDirOnTarget(_client, dirs, nextnya, resolve, reject);
+                }, 100 * 1);
+                self._stopListningDirOnTarget(lastIndex);
+                return;
+              }
+              for (var c = 0; c < objList.length; c++) {
+                let _fileName = ownDir + '/' + objList[c].filename;
+
+                if (self._files[_fileName] != null) {
+                  if (objList[c].attrs.size == self._files[_fileName].stats.size) {
+                    console.log('LISTNING_DIR :: Ignored Same file ', _fileName);
+                    if (path.basename(_fileName) != "_ignore") {
+                      delete self._files[_fileName];
+                    }
+                  } else {
+                    // console.log('tidak sama -> ', _fileName);
+                  }
+                } else {
+                  let onlyPath = _fileName.substring(0, _fileName.lastIndexOf('/'));
+                  console.log('LISTNING_DIR :: Check Ignored folder ', onlyPath + '/_ignore');
+                  if (self._files[onlyPath + '/_ignore'] != null) {
+                    console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
+                  } else {
+                    if (self._files[onlyPath + '/_ignore'] != null) {
+                      console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
+                    } else {
+                      console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
+                      self._deleted_files[_fileName] = objList[c];
+                    }
+                  }
+                }
+              }
+              setTimeout(() => {
+                // console.log('nextnya', nextnya)
+                // console.log('loopIndex',loopIndex);
+                self._listningDirOnTarget(_client, dirs, nextnya, resolve, reject);
+              }, 100 * 1);
+              self._stopListningDirOnTarget(lastIndex);
+            });
+          }
+        } else {
+          let ownDir: any = dirs[lastIndex];
+          let loopIndex = lastIndex;
+          let nextnya = this._concurent_listning_dir + lastIndex;
+          // console.log('loopIndex', loopIndex);
+          if (dirs[lastIndex] == null) {
+            self._stopListningDirOnTarget(lastIndex);
+            return;
+          }
+          const folderPath = upath.normalizeSafe(this._config.base_path + '/' + ownDir);
+          sftp.readdir(folderPath, (err: any, objList: Array<any>) => {
+            if (err) {
+              setTimeout(() => {
+                console.log('LISTNING_DIR :: readdir - err ', err.toString());
+                self._listningDirOnTarget(_client, dirs, nextnya, resolve, reject);
+              }, 100 * 1);
+              self._stopListningDirOnTarget(lastIndex);
+              return;
+            }
+            for (var c = 0; c < objList.length; c++) {
+              let _fileName = ownDir + '/' + objList[c].filename;
+              if (self._files[_fileName] != null) {
+                if (objList[c].attrs.size == self._files[_fileName].stats.size) {
+                  console.log('LISTNING_DIR :: Ignored Same file ', _fileName);
+                  if (path.basename(_fileName) != "_ignore") {
+                    delete self._files[_fileName];
+                  }
+                } else {
+                  // console.log('tidak sama -> ', _fileName);
+                }
+              } else {
+                let onlyPath = _fileName.substring(0, _fileName.lastIndexOf('/'));
+                console.log('LISTNING_DIR :: Check Ignored folder ', onlyPath + '/_ignore');
+                if (self._files[onlyPath + '/_ignore'] != null) {
+                  console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
+                } else {
+                  if (self._files[onlyPath + '/_ignore'] != null) {
+                    console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
+                  } else {
+                    console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
+                    self._deleted_files[_fileName] = objList[c];
+                  }
+                }
+              }
+            }
+            setTimeout(() => {
+              self._listningDirOnTarget(_client, dirs, nextnya, resolve, reject);
+            }, 100 * 1);
+            self._stopListningDirOnTarget(lastIndex);
+          });
+        }
+      }
+    });
+    //});
   },
   _listningCurrentFiles: function () {
     return this._super();
@@ -95,6 +283,9 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   },
   _setConfig: function (props) {
     this._super(props);
+  },
+  _listningTemplate: function () {
+    return this._super();
   },
   _handlePull: function (entry) {
     this._orders[entry.queue_no] = entry;
