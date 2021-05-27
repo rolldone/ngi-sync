@@ -8,16 +8,17 @@ const { parse } = require("jsonplus");
 export const CONFIG_FILE_NAME = "sync-config.json";
 
 export interface ConfigInterface extends BaseModelInterface {
-  ready ?: { (): Promise<void> }
-  _fetch ?: { (): void }
-  _expand ?: { (): void }
+  ready?: { (): Promise<void> }
+  _fetch?: { (): void }
+  _expand?: { (): void }
 
   _filename?: string;
   _config?: ConfigInterface;
 
   // properties
-  mode ?: string,
-  host?: string;
+  mode?: string
+  host?: string
+  project_name?: string
   username?: string;
   password?: string;
   port?: number;
@@ -25,13 +26,14 @@ export interface ConfigInterface extends BaseModelInterface {
   remotePath?: string;
   privateKey?: string;
   ignores?: Array<string | RegExp>;
-  downloads ?: Array<string>
+  downloads?: Array<string>
   pathMode?: string
   cli?: CliInterface
-  _loadConfig?:{():void}
-  jumps ?: Array<object>
-  backup ?: object
-  safe_mode ?: Boolean|null
+  _loadConfig?: { (): void }
+  jumps?: Array<object>
+  backup?: object
+  safe_mode?: Boolean | null
+  direct_access?: Array<any>
 }
 
 const Config = BaseModel.extend<ConfigInterface>({
@@ -40,7 +42,7 @@ const Config = BaseModel.extend<ConfigInterface>({
   construct: function (cli: CliInterface) {
     this.cli = cli;
     this._filename = pathJoin(process.cwd(), cli.getArgument("config", CONFIG_FILE_NAME));
-    
+
   },
   ready: async function () {
     return new Promise<void>((resolve) => {
@@ -55,12 +57,12 @@ const Config = BaseModel.extend<ConfigInterface>({
       }
     });
   },
-  _loadConfig : function(){
+  _loadConfig: function () {
     this._fetch();
     this._expand();
   },
   _fetch: function () {
-    console.log('this._filename',this._filename);
+    console.log('this._filename', this._filename);
     if (existsSync(this._filename)) {
       let configraw;
       if (configraw = readFileSync(this._filename)) {
@@ -77,11 +79,11 @@ const Config = BaseModel.extend<ConfigInterface>({
     }
   },
   _expand: function () {
-    let self : {
-      [key : string] : any
+    let self: {
+      [key: string]: any
     } = this;
-    ["mode","host", "port", "username", "password", "pathMode",
-      "localPath", "remotePath", "ignores", "privateKey","downloads","jumps","backup"].forEach(prop => {
+    ["mode", "host", "port", "project_name", "username", "password", "pathMode",
+      "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access"].forEach(prop => {
         self[prop] = self._config[prop] || self[prop];
       });
   },
