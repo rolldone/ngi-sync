@@ -25,7 +25,7 @@ const Main = BaseController.extend<MainControllerInterface>({
       this.returnDevSyncService(cliService);
       return;
     }
-    // Cross Cli
+    // Cross Cli dari cli yang lain
     this.returnDevSyncService(cliService,props);
   }
 });
