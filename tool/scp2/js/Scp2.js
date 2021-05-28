@@ -32,19 +32,19 @@ var recurSived = function(hoopings,connectionsArray,index,parseStream = null,cal
   })
 
   masterCon.on('end', function() {
-    self.emit('end');
+    // self.emit('end');
   });
   masterCon.on('close', function() {
-    self.emit('close');
+    // self.emit('close');
   });
   masterCon.on('keyboard-interactive', function(name, instructions, instructionsLang, prompts, finish) {
-    self.emit('keyboard-interactive', name, instructions, instructionsLang, prompts, finish);
+    // self.emit('keyboard-interactive', name, instructions, instructionsLang, prompts, finish);
   });
   masterCon.on('change password', function(message, language, done) {
-    self.emit('change password', message, language, done);
+    // self.emit('change password', message, language, done);
   });
   masterCon.on('tcp connection', function(details, accept, reject) {
-    self.emit('tcp connection', details, accept, reject);
+    // self.emit('tcp connection', details, accept, reject);
   });
   
   if(index > 0){
