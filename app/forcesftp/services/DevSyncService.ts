@@ -27,8 +27,9 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     this._cli = cli;
     this.task = observatory.add("Initializing...");
     let currentConf = this.returnConfig(cli);
+    let _syncPush : any = null;
     currentConf.ready().then(() => {
-      let _syncPush = this.returnSyncPush(this._cli, {
+      _syncPush = this.returnSyncPush(this._cli, {
         port: currentConf.port,
         host: currentConf.host,
         username: currentConf.username,
@@ -59,10 +60,9 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         jumps: currentConf.jumps,
         mode : props.mode || 'hard'
       });
-      _syncPush.submitWatch();
     }).then(() => {
       this.task.status("connecting server");
-
+      _syncPush.submitWatch();
     }).then(() => {
       // All done, stop indicator and show workspace
       // this.cli.stopProgress();

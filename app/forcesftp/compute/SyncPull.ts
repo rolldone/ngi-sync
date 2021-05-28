@@ -447,6 +447,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   },
   submitWatch: async function () {
     const waitingListningTemplateFromTarget = () => {
+      console.log('------------------------------------------------------------------(Create Dir Template & Listning Current files)------------------------------------------------------------------------------------------');
       return new Promise((resolve: Function) => {
         let crosureTemplateFromTarge = this._listningTemplateFromTarget(this.returnClient({
           ...this._config,
@@ -457,8 +458,6 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
         crosureTemplateFromTarge();
       });
     }
-    console.log('\n');
-    console.log('------------------------------------------------------------------(Create Dir Template & Listning Current files)------------------------------------------------------------------------------------------');
     let _dirs : Array<string> = await waitingListningTemplateFromTarget() as any;
     // const _dirs = await this._listningTemplate();
     const _files = await this._listningCurrentFiles();
