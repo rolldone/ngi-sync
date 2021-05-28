@@ -20,6 +20,7 @@ const Cli = BaseRouteCli.extend<BaseRouteInterface>({
     masterData.setOnListener('command.devsync.index', Main.binding().index);
     masterData.setOnListener('command.devsync_local.index', MainDevSyncLocal.binding().index);
     masterData.setOnListener('command.forcesftp.index', MainForceSftp.binding().index);
+    masterData.setOnListener('command.forcesftp.pull', MainForceSftp.binding().pull);
     masterData.setOnListener('command.direct.index', MainDirect.binding().index);
     masterData.setOnListener('command.direct.retry', MainDirect.binding().retry);
   }
