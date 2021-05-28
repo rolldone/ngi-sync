@@ -7,8 +7,8 @@ ngi-sync is to help sync code to the server continuously
 - [x] Add feature sftp pull syncronize.
 - [x] Add feature sftp push and watch file by action.
 - [x] Support ssh jump for multiple server.
-- [ ] Add feature instant open ssh new terminal
-- [ ] Add feature update config with own config on tool to ~/.ssh/config 
+- [x] Add feature instant open ssh new terminal
+- [x] Add feature update config with own config on tool to ~/.ssh/config 
 
 ### Sample config
 ```
