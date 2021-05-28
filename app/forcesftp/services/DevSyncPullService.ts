@@ -3,33 +3,34 @@ import Config, { ConfigInterface } from "../compute/Config";
 import { readFileSync, watch } from "fs";
 import { CliInterface } from "./CliService";
 import { join as pathJoin, dirname } from "path";
-import SyncPush, { LocalOptions, SyncPushInterface } from "../compute/SyncPush";
+import SyncPush, { LocalOptions } from "../compute/SyncPush";
+import SyncPull, { SyncPullInterface } from "../compute/SyncPull";
 const chalk = require('chalk');
 const observatory = require("observatory");
 
-export interface DevSyncServiceInterface extends BaseServiceInterface {
+export interface DevSyncPullServiceInterface extends BaseServiceInterface {
   returnConfig: { (cli: CliInterface): ConfigInterface }
-  returnSyncPush: { (cli: CliInterface, localConfig: LocalOptions): SyncPushInterface }
+  returnSyncPull: { (cli: CliInterface, localConfig: LocalOptions): SyncPullInterface }
   create?: (cli: CliInterface, props ?: any) => this
   _cli?: CliInterface
   _currentConf?: ConfigInterface
   task?: any
 }
 
-const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
+const DevSyncPullService = BaseService.extend<DevSyncPullServiceInterface>({
   returnConfig: function (cli) {
     return Config.create(cli);
   },
-  returnSyncPush: function (cli, localConfig) {
-    return SyncPush.create(cli, localConfig);
+  returnSyncPull: function (cli, localConfig) {
+    return SyncPull.create(cli, localConfig);
   },
   construct: function (cli: CliInterface,props : any) {
     this._cli = cli;
     this.task = observatory.add("Initializing...");
     let currentConf = this.returnConfig(cli);
-    let _syncPush : any = null;
+    let _syncPull : any = null;
     currentConf.ready().then(() => {
-      _syncPush = this.returnSyncPush(this._cli, {
+      _syncPull = this.returnSyncPull(this._cli, {
         port: currentConf.port,
         host: currentConf.host,
         username: currentConf.username,
@@ -60,9 +61,11 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         jumps: currentConf.jumps,
         mode : props.mode || 'hard'
       });
+      
     }).then(() => {
       this.task.status("connecting server");
-      _syncPush.submitWatch();
+      _syncPull.submitWatch();
+
     }).then(() => {
       // All done, stop indicator and show workspace
       // this.cli.stopProgress();
@@ -71,4 +74,4 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
   }
 });
 
-export default DevSyncService;
+export default DevSyncPullService;

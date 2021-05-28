@@ -2,9 +2,10 @@ import { CliInterface } from "../services/CliService";
 import SyncPush, { LocalOptions, SyncPushInterface } from "./SyncPush";
 import * as upath from "upath";
 import * as path from 'path';
-import { unlink } from 'fs';
+import { mkdir, unlink } from 'fs';
 import _ from 'lodash';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+import { Client } from "scp2";
 
 declare var masterData: MasterDataInterface;
 
@@ -13,15 +14,17 @@ export interface SyncPullInterface extends SyncPushInterface {
   _pendingDownload: {
     [key: string]: any
   },
-  _downloaded_files: {
+  _extra_files: {
     [key: string]: any
-  }
+  },
+  _listningTemplateFromTarget :  { (client: Client, dirs: string, index: number, resolve?: Function | null, reject?: Function | null): Function };
+  _stopListningTemplateOnTarget ?: any | null
 }
 
 const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   _files: {},
   _tasks: {},
-  _downloaded_files : {},
+  _extra_files : {},
   _concurent_listning_dir: 30,
   _lastIndexTemplate: 0,
   _concurent: 15,
@@ -31,11 +34,15 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   _queue: {},
   _queueDelete: {},
   _pendingDownload: {},
+  _deleted_files : {},
   returnClient(props) {
     return this._super(props);
   },
   _handlePush(path) {
     return this._super(path);
+  },
+  _listningTemplate: function () {
+    return this._super();
   },
   _handleDelete(entry) {
     this._orderDeletes[entry.queue_no] = entry;
@@ -74,6 +81,82 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   },
   getRemotePath(path) {
     return this._super(path);
+  },
+  _listningTemplateFromTarget: function (client, baseDirs, index = 0, resolve = null, reject = null) {
+    let self = this;
+    let pushDir : Array<string> = [];
+    let ignoreDirectories = this._splitIgnoreDatas(this._config.ignores, 'directory');
+    let parseObjectIgnoreDirectory = ((datas: Array<string>) => {
+      let _datas:{
+        [key:string] : any
+      } = {};
+      datas.forEach((element: any) => {
+        let teString = this._removeSameString(element, this._config.base_path);
+        _datas[this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length)] = true;
+        // _datas.push(this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length));
+      });
+      return _datas;
+    })(ignoreDirectories as Array<string>);
+    let _client = client;
+    if (self._stopListningTemplateOnTarget == null) {
+      self._stopListningTemplateOnTarget = () => {
+        let pending_stop: any = null;
+        return (lastIndex?: number) => {
+          if (pending_stop != null) {
+            pending_stop.cancel();
+          }
+          pending_stop = _.debounce((lastIndex) => {
+            _client.close();
+            resolve(pushDir);
+          }, 2000);
+          // console.log('lastIndex with date',lastIndex, ' -> ',new Date().getMilliseconds());
+          pending_stop();
+        }
+      }
+      self._stopListningTemplateOnTarget = self._stopListningTemplateOnTarget();
+    }
+    let recursiveFunction = (theDirs ?: string)=>{
+      try{
+        let dirs = theDirs || baseDirs;
+        // return new Promise((resolve, reject) => {
+        let lastIndex = index;
+        
+        _client.sftp((err, sftp) => {
+          if (err) {
+            console.log('err', err.toString());
+            return reject(err);
+          }
+          const folderPath = upath.normalizeSafe(dirs);
+          sftp.readdir(folderPath, (err: any, objList: Array<any>) => {
+            if (err) {
+              // console.log('LISTNING_DIR :: readdir - err ', err.toString());
+              self._stopListningTemplateOnTarget();
+              return;
+            }
+            // console.log('LISTNING_DIR :: folderPath ', folderPath);
+            let toLocalFormat = this._removeSameString(folderPath,this._config.base_path);
+            if(toLocalFormat != null){
+              console.log('LISTNING_DIR :: passfileName ', toLocalFormat);
+              mkdir(upath.normalizeSafe(self._config.local_path+'/'+toLocalFormat),(err)=>{});
+              pushDir.push(toLocalFormat);
+            }
+            // console.log('objList', objList);
+            for (var c = 0; c < objList.length; c++) {
+              let _fileName = upath.normalizeSafe('/' + objList[c].filename);
+              // console.log('vmfkv',_fileName);
+              if(parseObjectIgnoreDirectory[_fileName] == null){
+                recursiveFunction(folderPath+_fileName);
+              }
+              /* Do something here */
+            }
+            self._stopListningTemplateOnTarget();
+          });
+        });
+      }catch(ex){
+        console.log('recursiveFunction - ex ',ex);
+      }
+    }
+    return recursiveFunction;
   },
   _listningDirOnTarget: function (client, dirs, index = 0, resolve = null, reject = null) {
     let self = this;
@@ -149,7 +232,12 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                     console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
                   } else {
                     console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
-                    self._deleted_files[_fileName] = objList[c];
+                    self._extra_files[_fileName] = {
+                      path: _fileName,
+                      fullPath: upath.normalizeSafe(this._config.local_path+'/'+_fileName),
+                      /* Raw version */
+                      basename: objList[c].filename,
+                    }
                   }
                 }
               }
@@ -177,6 +265,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                 return;
               }
               for (var c = 0; c < objList.length; c++) {
+                // console.log('vmdkfvmkdfv',objList[c]);
                 let _fileName = ownDir + '/' + objList[c].filename;
 
                 if (self._files[_fileName] != null) {
@@ -198,7 +287,12 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                       console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
                     } else {
                       console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
-                      self._deleted_files[_fileName] = objList[c];
+                      self._extra_files[_fileName] = {
+                        path: _fileName,
+                        fullPath: upath.normalizeSafe(this._config.local_path+'/'+_fileName),
+                        /* Raw version */
+                        basename: objList[c].filename,
+                      }
                     }
                   }
                 }
@@ -251,7 +345,14 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                     console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
                   } else {
                     console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
-                    self._deleted_files[_fileName] = objList[c];
+                    self._extra_files[_fileName] = {
+                      path: _fileName,
+                      fullPath: upath.normalizeSafe(this._config.local_path+'/'+_fileName),
+                      /* Raw version */
+                      basename: objList[c].filename,
+                    }
+                    
+                    
                   }
                 }
               }
@@ -284,9 +385,6 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   _setConfig: function (props) {
     this._super(props);
   },
-  _listningTemplate: function () {
-    return this._super();
-  },
   _handlePull: function (entry) {
     this._orders[entry.queue_no] = entry;
     if (this._pendingDownload[entry.path] != null) {
@@ -295,18 +393,35 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
     this._pendingDownload[entry.path] = _.debounce((entry: any) => {
       let remote = upath.normalizeSafe(this._config.base_path + '/' + entry.path);
       console.log('DOWNLOAD ::  entry', remote);
+      console.log('DOWNLOAD ::  entry.raw', entry.fullPath);
       console.log('DOWNLOAD ::  entry.fullPath', upath.normalizeSafe(entry.fullPath));
       // Uplad the file
+      // let firstKey = Object.keys(this._queue)[0];
+      // if (firstKey == null) {
+      //   console.log('DOWNLOAD ::  entry.queue_no : ' + entry.path + ' -> ', entry.queue_no, '  Done');
+      //   console.log('DOWNLOAD ::  sisa -> ', Object.keys(this._queue).length);
+      //   console.log('DOWNLOAD ::  Client Queue No ' + entry.queue_no + ' -> done!');
+      //   masterData.saveData('forcesftp.syncpush._prepareDelete', {});
+      //   return;
+      // }
+      // let oo = Object.assign({}, this._queue[firstKey]);
+      // this._handlePush(oo);
+      // delete this._queue[firstKey];
+      // console.log('DOWNLOAD ::  entry.queue_no : ' + entry.path + ' -> ', entry.queue_no, '  Done');
+      // console.log('DOWNLOAD ::  sisa -> ', Object.keys(this._queue).length);
+      // console.log('DOWNLOAD ::  Next Upload -> ', firstKey == null ? "Empty" : firstKey);
+      // delete this._pendingDownload[entry.path];
+
       this._clients[entry.queue_no].download(remote, upath.normalizeSafe(entry.fullPath), err => {
         if (err) {
           // console.log('error', {
-          //   message: `DOWNLOAD ::  Could not upload ${remote}`,
+          //   message: `DOWNLOAD ::  Could not download ${remote}`,
           //   // error: err
           // });
-          console.error(`DOWNLOAD:ERROR :: Could not upload ${remote}`);
+          console.error(`DOWNLOAD:ERROR :: Could not download ${remote}`);
           console.error(`DOWNLOAD:ERROR :: ${err.toString()}`);
         } else {
-          console.log('DOWNLOAD ::  Downloaded file ', upath.normalizeSafe(entry.fullPath), ' -> ', remote);
+          console.log('DOWNLOAD ::  Downloaded file ', remote, ' -> ', upath.normalizeSafe(entry.fullPath));
         }
         delete this._orders[entry.queue_no];
         // let firstKey = Object.keys(this._queue)[entry.queue_no];
@@ -320,7 +435,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
           return;
         }
         let oo = Object.assign({}, this._queue[firstKey]);
-        this._handlePush(oo);
+        this._handlePull(oo);
         delete this._queue[firstKey];
         console.log('DOWNLOAD ::  entry.queue_no : ' + entry.path + ' -> ', entry.queue_no, '  Done');
         console.log('DOWNLOAD ::  sisa -> ', Object.keys(this._queue).length);
@@ -331,9 +446,20 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
     this._pendingDownload[entry.path](entry);
   },
   submitWatch: async function () {
-    console.log('\n');
-    console.log('------------------------------------------------------------------(Create Dir Template & Listning Current files)------------------------------------------------------------------------------------------');
-    const _dirs = await this._listningTemplate();
+    const waitingListningTemplateFromTarget = () => {
+      console.log('------------------------------------------------------------------(Create Dir Template & Listning Current files)------------------------------------------------------------------------------------------');
+      return new Promise((resolve: Function) => {
+        let crosureTemplateFromTarge = this._listningTemplateFromTarget(this.returnClient({
+          ...this._config,
+          path: this._config.base_path
+        }),this._config.base_path,0,resolve,(err : any)=>{
+
+        })
+        crosureTemplateFromTarge();
+      });
+    }
+    let _dirs : Array<string> = await waitingListningTemplateFromTarget() as any;
+    // const _dirs = await this._listningTemplate();
     const _files = await this._listningCurrentFiles();
     console.log('First Files Count ', Object.keys(this._files).length);
     const waitingListing = () => {
@@ -343,7 +469,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
           path: this._config.base_path
         }), _dirs, 0, (res: any) => {
           console.log('Remaining files -> ', Object.keys(this._files).length);
-          console.log('Deleted files -> ', Object.keys(this._deleted_files).length)
+          console.log('Extra files -> ', Object.keys(this._extra_files).length)
           resolve();
         }, (err: any) => {
 
@@ -352,6 +478,10 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
     }
     console.log('------------------------------------------------------------------(Waiting Listning Directory on Server)-----------------------------------------------------------------------');
     await waitingListing();
+    this._files = {
+      ...this._files,
+      ...this._extra_files
+    }
     console.log('------------------------------------------------------------------(Upload the file to the server)------------------------------------------------------------------------------');
     for (var a = 0; a < this._concurent; a++) {
       this._clients.push(this.returnClient({
@@ -359,6 +489,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
         path: this._config.base_path
       }));
     }
+    
     var index: number = 0;
     /* Queue Uploaded */
     Object.keys(this._files).forEach((key: any) => {
@@ -380,47 +511,8 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
       }
       index += 1;
     });
-
-    /* Queue Deleted */
-    if (this._config.mode == "soft") {
-      console.log('SyncPull :: Delete Mode is not active! SOFT MODE')
-      return;
-    }
-    let _waitingNextDelete: any = null;
-    masterData.setOnListener('forcesftp.syncpush._prepareDelete', (props: any) => {
-      if (_waitingNextDelete != null) {
-        _waitingNextDelete.cancel();
-      }
-      _waitingNextDelete = _.debounce(() => {
-        console.log('------------------------------------------------------------------(Prepare Delete & Delete on server running)-------------------------------------------------------------');
-        /* Filter deletes with ignores */
-        this._prepareDelete();
-        index = 0;
-        Object.keys(this._deleted_files).forEach((key: any) => {
-          let entry: any = this._deleted_files[key];
-          console.log('entry -> ', this._config.base_path + key);
-          if (index == this._concurent) {
-            index = 0;
-          }
-          if (Object.keys(this._orderDeletes).length < this._concurent) {
-            this._handleDelete({
-              ...entry,
-              path: this._config.base_path + key,
-              queue_no: index
-            });
-          } else {
-            this._queueDelete[this._config.base_path + key] = {
-              ...entry,
-              path: this._config.base_path + key,
-              queue_no: index
-            };
-            // console.log('vmadkfvmfdkvmfdv', this._queue);
-          }
-          index += 1;
-        });
-      }, 5000);
-      _waitingNextDelete();
-    })
+    
+    return;
   }
 });
 
