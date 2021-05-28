@@ -2,7 +2,7 @@ import { CliInterface } from "../services/CliService";
 import SyncPush, { LocalOptions, SyncPushInterface } from "./SyncPush";
 import * as upath from "upath";
 import * as path from 'path';
-import { unlink } from 'fs';
+import { mkdir, unlink } from 'fs';
 import _ from 'lodash';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { Client } from "scp2";
@@ -17,7 +17,7 @@ export interface SyncPullInterface extends SyncPushInterface {
   _extra_files: {
     [key: string]: any
   },
-  _listningTemplateFromTarget :  { (client: Client, dirs: string, index: number, resolve?: Function | null, reject?: Function | null): void };
+  _listningTemplateFromTarget :  { (client: Client, dirs: string, index: number, resolve?: Function | null, reject?: Function | null): Function };
   _stopListningTemplateOnTarget ?: any | null
 }
 
@@ -82,10 +82,21 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   getRemotePath(path) {
     return this._super(path);
   },
-  _listningTemplateFromTarget: function (client, dirs, index = 0, resolve = null, reject = null) {
+  _listningTemplateFromTarget: function (client, baseDirs, index = 0, resolve = null, reject = null) {
     let self = this;
-    // return new Promise((resolve, reject) => {
-    let lastIndex = index;
+    let pushDir : Array<string> = [];
+    let ignoreDirectories = this._splitIgnoreDatas(this._config.ignores, 'directory');
+    let parseObjectIgnoreDirectory = ((datas: Array<string>) => {
+      let _datas:{
+        [key:string] : any
+      } = {};
+      datas.forEach((element: any) => {
+        let teString = this._removeSameString(element, this._config.base_path);
+        _datas[this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length)] = true;
+        // _datas.push(this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length));
+      });
+      return _datas;
+    })(ignoreDirectories as Array<string>);
     let _client = client;
     if (self._stopListningTemplateOnTarget == null) {
       self._stopListningTemplateOnTarget = () => {
@@ -96,7 +107,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
           }
           pending_stop = _.debounce((lastIndex) => {
             _client.close();
-            resolve();
+            resolve(pushDir);
           }, 2000);
           // console.log('lastIndex with date',lastIndex, ' -> ',new Date().getMilliseconds());
           pending_stop();
@@ -104,28 +115,48 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
       }
       self._stopListningTemplateOnTarget = self._stopListningTemplateOnTarget();
     }
-    _client.sftp((err, sftp) => {
-      if (err) {
-        console.log('err', err.toString());
-        return reject(err);
+    let recursiveFunction = (theDirs ?: string)=>{
+      try{
+        let dirs = theDirs || baseDirs;
+        // return new Promise((resolve, reject) => {
+        let lastIndex = index;
+        
+        _client.sftp((err, sftp) => {
+          if (err) {
+            console.log('err', err.toString());
+            return reject(err);
+          }
+          const folderPath = upath.normalizeSafe(dirs);
+          sftp.readdir(folderPath, (err: any, objList: Array<any>) => {
+            if (err) {
+              // console.log('LISTNING_DIR :: readdir - err ', err.toString());
+              self._stopListningTemplateOnTarget();
+              return;
+            }
+            // console.log('LISTNING_DIR :: folderPath ', folderPath);
+            let toLocalFormat = this._removeSameString(folderPath,this._config.base_path);
+            if(toLocalFormat != null){
+              console.log('LISTNING_DIR :: passfileName ', toLocalFormat);
+              mkdir(upath.normalizeSafe(self._config.local_path+'/'+toLocalFormat),(err)=>{});
+              pushDir.push(toLocalFormat);
+            }
+            // console.log('objList', objList);
+            for (var c = 0; c < objList.length; c++) {
+              let _fileName = upath.normalizeSafe('/' + objList[c].filename);
+              // console.log('vmfkv',_fileName);
+              if(parseObjectIgnoreDirectory[_fileName] == null){
+                recursiveFunction(folderPath+_fileName);
+              }
+              /* Do something here */
+            }
+            self._stopListningTemplateOnTarget();
+          });
+        });
+      }catch(ex){
+        console.log('recursiveFunction - ex ',ex);
       }
-      const folderPath = upath.normalizeSafe(dirs);
-      sftp.readdir(folderPath, (err: any, objList: Array<any>) => {
-        if (err) {
-          // console.log('LISTNING_DIR :: readdir - err ', err.toString());
-          self._stopListningTemplateOnTarget();
-          return;
-        }
-        console.log('LISTNING_DIR :: folderPath ', folderPath);
-        // console.log('objList', objList);
-        for (var c = 0; c < objList.length; c++) {
-          let _fileName = upath.normalizeSafe('/' + objList[c].filename);
-          this._listningTemplateFromTarget(_client,folderPath+_fileName,0,resolve,reject);
-          /* Do something here */
-        }
-        self._stopListningTemplateOnTarget();
-      });
-    });
+    }
+    return recursiveFunction;
   },
   _listningDirOnTarget: function (client, dirs, index = 0, resolve = null, reject = null) {
     let self = this;
@@ -234,7 +265,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                 return;
               }
               for (var c = 0; c < objList.length; c++) {
-                console.log('vmdkfvmkdfv',objList[c]);
+                // console.log('vmdkfvmkdfv',objList[c]);
                 let _fileName = ownDir + '/' + objList[c].filename;
 
                 if (self._files[_fileName] != null) {
@@ -417,19 +448,19 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   submitWatch: async function () {
     const waitingListningTemplateFromTarget = () => {
       return new Promise((resolve: Function) => {
-        this._listningTemplateFromTarget(this.returnClient({
+        let crosureTemplateFromTarge = this._listningTemplateFromTarget(this.returnClient({
           ...this._config,
           path: this._config.base_path
         }),this._config.base_path,0,resolve,(err : any)=>{
 
         })
+        crosureTemplateFromTarge();
       });
     }
-    waitingListningTemplateFromTarget();
-    return;
     console.log('\n');
     console.log('------------------------------------------------------------------(Create Dir Template & Listning Current files)------------------------------------------------------------------------------------------');
-    const _dirs = await this._listningTemplate();
+    let _dirs : Array<string> = await waitingListningTemplateFromTarget() as any;
+    // const _dirs = await this._listningTemplate();
     const _files = await this._listningCurrentFiles();
     console.log('First Files Count ', Object.keys(this._files).length);
     const waitingListing = () => {
