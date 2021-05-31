@@ -2,7 +2,7 @@ import { CliInterface } from "../services/CliService";
 import SyncPush, { LocalOptions, SyncPushInterface } from "./SyncPush";
 import * as upath from "upath";
 import * as path from 'path';
-import { mkdir, unlink } from 'fs';
+import { mkdir, readdirSync, statSync, unlink } from 'fs';
 import _ from 'lodash';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { Client } from "scp2";
@@ -17,17 +17,22 @@ export interface SyncPullInterface extends SyncPushInterface {
   _extra_files: {
     [key: string]: any
   },
+  _oportunity : {
+    [key:string] : number
+  },
   _listningTemplateFromTarget :  { (client: Client, dirs: string, index: number, resolve?: Function | null, reject?: Function | null): Function };
   _stopListningTemplateOnTarget ?: any | null
 }
 
 const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
+  _oportunity : {},
   _files: {},
+  _modified_files : {},
   _tasks: {},
   _extra_files : {},
   _concurent_listning_dir: 30,
   _lastIndexTemplate: 0,
-  _concurent: 15,
+  _concurent: 30,
   _clients: [],
   _orders: {},
   _orderDeletes: {},
@@ -85,18 +90,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
   _listningTemplateFromTarget: function (client, baseDirs, index = 0, resolve = null, reject = null) {
     let self = this;
     let pushDir : Array<string> = [];
-    let ignoreDirectories = this._splitIgnoreDatas(this._config.ignores, 'directory');
-    let parseObjectIgnoreDirectory = ((datas: Array<string>) => {
-      let _datas:{
-        [key:string] : any
-      } = {};
-      datas.forEach((element: any) => {
-        let teString = this._removeSameString(element, this._config.base_path);
-        _datas[this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length)] = true;
-        // _datas.push(this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length));
-      });
-      return _datas;
-    })(ignoreDirectories as Array<string>);
+    let _clossStackValidation = this._clossStackValidation();
     let _client = client;
     if (self._stopListningTemplateOnTarget == null) {
       self._stopListningTemplateOnTarget = () => {
@@ -109,7 +103,6 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
             _client.close();
             resolve(pushDir);
           }, 2000);
-          // console.log('lastIndex with date',lastIndex, ' -> ',new Date().getMilliseconds());
           pending_stop();
         }
       }
@@ -118,9 +111,6 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
     let recursiveFunction = (theDirs ?: string)=>{
       try{
         let dirs = theDirs || baseDirs;
-        // return new Promise((resolve, reject) => {
-        let lastIndex = index;
-        
         _client.sftp((err, sftp) => {
           if (err) {
             console.log('err', err.toString());
@@ -129,22 +119,19 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
           const folderPath = upath.normalizeSafe(dirs);
           sftp.readdir(folderPath, (err: any, objList: Array<any>) => {
             if (err) {
-              // console.log('LISTNING_DIR :: readdir - err ', err.toString());
               self._stopListningTemplateOnTarget();
               return;
             }
-            // console.log('LISTNING_DIR :: folderPath ', folderPath);
             let toLocalFormat = this._removeSameString(folderPath,this._config.base_path);
             if(toLocalFormat != null){
               console.log('LISTNING_DIR :: passfileName ', toLocalFormat);
               mkdir(upath.normalizeSafe(self._config.local_path+'/'+toLocalFormat),(err)=>{});
               pushDir.push(toLocalFormat);
             }
-            // console.log('objList', objList);
             for (var c = 0; c < objList.length; c++) {
               let _fileName = upath.normalizeSafe('/' + objList[c].filename);
-              // console.log('vmfkv',_fileName);
-              if(parseObjectIgnoreDirectory[_fileName] == null){
+              
+              if(_clossStackValidation(folderPath+_fileName,this._config.base_path) == false){
                 recursiveFunction(folderPath+_fileName);
               }
               /* Do something here */
@@ -163,6 +150,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
     // return new Promise((resolve, reject) => {
     let lastIndex = index;
     let _client = client;
+    let _closStackValidation = this._clossStackValidation();
     if (self._stopListningDirOnTarget == null) {
 
       self._stopListningDirOnTarget = () => {
@@ -210,6 +198,10 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
               self._stopListningDirOnTarget(loopIndex);
               return;
             }
+            if(self._files[ownDir] != null){
+              delete self._files[ownDir];
+              console.log('delete folder --------------------------------------------------> ',ownDir);
+            }
             // console.log('objList', objList);
             for (var c = 0; c < objList.length; c++) {
               let _fileName = upath.normalizeSafe(ownDir + '/' + objList[c].filename);
@@ -220,6 +212,8 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                     delete self._files[_fileName];
                   }
                 } else {
+                  self._modified_files[_fileName] = Object.assign({},self._files[_fileName]);
+                  delete self._files[_fileName];
                   // console.log('tidak sama -> ', _fileName);
                 }
               } else {
@@ -231,13 +225,23 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                   if (self._files[onlyPath + '/_ignore'] != null) {
                     console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
                   } else {
-                    console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
-                    self._extra_files[_fileName] = {
-                      path: _fileName,
-                      fullPath: upath.normalizeSafe(this._config.local_path+'/'+_fileName),
-                      /* Raw version */
-                      basename: objList[c].filename,
-                    }
+                    let passToBaseName = objList[c].filename
+                    sftp.readdir(_fileName, (err: any, objList: Array<any>) => {
+                      console.log('LISTNING_DIR :: Extra file -> ', _fileName);
+                      if(err){
+                        console.log('errrr',err);
+                        if(_closStackValidation(upath.normalizeSafe(_fileName),"")){
+                          return;
+                        }
+                        self._extra_files[_fileName] = {
+                          path: _fileName,
+                          fullPath: upath.normalizeSafe(this._config.local_path+'/'+_fileName),
+                          /* Raw version */
+                          basename: passToBaseName,
+                        }
+                        return;
+                      }
+                    })
                   }
                 }
               }
@@ -247,7 +251,6 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
         }
       } else {
         if (lastIndex == 0) {
-
           for (var a = lastIndex; a < this._concurent_listning_dir; a++) {
             const folderPath = upath.normalizeSafe(this._config.base_path + '/' + dirs[a]);
             // console.log('folderPath -> ', folderPath)
@@ -264,10 +267,13 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                 self._stopListningDirOnTarget(lastIndex);
                 return;
               }
+              if(self._files[ownDir] != null){
+                delete self._files[ownDir];
+                console.log('delete folder --------------------------------------------------> ',ownDir);
+              }
               for (var c = 0; c < objList.length; c++) {
                 // console.log('vmdkfvmkdfv',objList[c]);
                 let _fileName = ownDir + '/' + objList[c].filename;
-
                 if (self._files[_fileName] != null) {
                   if (objList[c].attrs.size == self._files[_fileName].stats.size) {
                     console.log('LISTNING_DIR :: Ignored Same file ', _fileName);
@@ -275,6 +281,8 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                       delete self._files[_fileName];
                     }
                   } else {
+                    self._modified_files[_fileName] = Object.assign({},self._files[_fileName]);
+                    delete self._files[_fileName];
                     // console.log('tidak sama -> ', _fileName);
                   }
                 } else {
@@ -286,13 +294,23 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                     if (self._files[onlyPath + '/_ignore'] != null) {
                       console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
                     } else {
-                      console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
-                      self._extra_files[_fileName] = {
-                        path: _fileName,
-                        fullPath: upath.normalizeSafe(this._config.local_path+'/'+_fileName),
-                        /* Raw version */
-                        basename: objList[c].filename,
-                      }
+                      let passToBaseName = objList[c].filename
+                      sftp.readdir(upath.normalizeSafe(this._config.base_path+'/'+_fileName), (err: any, objList: Array<any>) => {
+                        console.log('LISTNING_DIR :: Extra file -> ', upath.normalizeSafe(this._config.base_path+'/'+_fileName));
+                        if(err){
+                          console.log('errrr',err);
+                          if(_closStackValidation(upath.normalizeSafe(_fileName),"")){
+                            return;
+                          }
+                          self._extra_files[_fileName] = {
+                            path: _fileName,
+                            fullPath: upath.normalizeSafe(this._config.local_path+'/'+_fileName),
+                            /* Raw version */
+                            basename: passToBaseName,
+                          }
+                          return;
+                        }
+                      })
                     }
                   }
                 }
@@ -315,6 +333,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
             return;
           }
           const folderPath = upath.normalizeSafe(this._config.base_path + '/' + ownDir);
+          
           sftp.readdir(folderPath, (err: any, objList: Array<any>) => {
             if (err) {
               setTimeout(() => {
@@ -324,8 +343,13 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
               self._stopListningDirOnTarget(lastIndex);
               return;
             }
+            if(self._files[ownDir] != null){
+              delete self._files[ownDir];
+              console.log('delete folder --------------------------------------------------> ',ownDir);
+            }
             for (var c = 0; c < objList.length; c++) {
               let _fileName = ownDir + '/' + objList[c].filename;
+              
               if (self._files[_fileName] != null) {
                 if (objList[c].attrs.size == self._files[_fileName].stats.size) {
                   console.log('LISTNING_DIR :: Ignored Same file ', _fileName);
@@ -333,6 +357,8 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                     delete self._files[_fileName];
                   }
                 } else {
+                  self._modified_files[_fileName] = Object.assign({},self._files[_fileName]);
+                  delete self._files[_fileName];
                   // console.log('tidak sama -> ', _fileName);
                 }
               } else {
@@ -344,15 +370,23 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
                   if (self._files[onlyPath + '/_ignore'] != null) {
                     console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
                   } else {
-                    console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
-                    self._extra_files[_fileName] = {
-                      path: _fileName,
-                      fullPath: upath.normalizeSafe(this._config.local_path+'/'+_fileName),
-                      /* Raw version */
-                      basename: objList[c].filename,
-                    }
-                    
-                    
+                    let passToBaseName = objList[c].filename
+                    sftp.readdir(upath.normalizeSafe(this._config.base_path+'/'+_fileName), (err: any, objList: Array<any>) => {
+                      console.log('LISTNING_DIR :: Extra file -> ', upath.normalizeSafe(this._config.base_path+'/'+_fileName));
+                      if(err){
+                        console.log('errrr',err);
+                        if(_closStackValidation(upath.normalizeSafe(_fileName),"")){
+                          return;
+                        }
+                        self._extra_files[_fileName] = {
+                          path: _fileName,
+                          fullPath: upath.normalizeSafe(this._config.local_path+'/'+_fileName),
+                          /* Raw version */
+                          basename: passToBaseName,
+                        }
+                        return;
+                      }
+                    })
                   }
                 }
               }
@@ -367,8 +401,37 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
     });
     //});
   },
+  /**
+   * Override without push folder to files
+   */
   _listningCurrentFiles: function () {
-    return this._super();
+    return new Promise((resolve) => {
+      let _closStackValidation = this._clossStackValidation();
+      const getAllFiles = (dirPath:string, arrayOfFiles?:Array<string>)=>{
+        let files = readdirSync(dirPath)
+        arrayOfFiles = arrayOfFiles || []
+        files.forEach((file)=> {
+          let isFound: boolean = false;
+          let tempSetPath = upath.normalizeSafe(dirPath+'/' + upath.normalizeSafe(file));
+          isFound = _closStackValidation(tempSetPath,this._config.local_path);
+          if(isFound == false){
+            if (statSync(dirPath + "/" + file).isDirectory()) {
+              getAllFiles(dirPath + "/" + file, arrayOfFiles)
+            } else {
+              console.log('_LISTNINGCURRENTFILES :: entry.path', this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path));
+              this._files[this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path)] = {
+                path : this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path),
+                fullPath : dirPath + "/" + file,
+                stats : statSync(dirPath + "/" + file)
+              };
+            }
+          }
+        })
+        return arrayOfFiles
+      }
+      let test = getAllFiles(this._config.local_path);
+      resolve(this._files);
+    })
   },
   _splitIgnoreDatas: function (datas, type) {
     return this._super(datas, type);
@@ -392,26 +455,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
     }
     this._pendingDownload[entry.path] = _.debounce((entry: any) => {
       let remote = upath.normalizeSafe(this._config.base_path + '/' + entry.path);
-      console.log('DOWNLOAD ::  entry', remote);
-      console.log('DOWNLOAD ::  entry.raw', entry.fullPath);
-      console.log('DOWNLOAD ::  entry.fullPath', upath.normalizeSafe(entry.fullPath));
-      // Uplad the file
-      // let firstKey = Object.keys(this._queue)[0];
-      // if (firstKey == null) {
-      //   console.log('DOWNLOAD ::  entry.queue_no : ' + entry.path + ' -> ', entry.queue_no, '  Done');
-      //   console.log('DOWNLOAD ::  sisa -> ', Object.keys(this._queue).length);
-      //   console.log('DOWNLOAD ::  Client Queue No ' + entry.queue_no + ' -> done!');
-      //   masterData.saveData('forcesftp.syncpush._prepareDelete', {});
-      //   return;
-      // }
-      // let oo = Object.assign({}, this._queue[firstKey]);
-      // this._handlePush(oo);
-      // delete this._queue[firstKey];
-      // console.log('DOWNLOAD ::  entry.queue_no : ' + entry.path + ' -> ', entry.queue_no, '  Done');
-      // console.log('DOWNLOAD ::  sisa -> ', Object.keys(this._queue).length);
-      // console.log('DOWNLOAD ::  Next Upload -> ', firstKey == null ? "Empty" : firstKey);
-      // delete this._pendingDownload[entry.path];
-
+      console.log('DOWNLOAD ::  entry', remote,' -> ',upath.normalizeSafe(entry.fullPath));
       this._clients[entry.queue_no].download(remote, upath.normalizeSafe(entry.fullPath), err => {
         if (err) {
           // console.log('error', {
@@ -421,7 +465,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
           console.error(`DOWNLOAD:ERROR :: Could not download ${remote}`);
           console.error(`DOWNLOAD:ERROR :: ${err.toString()}`);
         } else {
-          console.log('DOWNLOAD ::  Downloaded file ', remote, ' -> ', upath.normalizeSafe(entry.fullPath));
+          console.log('DOWNLOAD ::  Downloaded Done for file ', remote, ' -> ', upath.normalizeSafe(entry.fullPath));
         }
         delete this._orders[entry.queue_no];
         // let firstKey = Object.keys(this._queue)[entry.queue_no];
@@ -431,9 +475,15 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
           console.log('DOWNLOAD ::  entry.queue_no : ' + entry.path + ' -> ', entry.queue_no, '  Done');
           console.log('DOWNLOAD ::  sisa -> ', Object.keys(this._queue).length);
           console.log('DOWNLOAD ::  Client Queue No ' + entry.queue_no + ' -> done!');
-          masterData.saveData('forcesftp.syncpush._prepareDelete', {});
+          // masterData.saveData('forcesftp.syncpush._prepareDelete', {});
+          this._clients[entry.queue_no].close();
           return;
         }
+        this._clients[entry.queue_no].close();
+        this._clients[entry.queue_no] = this.returnClient({
+          ...this._config,
+          path: this._config.base_path
+        });
         let oo = Object.assign({}, this._queue[firstKey]);
         this._handlePull(oo);
         delete this._queue[firstKey];
@@ -463,12 +513,19 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
     const _files = await this._listningCurrentFiles();
     console.log('First Files Count ', Object.keys(this._files).length);
     const waitingListing = () => {
+      for(var key in _dirs){
+        if(key == '/public/fonts/vendor/bootstrap-sass/bootstrap'||key == '/public/fonts/vendor/bootstrap-sass/bootstrap/'){
+          console.log(_dirs[key]);
+          process.exit(1);
+        }
+      }
       return new Promise((resolve: Function) => {
         this._listningDirOnTarget(this.returnClient({
           ...this._config,
           path: this._config.base_path
         }), _dirs, 0, (res: any) => {
-          console.log('Remaining files -> ', Object.keys(this._files).length);
+          console.log('Modified files -> ', Object.keys(this._modified_files).length);
+          console.log('Remaining files -> ', Object.keys(this._files).length,' -> ','Will deleted!');
           console.log('Extra files -> ', Object.keys(this._extra_files).length)
           resolve();
         }, (err: any) => {
@@ -479,7 +536,9 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
     console.log('------------------------------------------------------------------(Waiting Listning Directory on Server)-----------------------------------------------------------------------');
     await waitingListing();
     this._files = {
-      ...this._files,
+      // Exclude old this._files
+      // ...this._files, 
+      ...this._modified_files,
       ...this._extra_files
     }
     console.log('------------------------------------------------------------------(Upload the file to the server)------------------------------------------------------------------------------');
