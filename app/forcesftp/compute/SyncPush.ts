@@ -6,13 +6,16 @@ import { CliInterface } from '../services/CliService';
 const observatory = require("observatory");
 const chalk = require('chalk');
 const readdirp = require('readdirp');
+const micromatch = require('micromatch');
 import { Client } from "scp2";
 import _ from 'lodash';
 import * as upath from "upath";
 import * as path from 'path';
 import { MasterDataInterface } from '@root/bootstrap/StartMasterData';
 import parseGitIgnore from '@root/tool/parse-gitignore';
-import { readFileSync } from 'fs';
+import ignore from 'ignore'
+
+import { readFileSync, readdirSync, statSync } from 'fs';
 
 declare var masterData: MasterDataInterface;
 
@@ -34,6 +37,9 @@ export interface SyncPushInterface extends BaseModelInterface {
   _concurent: number
 
   _files?: {
+    [key: string]: any
+  },
+  _modified_files ?: {
     [key: string]: any
   },
   _deleted_files ?: {
@@ -67,10 +73,12 @@ export interface SyncPushInterface extends BaseModelInterface {
   _concurent_listning_dir?: number
   _splitIgnoreDatas: { (datas: Array<string | RegExp>, type: string): Array<string | RegExp> }
   _prepareDelete: { (): void }
+  _clossStackValidation ?: {():{(path:string,passBasePath:string):boolean}}
 }
 
 const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConfig">>({
   _files: {},
+  _modified_files: {},
   _deleted_files: {},
   _tasks: {},
   _concurent_listning_dir: 30,
@@ -153,8 +161,14 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
           console.log('UPLOAD :: sisa -> ', Object.keys(this._queue).length);
           console.log('UPLOAD :: Client Queue No ' + entry.queue_no + ' -> done!');
           masterData.saveData('forcesftp.syncpush._prepareDelete', {});
+          this._clients[entry.queue_no].close();
           return;
         }
+        this._clients[entry.queue_no].close();
+        this._clients[entry.queue_no] = this.returnClient({
+          ...this._config,
+          path: this._config.base_path
+        });
         let oo = Object.assign({}, this._queue[firstKey]);
         this._handlePush(oo);
         delete this._queue[firstKey];
@@ -202,8 +216,14 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
         let firstKey = Object.keys(this._queueDelete)[0];
         if (firstKey == null) {
           console.log('DELETE :: Client Queue No ' + entry.queue_no + ' -> done!');
+          this._clients[entry.queue_no].close();
           return;
         }
+        this._clients[entry.queue_no].close();
+        this._clients[entry.queue_no] = this.returnClient({
+          ...this._config,
+          path: this._config.base_path
+        });
         let oo = Object.assign({}, this._queueDelete[firstKey]);
         this._handleDelete(oo);
         delete this._queueDelete[firstKey];
@@ -216,119 +236,165 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
     this._pendingUpload[entry.path](entry);
   },
   _listningTemplate: function () {
-    let dirs: Array<string> = [];
-    return new Promise((resolve) => {
-      let ignoreDirectories = this._splitIgnoreDatas(this._config.ignores, 'directory');
-      ignoreDirectories = ((datas: Array<string>) => {
-        let _datas: Array<string> = [];
-        datas.forEach((element: any) => {
-          let teString = this._removeSameString(element, this._config.base_path);
-          _datas.push(this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length));
-        });
-        return _datas;
-      })(ignoreDirectories as Array<string>);
-      dirs.push("");
-      readdirp(this._config.local_path, {
-        fileFilter: ["*"], // => /* Bad because cannot filter by path */
-        alwaysStat: false,
-        type: 'directories',
-        directoryFilter: ["*", ".*"] // => /* Bad because cannot filter by path */
-      }).on('data', (entry: any) => {
-        let isFound: boolean = false;
-        let givePath = '/' + upath.normalizeSafe(entry.path);
-        ignoreDirectories.forEach((element: any) => {
-          if (givePath.includes(element)) {
-            isFound = true;
-            return false;
-          }
-        });
-        if (isFound == false) {
-          console.log('_LISTNINGTEMPLATE :: entry folder ', upath.normalizeSafe(entry.path));
-          dirs.push('/' + upath.normalizeSafe(entry.path));
-        }
-      }).on('end', () => {
+    // let _clossStackValidation = this._clossStackValidation();
+    // return new Promise((resolve) => {
+    //   dirs.push("");
+    //   readdirp(this._config.local_path, {
+    //     fileFilter: ["*"], // => /* Bad because cannot filter by path */
+    //     alwaysStat: false,
+    //     type: 'directories',
+    //     directoryFilter: ["*", ".*"] // => /* Bad because cannot filter by path */
+    //   }).on('data', (entry: any) => {
+    //     let givePath = '/' + upath.normalizeSafe(entry.path);
+    //     ignoreDirectories.forEach((element: any) => {
+    //       if (givePath.includes(element)) {
+    //         isFound = true;
+    //         return false;
+    //       }
+    //     });
+    //     if(_clossStackValidation(folderPath+_fileName,this._config.base_path) == false){
+    //       recursiveFunction(folderPath+_fileName);
+    //     }
+    //     if (isFound == false) {
+    //       console.log('_LISTNINGTEMPLATE :: entry folder ', upath.normalizeSafe(entry.path));
+    //       dirs.push('/' + upath.normalizeSafe(entry.path));
+    //     }
+    //   }).on('end', () => {
 
-        resolve(dirs);
-      });
+    //     resolve(dirs);
+    //   });
+    // })
+
+    let dirs: Array<string> = [];
+    dirs.push("");
+    return new Promise((resolve) => {
+      let _closStackValidation = this._clossStackValidation();
+      const getAllFiles = (dirPath:string, arrayOfFiles?:Array<string>)=>{
+        let files = readdirSync(dirPath)
+        arrayOfFiles = arrayOfFiles || []
+        files.forEach((file)=> {
+          let isFound: boolean = false;
+          let tempSetPath = upath.normalizeSafe(dirPath+'/' + upath.normalizeSafe(file));
+          isFound = _closStackValidation(tempSetPath,this._config.local_path);
+          if(isFound == false){
+            if (statSync(dirPath + "/" + file).isDirectory()) {
+              console.log('_LISTNINGTEMPLATE :: entry folder ', dirPath+'/' + upath.normalizeSafe(file),this._config.local_path);
+              dirs.push(this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path));
+              // this._files[this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path)] = {
+              //   path : this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path),
+              //   fullPath : dirPath + "/" + file,
+              //   stats : statSync(dirPath + "/" + file)
+              // };
+              getAllFiles(dirPath + "/" + file, arrayOfFiles)
+            } else {
+              // console.log('_LISTNINGCURRENTFILES :: entry.path', this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path));
+              // this._files[this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path)] = {
+              //   path : this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path),
+              //   fullPath : dirPath + "/" + file,
+              //   stats : statSync(dirPath + "/" + file)
+              // };
+            }
+          }
+        })
+        return arrayOfFiles
+      }
+      let test = getAllFiles(this._config.local_path);
+      resolve(dirs);
     })
+  },
+  _clossStackValidation : function(){
+    /* From file git ignore */
+    let gitIgnores: Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
+    let ig = ignore().add(gitIgnores);
+    let gitIgnoreFiles : Array<string> = [];
+    let gitIgnoreDirectories : Array<string> = [];
+
+    let ignoreDirectories: any = this._splitIgnoreDatas(this._config.ignores, 'directory');
+    ignoreDirectories = ((datas: Array<string>) => {
+      let _datas: Array<string> = [];
+      for(var a=0;a<datas.length;a++){
+        let element = datas[a];
+        let teString = this._removeSameString(element, this._config.base_path);
+        _datas.push(this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length));
+      }
+      return _datas;
+    })([...ignoreDirectories, ...gitIgnoreDirectories] as Array<string>);
+    /* Remove duplicate */
+    ignoreDirectories = _.uniq(ignoreDirectories);
+    let ignoreFiles = this._splitIgnoreDatas(this._config.ignores, 'file');
+    ignoreFiles = ((datas: Array<string>) => {
+      let _datas: Array<string> = [];
+      datas.forEach((element: any) => {
+        // let teString =  this._removeSameString(element, this._config.base_path);
+        // teString = '!' + this._replaceAt(teString,'/','',0,1);
+        // _datas.push(teString);
+        let teString = this._removeSameString(element, this._config.base_path);
+          _datas.push(teString);
+      });
+      return _datas;
+    })([...ignoreFiles, ...gitIgnoreFiles] as Array<string>);
+    /* REmove duplicate */
+    ignoreFiles = _.uniq(ignoreFiles);
+    return (tempSetPath,passBasePath)=>{
+      let isFound = false;
+      for(var a=0;a<ignoreDirectories.length;a++){
+        let element = ignoreDirectories[a];
+        if (micromatch.isMatch(tempSetPath,[upath.normalizeSafe(passBasePath+'/'+element)]) == true){
+          isFound = true;
+          break;
+        }
+      }        
+      if(isFound == false){
+        for(var a=0;a<ignoreFiles.length;a++){
+          let element = ignoreFiles[a];
+          if(micromatch.isMatch(tempSetPath,[upath.normalizeSafe(passBasePath+'/'+element)]) == true){
+            isFound = true;
+            break;
+          }
+        }
+      }
+      if(isFound == false){
+        /* Convert to relative append '/' on this._config.local_path */
+        let ggg = this._removeSameString(tempSetPath,passBasePath+'/'); 
+        if(ig.ignores(ggg)){
+          isFound = true;
+        }
+      }
+      return isFound;
+    }
   },
   _listningCurrentFiles: function () {
     return new Promise((resolve) => {
-      /* From file git ignore */
-      let gitIgnores: Array<any> = parseGitIgnore(readFileSync('.gitignore'));
-      let gitIgnoreFiles : Array<string> = [];
-      let gitIgnoreDirectories : Array<string> = [];
-      for(var a=0;a<gitIgnores.length;a++){
-        if(gitIgnores[a] instanceof RegExp){
-          /* Ignore it */
-        }else if(gitIgnores[a][Object.keys(gitIgnores[a]).length-1] == '/'){
-          // gitIgnores[a] = this._config.base_path+'/'+gitIgnores[a];
-          gitIgnoreDirectories.push(upath.normalizeSafe(gitIgnores[a]));
-        }else{
-          // gitIgnores[a] = this._config.base_path+'/'+gitIgnores[a];
-          gitIgnoreFiles.push(upath.normalizeSafe(gitIgnores[a]));
-        }
+      let _closStackValidation = this._clossStackValidation();
+      const getAllFiles = (dirPath:string, arrayOfFiles?:Array<string>)=>{
+        let files = readdirSync(dirPath)
+        arrayOfFiles = arrayOfFiles || []
+        files.forEach((file)=> {
+          let isFound: boolean = false;
+          let tempSetPath = upath.normalizeSafe(dirPath+'/' + upath.normalizeSafe(file));
+          isFound = _closStackValidation(tempSetPath,this._config.local_path);
+          if(isFound == false){
+            if (statSync(dirPath + "/" + file).isDirectory()) {
+              this._files[this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path)] = {
+                path : this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path),
+                fullPath : dirPath + "/" + file,
+                stats : statSync(dirPath + "/" + file)
+              };
+              getAllFiles(dirPath + "/" + file, arrayOfFiles)
+            } else {
+              console.log('_LISTNINGCURRENTFILES :: entry.path', this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path));
+              this._files[this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path)] = {
+                path : this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path),
+                fullPath : dirPath + "/" + file,
+                stats : statSync(dirPath + "/" + file)
+              };
+            }
+          }
+        })
+        return arrayOfFiles
       }
-
-      let ignoreDirectories: any = this._splitIgnoreDatas(this._config.ignores, 'directory');
-      ignoreDirectories = ((datas: Array<string>) => {
-        let _datas: Array<string> = [];
-        for(var a=0;a<datas.length;a++){
-          let element = datas[a];
-          let teString = this._removeSameString(element, this._config.base_path);
-          _datas.push(this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length));
-        }
-        return _datas;
-      })([...ignoreDirectories, ...gitIgnoreDirectories] as Array<string>);
-      /* Remove duplicate */
-      ignoreDirectories = _.uniq(ignoreDirectories);
-      let ignoreFiles = this._splitIgnoreDatas(this._config.ignores, 'file');
-      ignoreFiles = ((datas: Array<string>) => {
-        let _datas: Array<string> = [];
-        datas.forEach((element: any) => {
-          // let teString =  this._removeSameString(element, this._config.base_path);
-          // teString = '!' + this._replaceAt(teString,'/','',0,1);
-          // _datas.push(teString);
-          let teString = this._removeSameString(element, this._config.base_path);
-            _datas.push(teString);
-        });
-        return _datas;
-      })([...ignoreFiles, ...gitIgnoreFiles] as Array<string>);
-      /* REmove duplicate */
-      ignoreFiles = _.uniq(ignoreFiles);
-      console.log('_LISTNINGCURRENTFILES :: ignoreFiles ', ignoreFiles);
-      console.log('_LISTNINGCURRENTFILES :: ignoreDirectories ', ignoreDirectories);
-      readdirp(this._config.local_path, {
-        fileFilter: ["*", ".*"],// => /* Bad because cannot filter by path */
-        alwaysStat: true,
-        type: 'all',
-        directoryFilter: ["*", ".*"] // => /* Bad because cannot filter by path */
-      }).on('data', (entry: any) => {
-        let isFound: boolean = false;
-        let tempSetPath = '/' + upath.normalizeSafe(entry.path);
-        ignoreDirectories.forEach((element: any) => {
-          if (tempSetPath.includes(element)) {
-            isFound = true;
-            return false;
-          }
-        });
-        ignoreFiles.forEach((element: any) => {
-          /**
-           * Add char '/' for last position string tempSetPath and element. For better compare 
-           * Because this is a file. if not define it, When file with nested extention like Main.js.map will get return true too!
-           */
-          if ((tempSetPath + '/').includes(element + '/')) {
-            isFound = true;
-            return false;
-          }
-        });
-        if (isFound == false) {
-          this._files['/' + upath.normalizeSafe(entry.path)] = entry;
-          console.log('_LISTNINGCURRENTFILES :: entry.path', '/' + upath.normalizeSafe(entry.path));
-        }
-      }).on('end', () => {
-        resolve(this._files);
-      });
+      let test = getAllFiles(this._config.local_path);
+      resolve(this._files);
     })
   },
   _listningDirOnTarget: function (client, dirs, index = 0, resolve = null, reject = null) {
@@ -336,6 +402,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
     // return new Promise((resolve, reject) => {
     let lastIndex = index;
     let _client = client;
+    let _closStackValidation = this._clossStackValidation();
     if (self._stopListningDirOnTarget == null) {
 
       self._stopListningDirOnTarget = () => {
@@ -365,6 +432,37 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
       }
       self._stopListningDirOnTarget = self._stopListningDirOnTarget();
     }
+    let _testModifiedFileisFolder = (sftp:any,relativeFilePath:string)=>{
+      let absoluteFilePath = upath.normalizeSafe(this._config.base_path+'/'+relativeFilePath);
+      sftp.readdir(absoluteFilePath, (err: any, objList: Array<any>) => {
+        if(err){
+          console.log('_testIsFolderDeleted :: ERR -> ', err.toString());
+          self._modified_files[relativeFilePath] = Object.assign({},self._files[relativeFilePath]);
+          delete self._files[relativeFilePath];
+          return;
+        }
+        delete self._files[relativeFilePath];
+      })
+    }
+    let _testIsFolderDeleted = (sftp:any,relativeFilePath:string)=>{
+      let absoluteFilePath = upath.normalizeSafe(this._config.base_path+'/'+relativeFilePath);
+      sftp.readdir(absoluteFilePath, (err: any, objList: Array<any>) => {
+        if(err){
+          console.log('_testIsFolderDeleted :: ERR -> ', err.toString());
+        }
+        if(_closStackValidation(upath.normalizeSafe(absoluteFilePath),this._config.base_path)){
+          console.log('Prevent :: Deleted file -> ', absoluteFilePath);
+          return;
+        }
+        console.log('LISTNING_DIR :: Record Deleted file/folder -> ', absoluteFilePath);
+        self._deleted_files[relativeFilePath] = {
+          path: relativeFilePath,
+          fullPath: upath.normalizeSafe(this._config.base_path+'/'+relativeFilePath),
+          /* Raw version */
+          basename: upath.parse(relativeFilePath).base
+        }
+      })
+    }
     _client.sftp((err, sftp) => {
       if (err) {
         console.log('err', err.toString());
@@ -375,7 +473,6 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
           const folderPath = upath.normalizeSafe(this._config.base_path + '/' + dirs[a]);
           let ownDir: any = dirs[a];
           let loopIndex = a;
-          // console.log('folderPath', folderPath);
           sftp.readdir(folderPath, (err: any, objList: Array<any>) => {
             console.log('LISTNING_DIR :: loopIndex ', loopIndex);
             if (err) {
@@ -383,7 +480,6 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
               self._stopListningDirOnTarget(loopIndex);
               return;
             }
-            // console.log('objList', objList);
             for (var c = 0; c < objList.length; c++) {
               let _fileName = upath.normalizeSafe(ownDir + '/' + objList[c].filename);
               if (self._files[_fileName] != null) {
@@ -393,7 +489,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
                     delete self._files[_fileName];
                   }
                 } else {
-                  // console.log('tidak sama -> ', _fileName);
+                  _testModifiedFileisFolder(sftp,_fileName);
                 }
               } else {
                 let onlyPath = _fileName.substring(0, _fileName.lastIndexOf('/'));
@@ -404,8 +500,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
                   if (self._files[onlyPath + '/_ignore'] != null) {
                     console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
                   } else {
-                    console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
-                    self._deleted_files[_fileName] = objList[c];
+                    _testIsFolderDeleted(sftp,_fileName);
                   }
                 }
               }
@@ -415,17 +510,13 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
         }
       } else {
         if (lastIndex == 0) {
-
           for (var a = lastIndex; a < this._concurent_listning_dir; a++) {
             const folderPath = upath.normalizeSafe(this._config.base_path + '/' + dirs[a]);
-            // console.log('folderPath -> ', folderPath)
             let ownDir: any = dirs[a];
             let loopIndex = a;
             sftp.readdir(folderPath, (err: any, objList: Array<any>) => {
               let nextnya = lastIndex + this._concurent_listning_dir + loopIndex;
-              // console.log('objList',objList.length);
               if (err) {
-                console.log('LISTNING_DIR :: readdir - err ', err.toString());
                 setTimeout(() => {
                   self._listningDirOnTarget(_client, dirs, nextnya, resolve, reject);
                 }, 100 * 1);
@@ -434,7 +525,6 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
               }
               for (var c = 0; c < objList.length; c++) {
                 let _fileName = ownDir + '/' + objList[c].filename;
-
                 if (self._files[_fileName] != null) {
                   if (objList[c].attrs.size == self._files[_fileName].stats.size) {
                     console.log('LISTNING_DIR :: Ignored Same file ', _fileName);
@@ -442,7 +532,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
                       delete self._files[_fileName];
                     }
                   } else {
-                    // console.log('tidak sama -> ', _fileName);
+                    _testModifiedFileisFolder(sftp,_fileName);
                   }
                 } else {
                   let onlyPath = _fileName.substring(0, _fileName.lastIndexOf('/'));
@@ -453,8 +543,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
                     if (self._files[onlyPath + '/_ignore'] != null) {
                       console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
                     } else {
-                      console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
-                      self._deleted_files[_fileName] = objList[c];
+                      _testIsFolderDeleted(sftp,_fileName);
                     }
                   }
                 }
@@ -469,9 +558,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
           }
         } else {
           let ownDir: any = dirs[lastIndex];
-          let loopIndex = lastIndex;
           let nextnya = this._concurent_listning_dir + lastIndex;
-          // console.log('loopIndex', loopIndex);
           if (dirs[lastIndex] == null) {
             self._stopListningDirOnTarget(lastIndex);
             return;
@@ -487,6 +574,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
               return;
             }
             for (var c = 0; c < objList.length; c++) {
+              
               let _fileName = ownDir + '/' + objList[c].filename;
               if (self._files[_fileName] != null) {
                 if (objList[c].attrs.size == self._files[_fileName].stats.size) {
@@ -495,19 +583,21 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
                     delete self._files[_fileName];
                   }
                 } else {
-                  // console.log('tidak sama -> ', _fileName);
+                  _testModifiedFileisFolder(sftp,_fileName);
                 }
               } else {
                 let onlyPath = _fileName.substring(0, _fileName.lastIndexOf('/'));
                 console.log('LISTNING_DIR :: Check Ignored folder ', onlyPath + '/_ignore');
+                if(_fileName.includes('vvv')){
+                  process.exit(1);
+                }
                 if (self._files[onlyPath + '/_ignore'] != null) {
                   console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
                 } else {
                   if (self._files[onlyPath + '/_ignore'] != null) {
                     console.log('LISTNING_DIR :: Ignored folder from ', onlyPath, ' for ', _fileName);
                   } else {
-                    console.log('LISTNING_DIR :: Deleted file -> ', _fileName);
-                    self._deleted_files[_fileName] = objList[c];
+                    _testIsFolderDeleted(sftp,_fileName);
                   }
                 }
               }
@@ -525,66 +615,11 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
   _prepareDelete: function () {
     try {
       /* From file git ignore */
-      let gitIgnores: Array<any> = parseGitIgnore(readFileSync('.gitignore'));
-      let gitIgnoreFiles : Array<string> = [];
-      let gitIgnoreDirectories : Array<string> = [];
-      for(var a=0;a<gitIgnores.length;a++){
-        if(gitIgnores[a] instanceof RegExp){
-          /* Ignore it */
-        }else if(gitIgnores[a][Object.keys(gitIgnores[a]).length-1] == '/'){
-          // gitIgnores[a] = this._config.base_path+'/'+gitIgnores[a];
-          gitIgnoreDirectories.push(upath.normalizeSafe(gitIgnores[a]));
-        }else{
-          // gitIgnores[a] = this._config.base_path+'/'+gitIgnores[a];
-          gitIgnoreFiles.push(upath.normalizeSafe(gitIgnores[a]));
-        }
-      }
-
-      let ignoreDirectories: any = this._splitIgnoreDatas(this._config.ignores, 'directory');
-      ignoreDirectories = ((datas: Array<string>) => {
-        let _datas: {
-          [key: string]: any
-        } = {};
-        datas.forEach((element: any) => {
-          let teString = this._removeSameString(element, this._config.base_path);
-          let givePath = this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length);
-          _datas[givePath] = givePath;
-        });
-        return _datas;
-      })([...ignoreDirectories,...gitIgnoreDirectories] as Array<string>);
-
-      let ignoreFiles: any = this._splitIgnoreDatas(this._config.ignores, 'file');
-      ignoreFiles = ((datas: Array<string>) => {
-        let _datas: {
-          [key: string]: any
-        } = {};
-        datas.forEach((element: any) => {
-          // let teString =  this._removeSameString(element, this._config.base_path);
-          // teString = '!' + this._replaceAt(teString,'/','',0,1);
-          // _datas.push(teString);
-          let teString = this._removeSameString(element, this._config.base_path);
-          let givePath = this._replaceAt(teString, '/', '', Object.keys(teString).length - 1, Object.keys(teString).length);
-          _datas[givePath] = givePath;
-
-        });
-        return _datas;
-      })([...ignoreFiles,...gitIgnoreFiles] as Array<string>);
-      for (var key in ignoreDirectories) {
-        for (var key2 in this._deleted_files) {
-          // console.log('key',key,' & key2 ', this._config.base_path+key2);
-          if ((this._config.base_path + key2).includes(key)) {
-            delete this._deleted_files[key2];
-          }
-        }
-
-
-      }
-      for (var key in ignoreFiles) {
-        for (var key2 in this._deleted_files) {
-          if ((this._config.base_path + key2).includes(key)) {
-            console.log('_PREPAREDELETE :: ', key, ' AND ', this._config.base_path + key2, ' => Prevent Delete');
-            delete this._deleted_files[key2];
-          }
+      let _clossStackValidation = this._clossStackValidation();
+      for (var key2 in this._deleted_files) {
+        // console.log('key',key,' & key2 ', this._config.base_path+key2);
+        if(_clossStackValidation(key2,'') == true){
+          delete this._deleted_files[key2];
         }
       }
     } catch (ex) {
@@ -603,6 +638,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
           ...this._config,
           path: this._config.base_path
         }), _dirs, 0, (res: any) => {
+          console.log('Modified files -> ', Object.keys(this._modified_files).length);
           console.log('Remaining files -> ', Object.keys(this._files).length);
           console.log('Deleted files -> ', Object.keys(this._deleted_files).length)
           resolve();
@@ -613,6 +649,11 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
     }
     console.log('------------------------------------------------------------------(Waiting Listning Directory on Server)-----------------------------------------------------------------------');
     await waitingListing();
+    console.log('this._deleted_files',this._deleted_files);
+    this._files = {
+      ...this._files, 
+      ...this._modified_files
+    }
     console.log('------------------------------------------------------------------(Upload the file to the server)------------------------------------------------------------------------------');
     for (var a = 0; a < this._concurent; a++) {
       this._clients.push(this.returnClient({
