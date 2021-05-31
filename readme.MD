@@ -1,6 +1,8 @@
 # Base information
 ngi-sync is to help sync code to the server continuously
 
+More info check [wiki](https://github.com/rolldone/ngi-sync/wiki)
+
 ### Tasks
 - [x] Add feature clone directory on local only
 - [x] Add feature send command to both ssh and local.
