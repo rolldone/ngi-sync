@@ -21,7 +21,7 @@ export default class Watcher {
 		private base: string = config.localPath
 	) {
 		
-		let gitIgnore : Array<any> = parseGitIgnore(readFileSync('.gitignore'));
+		let gitIgnore : Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
 		let defaultIgnores: Array<string | RegExp> = [/node_modules/, /.git/, /.svn/, /bower_components/];
 		let onlyPathStringIgnores : Array<string> = [];
 		let onlyFileStringIgnores : Array<string> = [];
