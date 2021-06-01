@@ -140,6 +140,13 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       stat(pathJoin("", theLocalPath), (err, data) => {
         var downloadNow = () => {
           theClient.download(fromFilePath, pathJoin("", theLocalPath), (err: any) => {
+            /* Close and retry connect again */
+            theClient.close();
+            theClient = this.returnClient({
+              ...this._sshConfig,
+              path: fromFilePath
+            });
+            
             if (err) {
               this._onListener({
                 status: 'error',
@@ -151,6 +158,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
               [theLocalPath]: true,
             });
             delete this._folderQueue[keynya];
+            
           })
         }
         if (err) {
