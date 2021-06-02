@@ -34,7 +34,7 @@ const CommandService = InitConfigService.extend<Omit<CommandServiceInterface, 'r
       {
         type: "list",
         name: "target",
-        message: "Untuk target mana perintah yang ingin anda kirimkan:",
+        message: "To which target do you want to send the command:",
         choices: [
           COMMAND_TARGET.LOCAL,
           COMMAND_TARGET.TARGET,
