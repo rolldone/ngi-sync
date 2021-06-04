@@ -275,7 +275,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
         files.forEach((file)=> {
           let isFound: boolean = false;
           let tempSetPath = upath.normalizeSafe(dirPath+'/' + upath.normalizeSafe(file));
-          isFound = _closStackValidation(tempSetPath,this._config.local_path);
+          isFound = _closStackValidation(tempSetPath,upath.normalizeSafe(this._config.local_path));
           if(isFound == false){
             if (statSync(dirPath + "/" + file).isDirectory()) {
               console.log('_LISTNINGTEMPLATE :: entry folder ', dirPath+'/' + upath.normalizeSafe(file),this._config.local_path);
@@ -372,7 +372,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
         files.forEach((file)=> {
           let isFound: boolean = false;
           let tempSetPath = upath.normalizeSafe(dirPath+'/' + upath.normalizeSafe(file));
-          isFound = _closStackValidation(tempSetPath,this._config.local_path);
+          isFound = _closStackValidation(tempSetPath,upath.normalizeSafe(this._config.local_path));
           if(isFound == false){
             if (statSync(dirPath + "/" + file).isDirectory()) {
               this._files[this._removeSameString(dirPath+'/' + upath.normalizeSafe(file),this._config.local_path)] = {

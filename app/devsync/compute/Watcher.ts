@@ -7,9 +7,12 @@ import { CliInterface } from "../services/CliService";
 const observatory = require("observatory");
 import * as upath from 'upath';
 import parseGitIgnore from '@root/tool/parse-gitignore'
+import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+declare let masterData : MasterDataInterface;
 
 export default class Watcher {
 	files: FSWatcher;
+	_onListener : Function;
 	private tasks: {
 		[key: string]: any
 	} = {};
@@ -21,7 +24,7 @@ export default class Watcher {
 		private base: string = config.localPath
 	) {
 		
-		let gitIgnore : Array<any> = parseGitIgnore(readFileSync('.gitignore'));
+		let gitIgnore : Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
 		let defaultIgnores: Array<string | RegExp> = [/node_modules/, /.git/, /.svn/, /bower_components/];
 		let onlyPathStringIgnores : Array<string> = [];
 		let onlyFileStringIgnores : Array<string> = [];
@@ -100,6 +103,10 @@ export default class Watcher {
 		});
 	}
 
+	setOnListener(onListener:Function){
+		this._onListener = onListener;
+	}
+
 	eventToWord: {
 		[key: string]: any
 	} = {
@@ -113,11 +120,15 @@ export default class Watcher {
 		return (...args: string[]) => {
 			let path: string,
 				event = method;
-
 			// Handle argument difference
 			if (method === 'all') {
 				path = args[1];
 				event = args[0]
+				if(this._onListener != null){
+					this._onListener({
+						action : 'ALL_EVENT'
+					});
+				}
 			} else {
 				path = args[0];
 			}
