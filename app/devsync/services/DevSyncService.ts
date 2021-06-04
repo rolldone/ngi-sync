@@ -16,7 +16,7 @@ declare var masterData: MasterDataInterface
 
 export enum COMMAND_TARGET {
   SAFE_SYNC = 'DevSync Basic Safe Syncronise \n  - Trigger by edit file :)',
-  SAFE_PULL_SYNC = 'DevSync Pull Syncronise \n  - This feature only download by your base template \n  - And ignore all file you define on config file and .gitignore :)',
+  SAFE_PULL_SYNC = 'DevSync Pull Syncronise \n  - This feature only download by your base template \n  - And ignore all file you define on config file and .sync_ignore :)',
   SAFE_SYNC_NON_FORCE = 'DevSync Basic with non force file \n  - Trigger by edit file :). Ignored file not activated except pull sync \n  - Caution : This mode will take a long time indexing the file. and need more consume RAM',
   SOFT_PUSH_SYNC = 'DevSync Soft Push Data. \n  - Your sensitive data will be safe on target :)',
   FORCE_PUSH_SYNC = 'DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
@@ -130,9 +130,18 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           taskWatchOnServer.status(res.status);
         });
         syncPull.submitWatch();
-        
+        let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
         this.uploader = new Uploader(currentConf, this._cli);
         this.watcher = new Watcher(this.uploader, currentConf, this._cli);
+        this.watcher.setOnListener((props:{
+          action : string
+        })=>{
+          switch(props.action){
+            case 'ALL_EVENT':
+              _startWatchingWithTimeOut();
+              break;
+          }
+        });
         return this.watcher.ready();
       }).then(() => {
         var reCallCurrentCOnf = ()=>{

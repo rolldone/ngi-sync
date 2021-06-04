@@ -1,7 +1,7 @@
 import BaseService from "@root/base/BaseService";
 import inquirer = require("inquirer");
 import Config, { ConfigInterface, CONFIG_FILE_NAME } from "../compute/Config";
-import { writeFileSync } from 'fs';
+import { existsSync, writeFileSync } from 'fs';
 import * as upath from "upath";
 import { CliInterface } from "./CliService";
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
@@ -135,6 +135,11 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
         if (answer.yes) {
           if (pass) {
             answers.password = pass;
+          }
+          answers.ignores = [];
+          answers.downloads = [];
+          if(existsSync('.sync_ignore') == false){
+            writeFileSync('.sync_ignore',"",'utf8');
           }
           masterData.saveData('generate.json',answers);
           writeFileSync(CONFIG_FILE_NAME, JSON.stringify(answers, null, 4), 'utf8');

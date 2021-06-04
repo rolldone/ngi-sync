@@ -38,7 +38,7 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
         message: "Direct Access List :",
         choices: [
           ...arrayQuestions,
-          'Exit'
+          'Restart'
         ]
       }
     ];
@@ -57,8 +57,9 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
           break;
         }
       }
-      if(passAnswer.target == "Exit"){
-        process.exit(1);
+      if(passAnswer.target == "Restart"){
+        masterData.saveData('command.direct.retry',{});
+        return;
       }
       let _direcAccess = this.returnDirectAccess(this._config);
       _direcAccess.setOnListener(function (props: any) {

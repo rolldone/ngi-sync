@@ -32,6 +32,7 @@ const SyncPull = DevSyncPull.extend<Omit<SyncPullInterface, 'model' | '_setSshCo
   setOnListener: function (callback) {
     this._onListener = callback;
   },
+  stopSubmitWatch : function(){},
   submitWatch: function () {
     let _rsync = this._returnRsync();
     _rsync.set('progress')
@@ -74,7 +75,7 @@ const SyncPull = DevSyncPull.extend<Omit<SyncPullInterface, 'model' | '_setSshCo
         })
         setTimeout(()=>{
           this.submitWatch();
-        },10000);
+        },50000);
 
         /* Problem on wsl network still waiting more info */
         // let defaultIgnores: Array<string | RegExp> = [/node_modules/, /.git/, /.svn/, /bower_components/];
