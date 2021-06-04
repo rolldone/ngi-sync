@@ -130,10 +130,10 @@ export default function (config) {
 	self._deleteRemainingRecord = deletedRemainingRecord();
 	var event = new EventEmitter();
 	self._event = event;
-	var timeinterval = null;
 	var fileWatcher = null;
+	var _mainCon = null;
 	event.on("stop", function () {
-		clearInterval(timeinterval);
+		_mainCon.end();
 		event.emit("close", "SFTP watcher stopped");
 	});
 	if (!config.host && !config.username) {
@@ -151,8 +151,10 @@ export default function (config) {
 			}
 			var theSavedJob = {};
 			event.on('done', function () {
+				/* Call again, get recursive */
 				new job(theSavedJob);
 			})
+			/* Start playing to recursive */
 			new job(theSavedJob);
 		};
 		config.jumps = config.jumps || [];
@@ -236,6 +238,7 @@ export default function (config) {
 						port: hoopings[index].port,
 						username: hoopings[index].username
 					});
+					_mainCon = masterCon;
 				}
 			}
 			recurSive(0);
@@ -258,6 +261,7 @@ export default function (config) {
 		}).on('error', function (err) {
 			event.emit('error', err.message || err);
 		}).connect(config);
+		_mainCon = conn;
 	};
 
 	return event;

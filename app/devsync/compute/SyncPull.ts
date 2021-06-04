@@ -8,6 +8,7 @@ import { join as pathJoin, dirname } from "path";
 import * as upath from "upath";
 import * as path from 'path';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+import EventEmitter from "events";
 
 declare var masterData: MasterDataInterface;
 
@@ -39,6 +40,7 @@ export interface SyncPullInterface extends BaseModelInterface {
   _setSshConfig: { (props: SftpOptions): void }
   _sshConfig?: SftpOptions | null
   submitWatch: { (): void }
+  stopSubmitWatch: { (): void }
   _downloadFile: {
     (props: propsDownload): void
   }
@@ -57,6 +59,8 @@ export interface SyncPullInterface extends BaseModelInterface {
     }): void
   }
   _removeSameString?: { (fullPath: string, basePath: string): string }
+  startWatchingWithTimeOut?: { (args?: any): { (): void } }
+  _event ?: EventEmitter
 }
 
 const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
@@ -76,6 +80,25 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   },
   _setSshConfig: function (props) {
     this._sshConfig = props;
+  },
+  startWatchingWithTimeOut: function () {
+    let _pendingStopWatch: any = null;
+    return () => {
+      if (_pendingStopWatch != null) {
+        _pendingStopWatch.cancel();
+      }else{
+        this.submitWatch();
+      }
+      _pendingStopWatch = _.debounce(() => {
+        this.stopSubmitWatch();
+        _pendingStopWatch = null;
+      }, 100000);
+      _pendingStopWatch();
+    }
+  },
+  stopSubmitWatch: function () {
+    this._event.emit('stop');
+    this._event = null;
   },
   submitWatch: function () {
     let event = SftpWatcher({
@@ -120,6 +143,10 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         return: data
       });
     });
+    this._event = event as any; 
+    masterData.setOnListener('call.start.waching.data', () => {
+
+    });
   },
   _downloadFile: function (props) {
     let keynya = props.folder + '/' + props.file;
@@ -146,7 +173,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
               ...this._sshConfig,
               path: fromFilePath
             });
-            
+
             if (err) {
               this._onListener({
                 status: 'error',
@@ -158,7 +185,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
               [theLocalPath]: true,
             });
             delete this._folderQueue[keynya];
-            
+
           })
         }
         if (err) {

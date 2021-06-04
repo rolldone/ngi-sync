@@ -130,9 +130,18 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           taskWatchOnServer.status(res.status);
         });
         syncPull.submitWatch();
-        
+        let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
         this.uploader = new Uploader(currentConf, this._cli);
         this.watcher = new Watcher(this.uploader, currentConf, this._cli);
+        this.watcher.setOnListener((props:{
+          action : string
+        })=>{
+          switch(props.action){
+            case 'ALL_EVENT':
+              _startWatchingWithTimeOut();
+              break;
+          }
+        });
         return this.watcher.ready();
       }).then(() => {
         var reCallCurrentCOnf = ()=>{
