@@ -47,6 +47,16 @@ sync-config.json
                 "StrictHostKeyChecking" : "no"
               },
               {
+                "Host": "wsl_as_jump_rollproject_request_remote",
+                "HostName": "localhost",
+                "User": "root",
+                "Port": "2222",
+                "RequestTty":"force",
+                "IdentityFile" : "C:/Users/donny/.ssh/openssh_nopassword.key",
+                "StrictHostKeyChecking" : "no",
+                "RemoteCommand" : "cd /root/workspaces/artywiz_broadcast_service && bash -l"
+              },
+              {
                 "Host": "to_rollproject",
                 "HostName": "192.168.100.100",
                 "User": "root",
