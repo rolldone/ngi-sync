@@ -50,7 +50,7 @@ var recurSived = function(hoopings,connectionsArray,index,parseStream = null,cal
   if(index > 0){
     masterCon.connect({
       password : hoopings[index].password,
-      privateKey : readFileSync(hoopings[index].privateKey),
+      privateKey : hoopings[index].privateKey != null ? readFileSync(hoopings[index].privateKey) : null,
       username: hoopings[index].username,
       // port : hoopings[index].port,
       sock:parseStream
@@ -58,7 +58,7 @@ var recurSived = function(hoopings,connectionsArray,index,parseStream = null,cal
   }else{
     masterCon.connect({
       password : hoopings[index].password,
-      privateKey : readFileSync(hoopings[index].privateKey),
+      privateKey : hoopings[index].privateKey != null ? readFileSync(hoopings[index].privateKey) : null,
       host: hoopings[index].host,
       port: hoopings[index].port,
       username: hoopings[index].username
