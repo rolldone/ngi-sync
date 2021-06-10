@@ -139,7 +139,7 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
           answers.ignores = [];
           answers.downloads = [];
           if(existsSync('.sync_ignore') == false){
-            writeFileSync('.sync_ignore',"",'utf8');
+            writeFileSync('.sync_ignore','.sync_ignore \nsync-config.json','utf8');
           }
           masterData.saveData('generate.json',answers);
           writeFileSync(CONFIG_FILE_NAME, JSON.stringify(answers, null, 4), 'utf8');
