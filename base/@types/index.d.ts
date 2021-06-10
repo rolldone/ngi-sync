@@ -18,6 +18,8 @@ interface BaseProtoInterface<T extends BaseProtoInterface<T>> {
   __init?: string
   construct?: any
   _replaceAt ?: {(input : string, search : string, replace : string, start : number, end : number) : string}
+  _getStatInfo ?: {(permission:number,passTypeData?:string):boolean|string}
+  _waitingTimeout ?: {(timeoutNumber):Promise}
 }
 
 interface BaseControllerInterface extends BaseProtoInterface<BaseControllerInterface> {
