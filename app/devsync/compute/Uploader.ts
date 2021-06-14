@@ -59,26 +59,28 @@ export default class Uploader {
 		return upath.normalizeSafe(remotePath);
 	}
 
-	unlinkFile(fileName: string): Promise<string> {
+	unlinkFile(fileName: string,timeout?:number): Promise<string> {
 		return new Promise<string>((resolve, reject) => {
-			let remote = this.getRemotePath(fileName);
-			this.client.sftp((err, sftp) => {
-				if (err) {
-					reject('SFTP cannot be created');
-				} else {
-					sftp.unlink(remote, (err: any) => {
-						if (err) {
-							reject('File could not be deleted');
-						} else {
-							resolve(remote);
-						}
-					});
-				}
-			});
+			setTimeout(()=>{
+				let remote = this.getRemotePath(fileName);
+				this.client.sftp((err, sftp) => {
+					if (err) {
+						reject('SFTP cannot be created');
+					} else {
+						sftp.unlink(remote, (err: any) => {
+							if (err) {
+								reject('File could not be deleted');
+							} else {
+								resolve(remote);
+							}
+						});
+					}
+				});
+			},timeout||50)
 		});
 	}
 
-	unlinkFolder(folderPath: string): Promise<string> {
+	unlinkFolder(folderPath: string,timeout?:number,parsResolve?:Function): Promise<string> {
 		return new Promise<string>((resolve, reject) => {
 			setTimeout(() => {
 				let remote = this.getRemotePath(folderPath);
@@ -88,18 +90,22 @@ export default class Uploader {
 					} else {
 						sftp.rmdir(remote, (err: any) => {
 							if (err) {
-								reject('Folder could not be deleted');
+								// reject('Folder could not be deleted');
+								this.unlinkFolder(folderPath,timeout,parsResolve);
 							} else {
+								if(parsResolve != null){
+									return parsResolve(remote);
+								}
 								resolve(remote);
 							}
 						});
 					}
 				});
-			}, 2000);
+			}, timeout||2000);
 		});
 	}
 
-	uploadFile(fileName: string): Promise<string> {
+	uploadFile(fileName: string,timeout?:number): Promise<string> {
 		return new Promise<string>((resolve, reject) => {
 			let remote = this.getRemotePath(fileName);
 			let _queueKey = upath.normalizeSafe(remote);
@@ -151,7 +157,7 @@ export default class Uploader {
 					console.log('Uploader :: ex ',ex.toString());
 					delete this._pendingQueue[_queueKey];
 				}
-			}, 1000);
+			}, timeout||1000);
 			this._pendingQueue[_queueKey](remote);
 		});
 	}

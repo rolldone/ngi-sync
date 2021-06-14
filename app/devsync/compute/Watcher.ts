@@ -9,11 +9,30 @@ import * as upath from 'upath';
 import parseGitIgnore from '@root/tool/parse-gitignore'
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import ignore from 'ignore'
+import { debounce, DebouncedFunc } from "lodash";
 declare let masterData : MasterDataInterface;
 
 export default class Watcher {
 	files: FSWatcher;
 	_onListener : Function;
+	_getTimeoutSftp : {(overrideTimeout?:number):number};
+	_setTimeoutSftp(){
+		const fixTimeout = 50;
+		let timeout = fixTimeout;
+		let _pendingResetTimeout : DebouncedFunc<any> = null;
+		return (overrideTimeout?:number)=>{
+			let timeFixTimeout = overrideTimeout || fixTimeout;
+			if(_pendingResetTimeout != null){
+				_pendingResetTimeout.cancel();
+			}
+			_pendingResetTimeout = debounce(()=>{
+				timeout = timeFixTimeout;
+			},timeout);
+			_pendingResetTimeout();
+			timeout = timeout + timeFixTimeout;
+			return timeout;
+		}
+	};
 	private tasks: {
 		[key: string]: any
 	} = {};
@@ -27,7 +46,7 @@ export default class Watcher {
 		
 		let gitIgnore : Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
 		let _ignore = ignore().add(gitIgnore);
-		let defaultIgnores: Array<string | RegExp> = [/node_modules/, /.git/, /.svn/, /bower_components/,'sync-config.json','.sync_ignore'];
+		let defaultIgnores: Array<string | RegExp> = ['sync-config.json','.sync_ignore'];
 		let onlyPathStringIgnores : Array<string> = [];
 		let onlyFileStringIgnores : Array<string> = [];
 		let onlyRegexIgnores : Array<RegExp> = [];
@@ -116,6 +135,8 @@ export default class Watcher {
 				_currentWatch.on(method, this.handler(method));
 			});
 		}
+
+		this._getTimeoutSftp = this._setTimeoutSftp();
 	}
 
 	_replaceAt(input : string, search : string, replace : string, start : number, end : number) : string {
@@ -180,7 +201,7 @@ export default class Watcher {
 	};
 
 	private add = (path: string) => {
-		this.uploader.uploadFile(path).then(remote => {
+		this.uploader.uploadFile(path,this._getTimeoutSftp()).then(remote => {
 			this.tasks[path].done("Done");
 		}).catch((err) => {
 			this.tasks[path].fail("Fail").details(err.message);
@@ -188,7 +209,7 @@ export default class Watcher {
 	};
 
 	private change = (path: string) => {
-		this.uploader.uploadFile(path).then(remote => {
+		this.uploader.uploadFile(path,this._getTimeoutSftp()).then(remote => {
 			this.tasks[path].done("Done");
 		}).catch((err) => {
 			this.tasks[path].fail("Fail").details(err.message);
@@ -196,7 +217,7 @@ export default class Watcher {
 	};
 
 	private unlink = (path: string) => {
-		this.uploader.unlinkFile(path).then(remote => {
+		this.uploader.unlinkFile(path,this._getTimeoutSftp(50)).then(remote => {
 			this.tasks[path].done("Done");
 		}).catch((err) => {
 			this.tasks[path].fail("Fail").details(`Error deleting file ${err} or maybe just deleted from target.`);
@@ -204,7 +225,7 @@ export default class Watcher {
 	};
 
 	private unlinkDir = (path: string) => {
-		this.uploader.unlinkFolder(path).then(remote => {
+		this.uploader.unlinkFolder(path,this._getTimeoutSftp(50)).then(remote => {
 			this.tasks[path].done("Done");
 		}).catch((err) => {
 			this.tasks[path].fail("Fail").details(`Error deleting folder ${err}`);
