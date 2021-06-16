@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { Client } from "scp2";
 import Config, { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
-import _, { debounce } from 'lodash';
+import _, { debounce, DebouncedFunc } from 'lodash';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 
 declare var masterData: MasterDataInterface;
@@ -108,7 +108,7 @@ export default class Uploader {
 	_index : number = 0
 	_concurent : number = 8
 	_pendingUpload : {
-		[key : string] : Function
+		[key : string] : DebouncedFunc<any>
 	} = {}
 	_orders : {
 		[key : string] : any
@@ -134,7 +134,9 @@ export default class Uploader {
         queue_no: entry.queue_no
       });
       if (this._pendingUpload[entry.path] != null) {
-        return;
+        // return;
+				entry.reject("");
+				this._pendingUpload[entry.path].cancel();
       }
       /* Mengikuti kelipatan concurent */
       let _debouncePendingOut = first_time_out == null ? (100 * (entry.queue_no == 0 ? 1 : entry.queue_no + 1)) : first_time_out;
