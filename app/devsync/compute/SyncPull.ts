@@ -9,6 +9,7 @@ import * as upath from "upath";
 import * as path from 'path';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import EventEmitter from "events";
+const observatory = require("observatory");
 
 declare var masterData: MasterDataInterface;
 
@@ -32,6 +33,9 @@ type propsDownload = {
 };
 
 export interface SyncPullInterface extends BaseModelInterface {
+  _tasks ?: {
+    [key : string] : any
+  }
   construct: { (cli: CliInterface, jsonConfig: SftpOptions): void }
   create?: (cli: CliInterface, jsonConfig: object) => this
   setOnListener: { (callback: Function): void }
@@ -65,6 +69,7 @@ export interface SyncPullInterface extends BaseModelInterface {
 
 const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   _folderQueue: {},
+  _tasks : {},
   returnClient: function (props) {
     //if (this._clientApp == null) {
     this._clientApp = new Client(props);
@@ -73,6 +78,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   },
   construct: function (cli, jsonConfig) {
     this._cli = cli;
+    this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
     this._setSshConfig(jsonConfig);
   },
   setOnListener: function (callback) {
@@ -134,7 +140,9 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       console.log(data.toString())
     });
     event.on("close", (data: any) => {
-      console.log('close', data);
+      // console.log('close', data);ddd
+      // observatory.add(this.eventToWord[event]);
+      this._tasks['sftp-watcher'].done(data);
     });
     event.on("error", (data: any) => {
       console.log('error', data.toString())
