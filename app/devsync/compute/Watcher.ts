@@ -147,6 +147,45 @@ export default class Watcher {
 			mkdirSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder));
 		}
 		this._getTimeoutSftp = this._setTimeoutSftp();
+
+		masterData.setOnListener('chokidar_event',(props : any)=>{
+			let {path,event,message} = props;
+			switch(event){
+				case 'all':
+					if(this.tasks['all'] != null){
+						this.tasks['all'].status(path.replace(this.config.localPath,"")+"");
+						this.getRemoveSelfTask['all']();
+						return;
+					}
+					this.getRemoveSelfTask['all'] = this.removeSelfTask('all');
+					this.tasks['all'] = observatory.add(message);// observatory.add(this.eventToWord[event]);
+					this.tasks['all'].status(path.replace(this.config.localPath,"")+"");
+					this.getRemoveSelfTask['all']();
+					break;
+				case 'add':
+					if(this.tasks['add'] != null){
+						this.tasks['add'].done(path.replace(this.config.localPath,"")+"");
+						this.getRemoveSelfTask['add']();
+						return;
+					}
+					this.getRemoveSelfTask['add'] = this.removeSelfTask('add');
+					this.tasks['add'] = observatory.add(message);
+					this.tasks['add'].done(path.replace(this.config.localPath,"")+"");
+					this.getRemoveSelfTask['add']();
+					break;
+				case 'change':
+					if(this.tasks['change'] != null){
+						this.tasks['change'].done(path.replace(this.config.localPath,"")+"");
+						this.getRemoveSelfTask['change']();
+						return;
+					}
+					this.getRemoveSelfTask['change'] = this.removeSelfTask('change');
+					this.tasks['change'] = observatory.add(message);
+					this.tasks['change'].done(path.replace(this.config.localPath,"")+"");
+					this.getRemoveSelfTask['change']();
+					break;
+			}
+		});
 	}
 
 	_replaceAt(input : string, search : string, replace : string, start : number, end : number) : string {
@@ -229,7 +268,7 @@ export default class Watcher {
 		};
 
 	private handler(method: string) {
-		return async (...args: string[]) : Promise<any> => {
+		return (...args: string[]) : Promise<any> => {
 			let path: string,
 				event = method;
 			// Handle argument difference
@@ -249,12 +288,18 @@ export default class Watcher {
 				case 'unlinkDir':
 					break;
 				default:
-					if(await this.getCacheFile(path) == true){
-						return null;
-					}
-					break;
+					this.getCacheFile(path).then((res)=>{
+						if(res == true){
+							return;
+						}
+						let tt: {
+							[key: string]: any
+						} = this;
+						// If not, continue as ususal
+						tt[method](...args);
+					});
+					return;
 			}
-			
 			let tt: {
 				[key: string]: any
 			} = this;
@@ -275,26 +320,21 @@ export default class Watcher {
 				pendingTask[whatTask].cancel();
 			}
 			pendingTask[whatTask] = debounce((whatTask:string)=>{
-				this.tasks['newLine'].done();
+				// this.tasks['newLine'].done();
 				this.tasks[whatTask].done();
 				this.tasks[whatTask] = null;
-			},5000);
+			},2000);
 			pendingTask[whatTask](whatTask);
 		}
 	}
 
 	private all = (event: string, path: string) => {
 		if (event in this.eventToWord) {
-			if(this.tasks['entry-'+event] != null){
-				this.tasks['entry-'+event].status(path.replace(this.config.localPath,"")+"");
-				this.getRemoveSelfTask['all']();
-				return;
-			}
-			this.tasks['newLine'] = observatory.add(new Date());
-			this.tasks['newLine'].status("");
-			this.getRemoveSelfTask['all'] = this.removeSelfTask('entry-'+event);
-			this.tasks['entry-'+event] = observatory.add("ENTRY : "+event.toUpperCase());// observatory.add(this.eventToWord[event]);
-			this.tasks['entry-'+event].status(path.replace(this.config.localPath,"")+"");
+			masterData.saveData('chokidar_event',{
+				event : 'all',
+				path : path,
+				message : "ENTRY : "+event.toUpperCase()
+			});
 		}
 	};
 
@@ -302,15 +342,12 @@ export default class Watcher {
 		this.uploader.uploadFile(path,this._getTimeoutSftp()).then(remote => {
 			setTimeout(()=>{
 				this.setCacheFile(path);
-			},1000);
-			if(this.tasks['add'] != null){
-				this.tasks['add'].done(path.replace(this.config.localPath,"")+"");
-				this.getRemoveSelfTask['add']();
-				return;
-			}
-			this.getRemoveSelfTask['add'] = this.removeSelfTask('add');
-			this.tasks['add'] = observatory.add("ADD :: DONE ");
-			this.tasks['add'].done(path.replace(this.config.localPath,"")+"");
+			},500);
+			masterData.saveData('chokidar_event',{
+				event : 'add',
+				path : path,
+				message : "ADD :: UPLOADING "
+			})
 		}).catch((err) => {
 			this.tasks["add-err-"+path.replace(this.config.localPath,"")] = observatory.add('ADD ERR :: '+path.replace(this.config.localPath,"")+"");
 			this.tasks["add-err-"+path.replace(this.config.localPath,"")].fail('Fails').details(err.message);
@@ -321,15 +358,12 @@ export default class Watcher {
 		this.uploader.uploadFile(path,this._getTimeoutSftp()).then(remote => {
 			setTimeout(()=>{
 				this.setCacheFile(path);
-			},1000);
-			if(this.tasks['change'] != null){
-				this.tasks['change'].done(path.replace(this.config.localPath,"")+"");
-				this.getRemoveSelfTask['change']();
-				return;
-			}
-			this.getRemoveSelfTask['change'] = this.removeSelfTask('change');
-			this.tasks['change'] = observatory.add("CHANGED :: DONE ");
-			this.tasks['change'].done(path.replace(this.config.localPath,"")+"");
+			},500);
+			masterData.saveData('chokidar_event',{
+				event : 'change',
+				path : path,
+				message : "CHANGED :: UPLOADING "
+			})
 		}).catch((err) => {
 			this.tasks["change-err-"+path.replace(this.config.localPath,"")] = observatory.add('CHANGE ERR :: '+path.replace(this.config.localPath,"")+"");
 			this.tasks["change-err-"+path.replace(this.config.localPath,"")].fail('Fails').details(err.message);

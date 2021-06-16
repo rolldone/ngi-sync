@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { Client } from "scp2";
 import Config, { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
-import _ from 'lodash';
+import _, { debounce } from 'lodash';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 
 declare var masterData: MasterDataInterface;
@@ -50,6 +50,7 @@ export default class Uploader {
 			},5000);
 			pendingClose();
 		});
+		this._exeHandlePush = this._handlePush();
 	}
 
 	getRemotePath(path: string): string {
@@ -104,7 +105,102 @@ export default class Uploader {
 			}, timeout||2000);
 		});
 	}
+	_index : number = 0
+	_concurent : number = 8
+	_pendingUpload : {
+		[key : string] : Function
+	} = {}
+	_orders : {
+		[key : string] : any
+	} = {}
+	_exeHandlePush : Function = null;
+	private _handlePush() {
+    var debounceClose: any = null;
 
+    var _closeIfPossible = (_client: Client) => {
+      if (debounceClose != null) {
+        // console.log('UPLOAD :: waiting for close');
+        debounceClose.cancel();
+      }
+      debounceClose = debounce(() => {
+				// console.log('callid');
+       //  _client.close();
+      }, 10000);
+      debounceClose();
+    }
+    return (entry : any, first_time_out:number) => {
+      this._orders[entry.queue_no] = Object.create({
+        ...entry,
+        queue_no: entry.queue_no
+      });
+      if (this._pendingUpload[entry.path] != null) {
+        return;
+      }
+      /* Mengikuti kelipatan concurent */
+      let _debouncePendingOut = first_time_out == null ? (100 * (entry.queue_no == 0 ? 1 : entry.queue_no + 1)) : first_time_out;
+      this._pendingUpload[entry.path] = _.debounce((entry: any) => {
+				var remote = entry.path;
+				var resolve = entry.resolve;
+				var reject = entry.reject;
+				var fileName = entry.fileName;
+				this.client.mkdir(upath.dirname(remote), { mode: this.config.pathMode }, err => {
+					this._pendingUpload[entry.path] = null;
+					delete this._orders[entry.queue_no];
+					if (err) {
+						// reject({
+						// 	message: `Could not create ${upath.dirname(remote)}`,
+						// 	error: err
+						// });
+					} else {
+						/* Dont let file edited by server upload to server again! */
+						let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
+						if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
+							if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
+								console.log('File edited by system dont let uploaded : ', upath.normalizeSafe(fileName));
+								delete this._pendingQueue[remote];
+								masterData.updateData('file_edit_from_server', {
+									[upath.normalizeSafe(fileName)]: false
+								});
+								// console.log('remote - done ',remote)
+								resolve(remote);
+								return;
+							}
+						}
+						// Uplad the file
+						this.client.upload(fileName, remote, err => {
+							if (err) {
+								// reject({
+								// 	message: `Could not upload ${remote}`,
+								// 	error: err
+								// });
+							}
+							let firstKey = Object.keys(this._pendingQueue)[entry.queue_no];
+							if (firstKey == null) {
+								firstKey = Object.keys(this._pendingQueue)[0];
+								if (firstKey == null) {
+									_closeIfPossible(this.client);
+									resolve(remote);
+									return;
+								}
+							}
+							let oo = Object.assign({}, this._pendingQueue[firstKey]);
+							delete this._pendingQueue[firstKey];
+							if (firstKey != null && oo.path == null) {
+								// reject({
+								// 	message: `Could not upload ${remote}`,
+								// 	error: 'null'
+								// });
+							}
+							this._exeHandlePush(oo);
+							// console.log('remote - done ',remote)
+							resolve(remote);
+						});
+					}
+				});
+      }, _debouncePendingOut);
+      this._pendingUpload[entry.path](entry);
+    }
+  }
 	uploadFile(fileName: string,timeout?:number): Promise<string> {
 		return new Promise<string>((resolve, reject) => {
 			let remote = this.getRemotePath(fileName);
@@ -114,51 +210,47 @@ export default class Uploader {
 			// in windows it might mean we won't have permissons to save the fileName
 			// So I create the folder manually here to solve that issue.
 			// Mode we set can be configured from the config file
-			if (this._pendingQueue[_queueKey] != null) {
-				this._pendingQueue[remote].cancel();
+			// if (this._pendingQueue[_queueKey] != null) {
+			// 	// this._pendingQueue[_queueKey].cancel();
+			// 	return;
+			// }else{
+			// 	console.log('change','->',_queueKey,timeout)
+				
+			// }
+			// this._pendingQueue[_queueKey] = _.debounce((_queueKey:string,remote: string) => {
+				
+			// }, timeout||1000);
+
+
+			// this._pendingQueue[_queueKey](_queueKey,remote);
+      if (this._index == this._concurent) {
+        this._index = 0;
+      }
+			if(this._orders == null){
+				this._orders = {};
 			}
-			this._pendingQueue[_queueKey] = _.debounce((remote: string) => {
-				try{
-					this.client.mkdir(upath.dirname(remote), { mode: this.config.pathMode }, err => {
-						if (err) {
-							reject({
-								message: `Could not create ${upath.dirname(remote)}`,
-								error: err
-							});
-						} else {
-							/* Dont let file edited by server upload to server again! */
-							let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
-							if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
-								if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
-									console.log('File edited by system dont let uploaded : ', upath.normalizeSafe(fileName));
-									delete this._pendingQueue[_queueKey];
-									masterData.updateData('file_edit_from_server', {
-										[upath.normalizeSafe(fileName)]: false
-									});
-									resolve(remote);
-									return;
-								}
-							}
-							// Uplad the file
-							this.client.upload(fileName, remote, err => {
-								if (err) {
-									reject({
-										message: `Could not upload ${remote}`,
-										error: err
-									});
-								} else {
-									resolve(remote);
-								}
-							});
-						}
-						delete this._pendingQueue[_queueKey];
-					});
-				}catch(ex){
-					console.log('Uploader :: ex ',ex.toString());
-					delete this._pendingQueue[_queueKey];
+			// console.log('this._orders',Object.keys(this._orders).length);
+			// console.log('this._index',this._index);
+      if (Object.keys(this._orders).length < this._concurent) {
+        this._exeHandlePush({
+          path : remote,
+          queue_no: this._index,
+					resolve : resolve,
+					reject : reject,
+					fileName : fileName
+        }, 100 * (this._index == 0 ? 1 : this._index + 1));
+      } else {
+				if(this._pendingQueue[remote] == null){
+					this._pendingQueue[remote] = {
+						path : remote,
+						queue_no: this._index,
+						resolve : resolve,
+						reject : reject,
+						fileName : fileName
+					};
 				}
-			}, timeout||1000);
-			this._pendingQueue[_queueKey](remote);
+      }
+      this._index += 1;
 		});
 	}
 }
