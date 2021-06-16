@@ -33,7 +33,7 @@ type propsDownload = {
 };
 
 export interface SyncPullInterface extends BaseModelInterface {
-  _tasks : {
+  _tasks ?: {
     [key : string] : any
   }
   construct: { (cli: CliInterface, jsonConfig: SftpOptions): void }
