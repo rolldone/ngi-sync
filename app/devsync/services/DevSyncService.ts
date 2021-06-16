@@ -8,6 +8,7 @@ import Uploader from "../compute/Uploader";
 import Watcher from "../compute/Watcher";
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import _ from 'lodash';
+import * as upath from 'upath';
 import inquirer = require("inquirer");
 
 const chalk = require('chalk');
@@ -123,11 +124,25 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           local_path: currentConf.localPath,
           jumps: currentConf.jumps
         });
-  
+        let historyStatus : {
+          [key : string] : any
+        } = {};
         syncPull.setOnListener((res: any) => {
           // console.log('props', res);
-          var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null?'No Such file of directory':res.return.folder));
+          if(res.return.folder == null){
+            var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null?'No Such file of directory':res.return.file.filename));
+            taskWatchOnServer.status(res.status);
+            taskWatchOnServer.fail(res.status);
+            return;
+          }
+          let thePath = upath.normalizeSafe(res.return.folder+'/'+res.return.file.filename);
+          if(historyStatus[thePath] == res.status){
+            return;
+          }
+          historyStatus[thePath] = res.status;
+          var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null?'No Such file of directory':res.return.file.filename));
           taskWatchOnServer.status(res.status);
+          taskWatchOnServer.done(res.status);
         });
         syncPull.submitWatch();
         let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
