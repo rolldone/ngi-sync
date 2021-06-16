@@ -179,7 +179,7 @@ export default function (config) {
 							} else {
 								event.emit('connected', true);
 								for (var a = 0; a < config.paths.length; a++) {
-									console.log('watch folder on server -> ', config.paths[a], '\n');
+									// console.log('watch folder on server -> ', config.paths[a], '\n');
 									fileWatcher(sftp, config.paths[a]);
 								}
 							}
@@ -253,7 +253,7 @@ export default function (config) {
 				} else {
 					event.emit('connected', true);
 					for (var a = 0; a < config.paths.length; a++) {
-						console.log('watch folder on server -> ', config.paths[a], '\n');
+						// console.log('watch folder on server -> ', config.paths[a], '\n');
 						fileWatcher(sftp, config.paths[a]);
 					}
 				}
