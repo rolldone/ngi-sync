@@ -141,8 +141,8 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           }
           historyStatus[thePath] = res.status;
           var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null?'No Such file of directory':res.return.file.filename));
-          taskWatchOnServer.status(res.status);
-          taskWatchOnServer.done(res.status);
+          // taskWatchOnServer.status(res.status);
+          taskWatchOnServer.done();
         });
         syncPull.submitWatch();
         let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
