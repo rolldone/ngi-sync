@@ -32,7 +32,7 @@ var deletedRemainingRecord = function () {
 			pendingDelete.cancel();
 		}
 		pendingDelete = _.debounce(function (remainingObject) {
-			Object.keys(lastRecord).forEach(function (lastFileName) {
+			for(var lastFileName in lastRecord) {
 				if (remainingObject[lastFileName] == null) {
 					let theDelete = {
 						host: config.host,
@@ -43,7 +43,8 @@ var deletedRemainingRecord = function () {
 					};
 					self._event.emit("delete", theDelete);
 				}
-			});
+				delete lastRecord[lastFileName];
+			};
 			lastRecord = remainingObject;
 			self._event.emit('done');
 		}, 5000);
@@ -77,7 +78,7 @@ var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileO
 					});
 					/* Call again remaining queue for continue process loop request */
 					self._deleteRemainingRecord.call(self, newEntryObjList);
-					break; false;
+					break;
 				}
 			}
 		})
