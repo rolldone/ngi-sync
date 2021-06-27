@@ -138,6 +138,12 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
           }
           answers.ignores = [];
           answers.downloads = [];
+          answers.single_sync = [];
+          answers.direct_access = {
+            config_file : 'your ssh config file ',
+            ssh_configs : [],
+            ssh_commands : [],
+          };
           if(existsSync('.sync_ignore') == false){
             writeFileSync('.sync_ignore','.sync_ignore \nsync-config.json \n.sync_temp','utf8');
           }
