@@ -79,7 +79,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         exclude: _filterPatternRules.ignores,
         // flags : '-vt',
         flags: '-avz',
-        shell: 'ssh  -p ' + config.port
+        shell: 'ssh -i '+config.privateKeyPath+' -p ' + config.port
       });
 
       console.log('rsync command -> ', rsync.command());
