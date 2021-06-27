@@ -29,9 +29,8 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
       // let _listningTemplate = await this._listningTemplate();
       // console.log('_listningTemplate',_listningTemplate);
       // return;
-      console.log('aaaaaaaaaaaaaaaaaaaaa');
       let _filterPatternRules = this._filterPatternRule();
-      console.log('_filterPatternRules',_filterPatternRules);
+      // console.log('_filterPatternRules',_filterPatternRules);
       let config = this._config;
       let _local_path = config.local_path;
       // if(isCygwin() == true){
