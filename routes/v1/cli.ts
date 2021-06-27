@@ -6,6 +6,9 @@ import BaseRouteCli from "@root/base/BaseRouteCli";
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import MainForceSftp from '@root/app/forcesftp/Main';
 import MainDirect from '@root/app/directaccess/Main';
+import MainDevsync2 from '@root/app/devsync2/Main';
+import ForceRsync from '@root/app/forcersync/Main';
+
 declare var masterData: MasterDataInterface;
 
 const Cli = BaseRouteCli.extend<BaseRouteInterface>({
@@ -23,6 +26,10 @@ const Cli = BaseRouteCli.extend<BaseRouteInterface>({
     masterData.setOnListener('command.forcesftp.pull', MainForceSftp.binding().pull);
     masterData.setOnListener('command.direct.index', MainDirect.binding().index);
     masterData.setOnListener('command.direct.retry', MainDirect.binding().retry);
+    masterData.setOnListener('command.devsync2.index',MainDevsync2.binding().index);
+    masterData.setOnListener('command.forcersync.index',ForceRsync.binding().index);
+    masterData.setOnListener('command.forcersync.pull',ForceRsync.binding().pull);
+    masterData.setOnListener('command.forcersync.single_sync',ForceRsync.binding().index);
   }
 });
 
