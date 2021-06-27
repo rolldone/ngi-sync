@@ -7,7 +7,7 @@ import SyncPush, { LocalOptions, SyncPushInterface } from "../compute/SyncPush";
 const chalk = require('chalk');
 const observatory = require("observatory");
 
-export interface DevSyncServiceInterface extends BaseServiceInterface {
+export interface DevSyncServicePushInterface extends BaseServiceInterface {
   returnConfig: { (cli: CliInterface): ConfigInterface }
   returnSyncPush: { (cli: CliInterface, localConfig: LocalOptions): SyncPushInterface }
   create?: (cli: CliInterface, props ?: any) => this
@@ -16,14 +16,14 @@ export interface DevSyncServiceInterface extends BaseServiceInterface {
   task?: any
 }
 
-const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
+const DevSyncServicePush = BaseService.extend<DevSyncServicePushInterface>({
   returnConfig: function (cli) {
     return Config.create(cli);
   },
   returnSyncPush: function (cli, localConfig) {
     return SyncPush.create(cli, localConfig);
   },
-  construct: function (cli: CliInterface,props : any) {
+  construct: function (cli: CliInterface,props : any = {}) {
     this._cli = cli;
     this.task = observatory.add("Initializing...");
     let currentConf = this.returnConfig(cli);
@@ -71,4 +71,4 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
   }
 });
 
-export default DevSyncService;
+export default DevSyncServicePush;

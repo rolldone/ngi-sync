@@ -135,7 +135,9 @@ export default class Uploader {
       });
       if (this._pendingUpload[entry.path] != null) {
         // return;
-				entry.reject("");
+				/* entry.reject({
+					message : "Upload retry again!"
+				}); */
 				this._pendingUpload[entry.path].cancel();
       }
       /* Mengikuti kelipatan concurent */

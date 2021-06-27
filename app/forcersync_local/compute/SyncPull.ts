@@ -1,7 +1,7 @@
 import DevSyncPull, { SyncPullInterface as DevSyncPullInterface, SftpOptions as DevSyncPullSftpOptions } from '@root/app/devsync/compute/SyncPull';
 import { CliInterface } from '../services/CliService';
 import * as chokidar from "chokidar";
-import Rsync from '@root/tool/rsync/Rsync';
+import Rsync from '@root/tool/rsync';
 
 export interface LocalOptions extends Omit<DevSyncPullSftpOptions, 'host' | 'username' | 'password' | 'privateKey' | 'jumps'> {
   ignores?: Array<string | RegExp>

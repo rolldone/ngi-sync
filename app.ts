@@ -43,6 +43,15 @@ BaseStart({
       case 'direct':
         masterData.saveData('command.direct.index',{});
         return;
+      case 'devsync2':
+        masterData.saveData('command.devsync2.index',{});
+        return;
+      case 'forcersync':
+        masterData.saveData('command.forcersync.index',{});
+        return;
+      case 'singlesync':
+        masterData.saveData('command.forcersync.single_sync',{});
+        return;
     }
   }
 } as AppInterface);

@@ -1,14 +1,14 @@
 export {};import BaseController from "@root/base/BaseController";
 import CliService, { CliInterface } from "./services/CliService";
 import DevSyncPullService, { DevSyncPullServiceInterface } from "./services/DevSyncPullService";
-import DevSyncService, { DevSyncServiceInterface } from "./services/DevSyncService";
+import DevSyncService, { DevSyncServicePushInterface } from "./services/DevSyncPushService";
 
 export interface MainControllerInterface extends BaseControllerInterface {
   index: { (props ?: any): void }
   returnCliService: { (): CliInterface }
-  returnDevSyncService: { (cli?: CliInterface, props ?: any): DevSyncServiceInterface }
+  returnDevSyncService: { (cli?: CliInterface, props ?: any): DevSyncServicePushInterface }
   returnDevSyncPullService : {(cli?: CliInterface, props ?: any) : DevSyncPullServiceInterface}
-  _devSyncService?: DevSyncServiceInterface
+  _devSyncService?: DevSyncServicePushInterface
   pull : {(props ?: any):void}
 }
 
