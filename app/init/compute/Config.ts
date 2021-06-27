@@ -34,6 +34,7 @@ export interface ConfigInterface extends BaseModelInterface {
   backup?: object
   safe_mode?: Boolean | null
   direct_access?: Array<any>
+  single_sync ?: Array<string>
 }
 
 const Config = BaseModel.extend<ConfigInterface>({
@@ -83,7 +84,7 @@ const Config = BaseModel.extend<ConfigInterface>({
       [key: string]: any
     } = this;
     ["mode", "host", "port", "project_name", "username", "password", "pathMode",
-      "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access"].forEach(prop => {
+      "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access","single_sync"].forEach(prop => {
         self[prop] = self._config[prop] || self[prop];
       });
   },

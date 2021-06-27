@@ -49,6 +49,9 @@ BaseStart({
       case 'forcersync':
         masterData.saveData('command.forcersync.index',{});
         return;
+      case 'singlesync':
+        masterData.saveData('command.forcersync.single_sync',{});
+        return;
     }
   }
 } as AppInterface);
