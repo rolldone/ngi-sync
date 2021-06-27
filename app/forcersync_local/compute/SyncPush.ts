@@ -4,7 +4,7 @@ import * as chokidar from "chokidar";
 import { CliInterface } from '../services/CliService';
 const observatory = require("observatory");
 const chalk = require('chalk');
-import Rsync from '@root/tool/rsync/Rsync';
+import Rsync from '@root/tool/rsync';
 
 export interface LocalOptions extends Omit<DevSyncPullSftpOptions, 'host' | 'username' | 'password' | 'privateKey' | 'jumps'> {
   ignores?: Array<string | RegExp>
