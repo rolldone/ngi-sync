@@ -46,6 +46,7 @@ export interface RsyncOptions {
   ignores?: Array<string | RegExp>
   path_mode?: string
   mode?: string
+  single_sync : Array<string>
 }
 
 /** 
@@ -327,7 +328,70 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
     
   },
   submitPushSelective: function () {
-    
+    try{
+      // let _listningTemplate = await this._listningTemplate();
+      // console.log('_listningTemplate',_listningTemplate);
+      // return;
+      let _filterPatternRules = this._filterPatternRule();
+      console.log('_filterPatternRules',_filterPatternRules);
+      let config = this._config;
+      let _local_path = config.local_path;
+      // if(isCygwin() == true){
+        // _local_path = '/cygdrive/'+this._replaceAt(_local_path,':','',0,3);
+      // }
+      
+      // _local_path = this._removeSameString(upath.normalizeSafe(_local_path),upath.normalizeSafe(path.resolve("")));
+      
+      // Convert absolute path to relative
+      _local_path = path.relative(upath.normalizeSafe(path.resolve("")),upath.normalizeSafe(_local_path));
+      
+      var rsync = Rsync.build({
+        /* Support multiple source too */
+        source: upath.normalizeSafe(_local_path+'/'),
+        destination: config.username + '@' + config.host + ':' + config.base_path + '/',
+        /* Include First */
+        include : _filterPatternRules.pass,
+        /* Exclude after include */
+        exclude: _filterPatternRules.ignores,
+        // flags : '-vt',
+        flags: '-avz',
+        shell: 'ssh  -p ' + config.port
+      });
+
+      console.log('rsync command -> ', rsync.command());
+      var child = child_process.spawn(rsync.command(), [''], {
+        stdio: 'inherit',//['pipe', process.stdout, process.stderr]
+        shell: true
+      });
+
+      child.on('exit', (e, code) => {
+        this._onListener({
+              action: "exit",
+              return: {
+                e, code
+              }
+            })
+      });
+
+      /** 27/Jun/2021
+       * Use rsync by library
+       * But now still study with this.
+       * Only use to get the result command */
+      // rsync.execute(
+      //   function (error: any, code: any, cmd: any) {
+      //     // we're done
+      //   }, function (data: any) {
+      //     console.log(data.toString());
+      //     // do things like parse progress
+      //   }, function (data: any) {
+      //     console.log('error', data.toString());
+      //     // do things like parse error output
+      //   }
+      // );
+    }catch(ex : any){
+      // console.log('submitPush - ex ',ex);
+      process.exit(1);
+    }
   }
 });
 

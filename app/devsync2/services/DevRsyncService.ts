@@ -33,6 +33,7 @@ export enum COMMAND_TARGET {
   SAFE_SYNC_NON_FORCE = 'DevSync Basic with non force file \n  - Trigger by edit file :). Ignored file not activated except pull sync \n  - Caution : This mode will take a long time indexing the file. and need more consume RAM',
   SOFT_PUSH_SYNC = 'DevSync Soft Push Data. \n  - Your sensitive data will be safe on target :)',
   FORCE_PUSH_SYNC = 'DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
+  FORCE_SINGLE_SYNC = 'DevSync Single Syncronize \n  - You can download simple file or folder',
 }
 
 const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
@@ -57,7 +58,8 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           COMMAND_TARGET.SAFE_SYNC_NON_FORCE,
           COMMAND_TARGET.SAFE_PULL_SYNC,
           COMMAND_TARGET.SOFT_PUSH_SYNC,
-          COMMAND_TARGET.FORCE_PUSH_SYNC
+          COMMAND_TARGET.FORCE_PUSH_SYNC,
+          COMMAND_TARGET.FORCE_SINGLE_SYNC
         ]
       }
     ];
@@ -78,6 +80,10 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       } else if (passAnswer.target == COMMAND_TARGET.SAFE_SYNC_NON_FORCE) {
         this._currentConf.safe_mode = true;
         this._devSyncSafeSyncronise();
+      } else if(passAnswer.target == COMMAND_TARGET.FORCE_SINGLE_SYNC){
+        masterData.saveData('command.forcersync.single_sync', {
+          action : 'single_sync_nested_prompt'
+        });
       } else {
         this._devSyncSafeSyncronise();
       }

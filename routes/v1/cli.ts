@@ -29,6 +29,7 @@ const Cli = BaseRouteCli.extend<BaseRouteInterface>({
     masterData.setOnListener('command.devsync2.index',MainDevsync2.binding().index);
     masterData.setOnListener('command.forcersync.index',ForceRsync.binding().index);
     masterData.setOnListener('command.forcersync.pull',ForceRsync.binding().pull);
+    masterData.setOnListener('command.forcersync.single_sync',ForceRsync.binding().index);
   }
 });
 
