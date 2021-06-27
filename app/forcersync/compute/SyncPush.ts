@@ -333,7 +333,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       // console.log('_listningTemplate',_listningTemplate);
       // return;
       let _filterPatternRules = this._filterPatternRule();
-      console.log('_filterPatternRules',_filterPatternRules);
+      // console.log('_filterPatternRules',_filterPatternRules);
       let config = this._config;
       let _local_path = config.local_path;
       // if(isCygwin() == true){
