@@ -1,2 +1,5 @@
 .sync_ignore 
 sync-config.json
+/app/*
+!/app/command/
+.git

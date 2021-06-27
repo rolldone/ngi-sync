@@ -1,6 +1,6 @@
 import 'source-map-support/register'
 require('module-alias/register')
-import rsync from '../tool/rsync/Rsync';
+import rsync from '../tool/rsync';
 const { readFileSync } = require('fs');
 
 var Run = function(){
