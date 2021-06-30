@@ -6,7 +6,12 @@ import { String } from "lodash";
 const { parse } = require("jsonplus");
 
 export const CONFIG_FILE_NAME = "sync-config.json";
-
+export type trigger_permission = {
+  unlink_folder : boolean
+  unlink : boolean
+  change : boolean
+  add : boolean  
+}
 export interface ConfigInterface extends BaseModelInterface {
   ready?: { (): Promise<void> }
   _fetch?: { (): void }
@@ -35,6 +40,7 @@ export interface ConfigInterface extends BaseModelInterface {
   safe_mode?: Boolean | null
   direct_access?: Array<any>
   single_sync ?: Array<string>
+  trigger_permission ?: trigger_permission
 }
 
 const Config = BaseModel.extend<ConfigInterface>({
@@ -84,7 +90,7 @@ const Config = BaseModel.extend<ConfigInterface>({
       [key: string]: any
     } = this;
     ["mode", "host", "port", "project_name", "username", "password", "pathMode",
-      "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access","single_sync"].forEach(prop => {
+      "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access","single_sync","trigger_permission"].forEach(prop => {
         self[prop] = self._config[prop] || self[prop];
       });
   },

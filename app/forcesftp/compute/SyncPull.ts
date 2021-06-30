@@ -8,12 +8,13 @@ import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { Client } from "scp2";
 import { configure, getLogger } from "log4js";
 
-configure({
-  appenders: { cheese: { type: "file", filename: "cheese.log" } },
-  categories: { default: { appenders: ["cheese"], level: "error" } }
-});
-const logger = getLogger();
-logger.level = "debug";
+/** Activate Logger */
+// configure({
+//   appenders: { cheese: { type: "file", filename: "cheese.log" } },
+//   categories: { default: { appenders: ["cheese"], level: "error" } }
+// });
+// const logger = getLogger();
+// logger.level = "debug";
 
 declare var masterData: MasterDataInterface;
 

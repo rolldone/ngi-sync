@@ -130,6 +130,12 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       } = {};
       syncPull.setOnListener((res: any) => {
         // console.log('props', res);
+        if (typeof res.return === 'string' || res.return instanceof String){
+          var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + res.return);
+          taskWatchOnServer.status(res.status);
+          taskWatchOnServer.fail(res.status);
+          return;
+        }
         if (res.return.folder == null) {
           var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null ? 'No Such file of directory' : res.return.file.filename));
           taskWatchOnServer.status(res.status);

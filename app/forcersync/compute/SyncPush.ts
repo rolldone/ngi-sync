@@ -279,7 +279,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       // console.log('_listningTemplate',_listningTemplate);
       var rsync = Rsync.build({
         /* Support multiple source too */
-        source: upath.normalizeSafe(_local_path+'/'),
+        source: upath.normalizeSafe('./'+_local_path+'/'),
         // source : upath.normalize(_local_path+'/'),
         destination: config.username + '@' + config.host + ':' + config.base_path + '/',
         /* Include First */
