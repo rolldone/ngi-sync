@@ -144,6 +144,12 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
             ssh_configs : [],
             ssh_commands : [],
           };
+          answers.trigger_permission = {
+            unlink_folder : false,
+            unlink : false,
+            change : false,
+            add : true
+          }
           if(existsSync('.sync_ignore') == false){
             writeFileSync('.sync_ignore','.sync_ignore \nsync-config.json \n.sync_temp','utf8');
           }
