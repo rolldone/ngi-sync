@@ -45,7 +45,6 @@ export default class Watcher {
 		private cli: CliInterface,
 		private base: string = config.localPath
 	) {
-		
 		let gitIgnore : Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
 		gitIgnore.push(this.tempFolder);
 		let _ignore = ignore().add(gitIgnore);
@@ -141,10 +140,14 @@ export default class Watcher {
 
 		/* generate .sync_temp */
 		if(existsSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder)) == false){
-			mkdirSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder));
+			mkdirSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder),{
+				mode : 0o777
+			});
 		}else{
 			this.deleteFolderRecursive(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder));
-			mkdirSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder));
+			mkdirSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder),{
+				mode : 0o777
+			});
 		}
 		this._getTimeoutSftp = this._setTimeoutSftp();
 
@@ -172,6 +175,7 @@ export default class Watcher {
 					this.tasks['add'] = observatory.add(message);
 					this.tasks['add'].done(path.replace(this.config.localPath,"")+"");
 					this.getRemoveSelfTask['add']();
+
 					break;
 				case 'change':
 					if(this.tasks['change'] != null){
@@ -231,7 +235,8 @@ export default class Watcher {
 			let destinationFile = upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder+'/'+relativePathFile);
 			if(existsSync(destinationFile) == false){
 				mkdirSync(upath.dirname(destinationFile),{
-					recursive : true
+					recursive : true,
+					mode : '0777'
 				});
 			}
 			copyFile(path,destinationFile,(res)=>{});

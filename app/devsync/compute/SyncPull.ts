@@ -127,14 +127,14 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       if(this._rememberError[keyFile] != null){
         return;
       }
-      if(data.file.attrs.size > 500000){ 
+      if(data.file.attrs.size > 2097152){ 
         // masterData.updateData('file_edit_from_server', {
         //   [this._sshConfig.local_path + this._removeSameString(fromFilePath, data.base_path)]: true,
         // });
         
         this._onListener({
           status: 'error',
-          return: data.folder+' cannot downloaded. More than 1MB'
+          return: data.folder+' cannot downloaded. More than 2MB'
         });
         // console.log('aaaaaaaaa',this._removeSameString(fromFilePath+'/'+data.file.filename, data.base_path));
         this._rememberError[keyFile] = data;
@@ -202,7 +202,10 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       });
       /* Check is have pattern a file create directory from dirname */
       let tt = upath.dirname(theLocalPath);
-      mkdirSync(pathJoin('', tt), { recursive: true });
+      mkdirSync(pathJoin('', tt), { 
+        mode : '0777',
+        recursive: true 
+      });
       stat(pathJoin("", theLocalPath), (err, data) => {
         var downloadNow = () => {
           theClient.download(fromFilePath, pathJoin("", theLocalPath), (err: any) => {

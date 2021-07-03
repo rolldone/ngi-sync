@@ -1,9 +1,11 @@
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import { CliInterface, EXIT_CODE } from "../services/CliService";
-import { join as pathJoin } from "path";
-import { readFileSync, existsSync } from "fs";
+import path, { join as pathJoin } from "path";
+import { readFileSync, existsSync, statSync } from "fs";
 import { String } from "lodash";
+import upath from 'upath';
 const { parse } = require("jsonplus");
+import os from 'os';
 
 export const CONFIG_FILE_NAME = "sync-config.json";
 export type trigger_permission = {
@@ -45,7 +47,7 @@ export interface ConfigInterface extends BaseModelInterface {
 
 const Config = BaseModel.extend<ConfigInterface>({
   model: "",
-  pathMode: "0755",
+  pathMode: "0777",
   construct: function (cli: CliInterface) {
     this.cli = cli;
     this._filename = pathJoin(process.cwd(), cli.getArgument("config", CONFIG_FILE_NAME));
@@ -91,7 +93,16 @@ const Config = BaseModel.extend<ConfigInterface>({
     } = this;
     ["mode", "host", "port", "project_name", "username", "password", "pathMode",
       "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access","single_sync","trigger_permission"].forEach(prop => {
-        self[prop] = self._config[prop] || self[prop];
+        if(prop == 'localPath'){
+          if(upath.isAbsolute(self._config[prop] || self[prop]) == false){
+            self[prop] = upath.normalizeSafe(path.resolve(self._config[prop] || self[prop]));
+          }else{
+            self[prop] = upath.normalizeSafe(self._config[prop] || self[prop]);
+          }
+        }else{
+          self[prop] = self._config[prop] || self[prop];
+        }
+        // self[prop] = self._config[prop] || self[prop];
       });
   },
 
