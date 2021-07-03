@@ -8,12 +8,13 @@ import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { Client } from "scp2";
 import { configure, getLogger } from "log4js";
 
-configure({
-  appenders: { cheese: { type: "file", filename: "cheese.log" } },
-  categories: { default: { appenders: ["cheese"], level: "error" } }
-});
-const logger = getLogger();
-logger.level = "debug";
+/** Activate Logger */
+// configure({
+//   appenders: { cheese: { type: "file", filename: "cheese.log" } },
+//   categories: { default: { appenders: ["cheese"], level: "error" } }
+// });
+// const logger = getLogger();
+// logger.level = "debug";
 
 declare var masterData: MasterDataInterface;
 
@@ -134,7 +135,7 @@ const SyncPull = SyncPush.extend<Omit<SyncPullInterface, 'model'>>({
             let toLocalFormat = this._removeSameString(folderPath, this._config.base_path);
             if (toLocalFormat != null) {
               console.log('LISTNING_DIR :: passfileName ', toLocalFormat + '/');
-              mkdir(upath.normalizeSafe(self._config.local_path + '/' + toLocalFormat), (err) => { });
+              mkdir(upath.normalizeSafe(self._config.local_path + '/' + toLocalFormat),'0777', (err) => { });
               pushDir.push(toLocalFormat);
             }
             for (var c = 0; c < objList.length; c++) {

@@ -45,7 +45,6 @@ export default class Watcher {
 		private cli: CliInterface,
 		private base: string = config.localPath
 	) {
-		
 		let gitIgnore : Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
 		gitIgnore.push(this.tempFolder);
 		let _ignore = ignore().add(gitIgnore);
@@ -141,10 +140,14 @@ export default class Watcher {
 
 		/* generate .sync_temp */
 		if(existsSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder)) == false){
-			mkdirSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder));
+			mkdirSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder),{
+				mode : 0o777
+			});
 		}else{
 			this.deleteFolderRecursive(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder));
-			mkdirSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder));
+			mkdirSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder),{
+				mode : 0o777
+			});
 		}
 		this._getTimeoutSftp = this._setTimeoutSftp();
 
@@ -172,6 +175,7 @@ export default class Watcher {
 					this.tasks['add'] = observatory.add(message);
 					this.tasks['add'].done(path.replace(this.config.localPath,"")+"");
 					this.getRemoveSelfTask['add']();
+
 					break;
 				case 'change':
 					if(this.tasks['change'] != null){
@@ -231,7 +235,8 @@ export default class Watcher {
 			let destinationFile = upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder+'/'+relativePathFile);
 			if(existsSync(destinationFile) == false){
 				mkdirSync(upath.dirname(destinationFile),{
-					recursive : true
+					recursive : true,
+					mode : '0777'
 				});
 			}
 			copyFile(path,destinationFile,(res)=>{});
@@ -339,6 +344,11 @@ export default class Watcher {
 	};
 
 	private add = (path: string) => {
+		if(this.config.trigger_permission.add == false){
+			this.tasks["add-err-"+path.replace(this.config.localPath,"")] = observatory.add('ADD ERR :: '+path.replace(this.config.localPath,"")+"");
+			this.tasks["add-err-"+path.replace(this.config.localPath,"")].fail('Fails').details("You have setting permission cannot add data sync on server");
+			return;
+		}
 		this.uploader.uploadFile(path,this._getTimeoutSftp()).then(remote => {
 			setTimeout(()=>{
 				this.setCacheFile(path);
@@ -355,6 +365,11 @@ export default class Watcher {
 	};
 
 	private change = (path: string) => {
+		if(this.config.trigger_permission.change == false){
+			this.tasks["change-err-"+path.replace(this.config.localPath,"")] = observatory.add('CHANGE ERR :: '+path.replace(this.config.localPath,"")+"");
+			this.tasks["change-err-"+path.replace(this.config.localPath,"")].fail('Fails').details("You have setting permission cannot update data sync on server");
+			return;
+		}
 		this.uploader.uploadFile(path,this._getTimeoutSftp()).then(remote => {
 			setTimeout(()=>{
 				this.setCacheFile(path);
@@ -372,6 +387,11 @@ export default class Watcher {
 	};
 
 	private unlink = (path: string) => {
+		if(this.config.trigger_permission.unlink == false){
+			this.tasks["unlink-err-"+path.replace(this.config.localPath,"")] = observatory.add('UNLINK ERR :: '+path.replace(this.config.localPath,"")+"");
+			this.tasks["unlink-err-"+path.replace(this.config.localPath,"")].fail('Fails').details("You have setting permission cannot unlink data sync on server");
+			return;
+		}
 		this.uploader.unlinkFile(path,this._getTimeoutSftp(50)).then(remote => {
 			if(this.tasks['unlink'] != null){
 				this.tasks['unlink'].done(path.replace(this.config.localPath,"")+"");
@@ -389,6 +409,11 @@ export default class Watcher {
 	};
 
 	private unlinkDir = (path: string) => {
+		if(this.config.trigger_permission.unlink_folder == false){
+			this.tasks["unlinkDir-err-"+path.replace(this.config.localPath,"")] = observatory.add('UNLINKDIR ERR :: '+path.replace(this.config.localPath,"")+"");
+			this.tasks["unlinkDir-err-"+path.replace(this.config.localPath,"")].fail('Fails').details("You have setting permission cannot unlink directory data sync on server");
+			return;
+		}
 		this.uploader.unlinkFolder(path,this._getTimeoutSftp(50)).then(remote => {
 			if(this.tasks['unlinkDir'] != null){
 				this.tasks['unlinkDir'].done(path.replace(this.config.localPath,"")+"");
@@ -399,9 +424,9 @@ export default class Watcher {
 			this.tasks['unlinkDir'] = observatory.add("UNLINKDIR :: DONE ");
 			this.tasks['unlinkDir'].done(path.replace(this.config.localPath,"")+"");
 		}).catch((err) => {
-			// this.tasks["unlinkDir-err-"+path.replace(this.config.localPath,"")] = observatory.add('UNLINKDIR ERR :: '+path.replace(this.config.localPath,"")+"");
+			this.tasks["unlinkDir-err-"+path.replace(this.config.localPath,"")] = observatory.add('UNLINKDIR ERR :: '+path.replace(this.config.localPath,"")+"");
 			this.tasks["unlinkDir-err-"+path.replace(this.config.localPath,"")].fail('Fails').details(`Error deleting folder ${err}`);
-			this.tasks['err'].fail(path.replace(this.config.localPath,"")+"").details(`Error deleting folder ${err}`);
+			// this.tasks['err'].fail(path.replace(this.config.localPath,"")+"").details(`Error deleting folder ${err}`);
 		});
 	};
 }

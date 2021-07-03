@@ -10,6 +10,8 @@ import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import _ from 'lodash';
 import * as upath from 'upath';
 import inquirer = require("inquirer");
+import path = require("path");
+const notifier = require('node-notifier');
 
 const chalk = require('chalk');
 const observatory = require("observatory");
@@ -122,13 +124,19 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           })(),
           base_path: currentConf.remotePath,
           local_path: currentConf.localPath,
-          jumps: currentConf.jumps
+          jumps: currentConf.jumps,
+          trigger_permission : currentConf.trigger_permission
         });
         let historyStatus : {
           [key : string] : any
         } = {};
         syncPull.setOnListener((res: any) => {
-          // console.log('props', res);
+          if (typeof res.return === 'string' || res.return instanceof String){
+            var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + res.return);
+            taskWatchOnServer.status(res.status);
+            taskWatchOnServer.fail(res.status);
+            return;
+          }
           if(res.return.folder == null){
             var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null?'No Such file of directory':res.return.file.filename));
             taskWatchOnServer.status(res.status);
@@ -147,12 +155,72 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         syncPull.submitWatch();
         let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
         this.uploader = new Uploader(currentConf, this._cli);
+        this.uploader.setOnListener((action:string,props:any)=>{
+          switch(action){
+            case 'REJECTED':
+              notifier.notify(
+                {
+                  title: action,
+                  message: props.return,
+                  icon: path.join(__dirname,'..','..','..','..','/public/img', 'failed.jpg'), // Absolute path (doesn't work on balloons)
+                  sound: true, // Only Notification Center or Windows Toasters
+                  wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+                  type: 'error',
+                  'app-name': 'ngi-sync',
+                  appID : this._currentConf.project_name
+                },
+                function (err : any, response : any, metadata : any) {
+                  // Response is response from notification
+                  // Metadata contains activationType, activationAt, deliveredAt
+                }
+              );
+              break;
+            case 'WARNING':
+              notifier.notify(
+                {
+                  title: action,
+                  message: props.return,
+                  icon: path.join(__dirname,'..','..','..','..','/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
+                  sound: true, // Only Notification Center or Windows Toasters
+                  wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+                  type: 'warning',
+                  'app-name': 'ngi-sync',
+                  appID : this._currentConf.project_name
+                },
+                function (err : any, response : any, metadata : any) {
+                  // Response is response from notification
+                  // Metadata contains activationType, activationAt, deliveredAt
+                }
+              );
+              break;
+            case 'ONGOING':
+            case 'UPLOADED':
+              notifier.notify(
+                {
+                  title: action,
+                  message: props.return,
+                  icon: path.join(__dirname,'..','..','..','..','/public/img', 'success.png'), // Absolute path (doesn't work on balloons)
+                  sound: true, // Only Notification Center or Windows Toasters
+                  wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+                  type: 'info',
+                  'app-name': 'ngi-sync',
+                  appID : this._currentConf.project_name
+                },
+                function (err : any, response : any, metadata : any) {
+                  // Response is response from notification
+                  // Metadata contains activationType, activationAt, deliveredAt
+                }
+              );
+              break;
+          }
+        });
         this.watcher = new Watcher(this.uploader, currentConf, this._cli);
         this.watcher.setOnListener((props:{
           action : string
         })=>{
           switch(props.action){
             case 'ALL_EVENT':
+              /* Call again sftp watcher */
               _startWatchingWithTimeOut();
               break;
           }
