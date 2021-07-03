@@ -287,7 +287,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
         /* Exclude after include */
         exclude: _filterPatternRules.ignores,
         // flags : '-vt',
-        flags: '-avz',
+        flags: '-avzL',
         shell: 'ssh -i '+config.privateKeyPath+' -p ' + config.port
       });
       rsync.set('chmod=D775,F775');

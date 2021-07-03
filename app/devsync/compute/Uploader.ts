@@ -198,9 +198,12 @@ export default class Uploader {
 							}
 						}
 						// Uplad the file
-						this.client.upload(fileName, remote, err => {
+						this.client.upload(fileName, remote, (err : any) => {
 							if (err) {
-								console.log('this.client.upload -> ',err);
+								// console.log('this.client.upload -> ',err);
+								this.onListener('REJECTED',{
+									return : err.message
+								});
 								// reject({
 								// 	message: `Could not upload ${remote}`,
 								// 	error: err
