@@ -78,7 +78,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         /* Exclude after include */
         exclude: _filterPatternRules.ignores,
         // flags : '-vt',
-        flags: 'avz',
+        flags: 'avzL',
         shell: 'ssh -i '+config.privateKeyPath+' -p ' + config.port
       });
       rsync.set('chmod=D777,F777');
