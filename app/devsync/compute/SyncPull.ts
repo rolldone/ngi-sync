@@ -9,6 +9,7 @@ import * as upath from "upath";
 import * as path from 'path';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import EventEmitter from "events";
+import { trigger_permission } from "@root/app/init/compute/Config";
 const observatory = require("observatory");
 
 declare var masterData: MasterDataInterface;
@@ -23,6 +24,8 @@ export interface SftpOptions {
   base_path: string,
   local_path: string,
   jumps: Array<object>
+  trigger_permission : trigger_permission
+  
 }
 
 type propsDownload = {
@@ -30,6 +33,7 @@ type propsDownload = {
   base_path: string;
   file: string;
   size: number;
+  mtime : number;
 };
 
 export interface SyncPullInterface extends BaseModelInterface {
@@ -55,6 +59,9 @@ export interface SyncPullInterface extends BaseModelInterface {
   returnClient: {
     (props: object): Client
   }
+  _rememberError ?: {
+    [key : string] : any
+  }
   _deleteFile?: {
     (props: {
       folder: string,
@@ -69,6 +76,7 @@ export interface SyncPullInterface extends BaseModelInterface {
 
 const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   _folderQueue: {},
+  _rememberError : {},
   _tasks : {},
   returnClient: function (props) {
     //if (this._clientApp == null) {
@@ -112,17 +120,39 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       base_path: this._sshConfig.base_path
     });
     event.on("upload", (data: any) => {
-      // console.log('upload', data)
-      this._onListener({
-        status: 'stdout',
-        return: data
-      });
-      this._downloadFile({
-        folder: data.folder,
-        base_path: data.base_path,
-        file: data.file.filename,
-        size: data.file.attrs.size
-      })
+      // console.log('data.file.attr',data);
+      /* If more than 1MB dont let download it */
+      let fromFilePath = data.folder;
+      let keyFile = this._removeSameString(fromFilePath+'/'+data.file.filename, data.base_path);
+      if(this._rememberError[keyFile] != null){
+        return;
+      }
+      if(data.file.attrs.size > 2097152){ 
+        // masterData.updateData('file_edit_from_server', {
+        //   [this._sshConfig.local_path + this._removeSameString(fromFilePath, data.base_path)]: true,
+        // });
+        
+        this._onListener({
+          status: 'error',
+          return: data.folder+' cannot downloaded. More than 2MB'
+        });
+        // console.log('aaaaaaaaa',this._removeSameString(fromFilePath+'/'+data.file.filename, data.base_path));
+        this._rememberError[keyFile] = data;
+      }else{
+        // console.log('upload', data)
+        delete this._rememberError[keyFile];
+        this._onListener({
+          status: 'stdout',
+          return: data
+        });
+        this._downloadFile({
+          folder: data.folder,
+          base_path: data.base_path,
+          file: data.file.filename,
+          size: data.file.attrs.size,
+          mtime : data.file.attrs.mtime
+        })
+      }
     });
     event.on("delete", (data: any) => {
       // console.log('delete', data)
@@ -158,6 +188,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   },
   _downloadFile: function (props) {
     let keynya = props.folder + '/' + props.file;
+    // console.log('keynya',keynya);
     if (this._folderQueue[keynya] != null) {
       return;
     }
@@ -171,7 +202,10 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       });
       /* Check is have pattern a file create directory from dirname */
       let tt = upath.dirname(theLocalPath);
-      mkdirSync(pathJoin('', tt), { recursive: true });
+      mkdirSync(pathJoin('', tt), { 
+        mode : '0777',
+        recursive: true 
+      });
       stat(pathJoin("", theLocalPath), (err, data) => {
         var downloadNow = () => {
           theClient.download(fromFilePath, pathJoin("", theLocalPath), (err: any) => {
@@ -199,9 +233,13 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         if (err) {
           return downloadNow();
         }
-        // console.log('Server Size ',props.size);
-        // console.log('Local size ',data.size);
-        if (props.size != data.size) {
+        //  console.log('Server Size ',props.mtime);
+        //  console.log('Local size ',data.size);
+        //  console.log('bool',props.mtime > parseInt(data.mtimeMs.toString().substring(0,props.mtime.toString().length)));
+        //  console.log('aaaaaaaaa',parseInt(data.mtimeMs.toString().substring(0,props.mtime.toString().length)));
+        // if (props.size != data.size) {
+        if (props.mtime > parseInt(data.mtimeMs.toString().substring(0,props.mtime.toString().length))) {
+          // if(data.size > )
           downloadNow();
         } else {
           // console.log('Sama');

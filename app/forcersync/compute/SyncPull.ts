@@ -72,16 +72,16 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         /* Support multiple source too */
         source: config.username + '@' + config.host + ':' + config.base_path + '/',
         // source : upath.normalize(_local_path+'/'),
-        destination: upath.normalizeSafe(_local_path+'/'),
+        destination: upath.normalizeSafe('./'+_local_path+'/'),
         /* Include First */
         include : _filterPatternRules.pass,
         /* Exclude after include */
         exclude: _filterPatternRules.ignores,
         // flags : '-vt',
-        flags: '-avz',
+        flags: 'avz',
         shell: 'ssh -i '+config.privateKeyPath+' -p ' + config.port
       });
-
+      rsync.set('chmod=D777,F777');
       console.log('rsync command -> ', rsync.command());
       var child = child_process.spawn(rsync.command(), [''], {
         stdio: 'inherit',//['pipe', process.stdout, process.stderr]

@@ -59,7 +59,8 @@ const DevSyncPullService = BaseService.extend<DevSyncPullServiceInterface>({
         local_path: currentConf.localPath,
         path_mode: currentConf.pathMode,
         jumps: currentConf.jumps,
-        mode : props.mode || 'hard'
+        mode : props.mode || 'hard',
+        trigger_permission : currentConf.trigger_permission
       });
       
     }).then(() => {

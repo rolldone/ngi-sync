@@ -53,6 +53,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         })(),
         base_path: currentConf.remotePath,
         local_path: currentConf.localPath,
+        trigger_permission : currentConf.trigger_permission
       });
       
       syncPull.setOnListener((res: any) => {
@@ -91,7 +92,8 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           return arrayString;
         })(),
         base_path: currentConf.remotePath,
-        local_path: currentConf.localPath
+        local_path: currentConf.localPath,
+        trigger_permission : currentConf.trigger_permission
       })
 
       syncPush.setOnListener((res: any) => {
