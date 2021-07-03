@@ -1,5 +1,5 @@
 import * as upath from "upath";
-import { readFileSync } from "fs";
+import { fstatSync, readFileSync, statSync } from "fs";
 import { Client } from "scp2";
 import Config, { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
@@ -17,6 +17,10 @@ export default class Uploader {
 	_pendingQueue: {
 		[key: string]: any
 	} = {};
+	onListener : Function
+	setOnListener(func:Function){
+		this.onListener = func;
+	}
 	connect(callback: Function): void {
 		this.client = new Client({
 			port: this.config.port,
@@ -117,7 +121,8 @@ export default class Uploader {
 	private _handlePush() {
     var debounceClose: any = null;
 
-    var _closeIfPossible = (_client: Client) => {
+    var _closeIfPossible = (_client: Client,whatFile:string) => {
+			let _remainingOrder = Object.keys(this._pendingUpload).length;
       if (debounceClose != null) {
         // console.log('UPLOAD :: waiting for close');
         debounceClose.cancel();
@@ -125,7 +130,17 @@ export default class Uploader {
       debounceClose = debounce(() => {
 				// console.log('callid');
        //  _client.close();
-      }, 10000);
+			 
+			 if(_remainingOrder > 0){
+				this.onListener('ONGOING',{
+					return : 'Remaining '+_remainingOrder+' files still uploading'// 'Sync is done!'
+				})
+			 }else{
+				this.onListener('UPLOADED',{
+					return : 'Last Upload: '+whatFile// 'Sync is done!'
+				})
+			 }
+      },3000 /* 10000 */);
       debounceClose();
     }
     return (entry : any, first_time_out:number) => {
@@ -147,8 +162,17 @@ export default class Uploader {
 				var resolve = entry.resolve;
 				var reject = entry.reject;
 				var fileName = entry.fileName;
+				/* Check the size of file first */
+				let stats = statSync(upath.normalizeSafe(fileName));
+				if(stats.size > 5242880){
+					// console.log('stats',stats);
+					this.onListener('WARNING',{
+						return : 'File size more than 5MB : '+upath.normalizeSafe(fileName)
+					})
+				}
 				this.client.mkdir(upath.dirname(remote), { mode: this.config.pathMode }, err => {
 					this._pendingUpload[entry.path] = null;
+					delete this._pendingUpload[entry.path];
 					delete this._orders[entry.queue_no];
 					if (err) {
 						// reject({
@@ -160,7 +184,10 @@ export default class Uploader {
 						let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
 						if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
 							if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
-								console.log('File edited by system dont let uploaded : ', upath.normalizeSafe(fileName));
+								// console.log('File edited by system dont let uploaded : ', upath.normalizeSafe(fileName));
+								this.onListener('REJECTED',{
+									return : 'File edited by system dont let uploaded : '+upath.normalizeSafe(fileName)
+								})
 								delete this._pendingQueue[remote];
 								masterData.updateData('file_edit_from_server', {
 									[upath.normalizeSafe(fileName)]: false
@@ -183,7 +210,7 @@ export default class Uploader {
 							if (firstKey == null) {
 								firstKey = Object.keys(this._pendingQueue)[0];
 								if (firstKey == null) {
-									_closeIfPossible(this.client);
+									_closeIfPossible(this.client,upath.normalizeSafe(fileName));
 									resolve(remote);
 									return;
 								}
