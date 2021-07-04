@@ -10,6 +10,7 @@ import { Uploader } from "../compute/Uploader";
 import SyncPull, { SftpOptions, SyncPullInterface } from "../compute/SyncPull";
 import path = require("path");
 const notifier = require('node-notifier');
+import * as child_process from 'child_process';
 
 const chalk = require('chalk');
 const observatory = require("observatory");
@@ -27,6 +28,7 @@ export interface DevRsyncServiceInterface extends BaseServiceInterface {
   uploader?: Uploader
   watcher?: Watcher
   _devSyncSafeSyncronise: { (): void }
+  _checkIsCygwin: Function
 }
 
 export enum COMMAND_TARGET {
@@ -45,8 +47,9 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
   returnSyncPull: function (cli, sshConfig) {
     return SyncPull.create(cli, sshConfig);
   },
-  construct: function (cli) {
+  construct: async function (cli) {
     this._cli = cli;
+    await this._checkIsCygwin();
     this.task = observatory.add("Initializing...");
     let currentConf = this.returnConfig(cli);
     this._currentConf = currentConf;
@@ -66,6 +69,26 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
     ];
     this._promptAction(questions);
+  },
+  _checkIsCygwin : function(){
+    return new Promise((resolve : Function,reject : Function)=>{
+      var child : any = child_process.exec('ls -a -l /cygdrive',(error : any, stdout : any, stderr : any) => {
+        if (error) {
+          resolve()
+          return;
+        }
+        // console.log(`stdout: ${stdout}`);
+        // console.error(`stderr: ${stderr}`);
+        console.log('==========================================================================================================');
+        console.log(' YOU ARE IN CYGWIN');
+        console.log(' Make sure you have add noacl on /etc/fstab, because rsync problem with permission if no have defined!');
+        console.log(' like this :')
+        console.log(' -> none /cygdrive cygdrive binary,posix=0,user,noacl 0 0')
+        console.log(' after that. Close all and relaunch cygwin beginning, if no effect better restart your windows');
+        console.log('=============================================================================');
+        resolve();
+      });
+    });
   },
   _promptAction: function (questions) {
     let cli = this._cli;
