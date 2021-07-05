@@ -105,7 +105,7 @@ export default class Watcher {
 			}
 			return newExtraWatch;
 		})();
-		console.log('extrawatcg',_extraWatch);
+		console.log('ExtraWatch : ',_extraWatch);
 		let ignnorelist = ((defaultIgnores.concat(tt)).concat(onlyRegexIgnores)).concat(onlyFileStringIgnores).concat(resCHeckGItIgnores);
 		/* If safe mode activated */
 		if(this.config.safe_mode == true){

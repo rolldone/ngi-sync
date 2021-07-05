@@ -79,9 +79,12 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         exclude: _filterPatternRules.ignores,
         // flags : '-vt',
         flags: 'avzL',
+        // set : '--no-perms --no-owner --no-group',
+        // set : '--chmod=D777,F777',
+        // set : '--perms --chmod=u=rwx,g=rwx,o=,Dg+s',
         shell: 'ssh -i '+config.privateKeyPath+' -p ' + config.port
       });
-      rsync.set('chmod=D777,F777');
+      
       console.log('rsync command -> ', rsync.command());
       var child = child_process.spawn(rsync.command(), [''], {
         stdio: 'inherit',//['pipe', process.stdout, process.stderr]

@@ -4,6 +4,7 @@ import DirectAccess, { DirectAccessInterface, DirectAccessType } from "../comput
 import { CliInterface } from "./CliService";
 import inquirer = require("inquirer");
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+import * as child_process from 'child_process';
 declare var masterData : MasterDataInterface;
 
 export interface DirectAccessServiceInterface extends BaseServiceInterface {
@@ -13,7 +14,8 @@ export interface DirectAccessServiceInterface extends BaseServiceInterface {
   construct: { (cli: CliInterface): void };
   _cli?: CliInterface;
   _promptAction: { (questions: inquirer.QuestionCollection): void }
-  _config?: ConfigInterface
+  _config?: ConfigInterface,
+  _checkIsCygwin: Function
 }
 const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
   returnDirectAccess: function (config) {
@@ -22,7 +24,25 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
   returnConfig: function (cli) {
     return Config.create(cli);
   },
-  construct: function (cli) {
+  _checkIsCygwin : function(){
+    return new Promise((resolve : Function,reject : Function)=>{
+      var child : any = child_process.exec('ls -a -l /cygdrive',(error : any, stdout : any, stderr : any) => {
+        if (error) {
+          resolve()
+          return;
+        }
+        // console.log(`stdout: ${stdout}`);
+        // console.error(`stderr: ${stderr}`);
+        console.log('------------------------');
+        console.log('YOU ARE IN CYGWIN');
+        console.log('Make source you have symlink your windows user .ssh to cygwin .ssh');
+        console.log('------------------------');
+        resolve();
+      });
+    });
+  },
+  construct: async function (cli) {
+    await this._checkIsCygwin();
     this._cli = cli;
     this._config = this.returnConfig(this._cli);
 
