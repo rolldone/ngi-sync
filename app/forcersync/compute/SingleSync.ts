@@ -71,7 +71,6 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
         flags: 'avzL',
         shell: 'ssh -i '+config.privateKeyPath+' -p ' + config.port
       });
-      rsync.set('chmod=D775,F775');
       console.log('rsync command -> ', rsync.command());
 
       var child = child_process.spawn(rsync.command(), [''], {
