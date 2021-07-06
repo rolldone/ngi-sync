@@ -11,6 +11,7 @@ import parseGitIgnore from '@root/tool/parse-gitignore'
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import ignore from 'ignore'
 import { debounce, DebouncedFunc } from "lodash";
+const micromatch = require('micromatch');
 declare let masterData : MasterDataInterface;
 
 export default class Watcher {
@@ -45,8 +46,9 @@ export default class Watcher {
 		private cli: CliInterface,
 		private base: string = config.localPath
 	) {
-		let gitIgnore : Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
-		gitIgnore.push(this.tempFolder);
+		let originIgnore : Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
+		originIgnore.push(this.tempFolder);
+		let gitIgnore = Object.assign([],originIgnore);
 		let _ignore = ignore().add(gitIgnore);
 		let defaultIgnores: Array<string | RegExp> = ['sync-config.json','.sync_ignore'];
 		let onlyPathStringIgnores : Array<string> = [];
@@ -97,15 +99,34 @@ export default class Watcher {
 			return newResGItIngore;
 		})();
 		let _extraWatch = (()=>{
-			let newExtraWatch = [];
+			let newExtraWatch : {
+				[key : string] : Array<string>
+			} = {};
 			for(var a=0;a<gitIgnore.length;a++){
 				if(gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!'){
-					newExtraWatch.push(upath.normalizeSafe(base+'/'+this._replaceAt(gitIgnore[a],'!','',0,1)));
+					// newExtraWatch[upath.normalizeSafe(base+'/'+this._replaceAt(gitIgnore[a],'!','',0,1))];
+					newExtraWatch[this._replaceAt(gitIgnore[a],'!','',0,1)] = [];
 				}
 			}
 			return newExtraWatch;
 		})();
-		console.log('ExtraWatch : ',_extraWatch);
+		/* Check ignore rule again for group ignore */
+		for(var key in _extraWatch){
+			for(var a=0;a<originIgnore.length;a++){
+				if(originIgnore[a][Object.keys(originIgnore[a])[0]] != '!'){
+					if(originIgnore[a].includes(key) == true){
+						_extraWatch[key].push(this.removeSameString(originIgnore[a],key));
+					}
+				}
+			}
+		}
+		console.log('-------------------------------------')
+		console.log(' You get extra watch : ');
+		for(var key in _extraWatch){
+			console.log(key ,' -> ',_extraWatch[key]);
+		}
+		console.log('-------------------------------------')
+		console.log('-------------------------------------')
 		let ignnorelist = ((defaultIgnores.concat(tt)).concat(onlyRegexIgnores)).concat(onlyFileStringIgnores).concat(resCHeckGItIgnores);
 		/* If safe mode activated */
 		if(this.config.safe_mode == true){
@@ -116,7 +137,7 @@ export default class Watcher {
 			ignored: ignnorelist,
 			ignoreInitial: true,
 			persistent: true,
-			awaitWriteFinish: false,
+			awaitWriteFinish: true,
 			ignorePermissionErrors: false
 		});
 		// Attach events
@@ -124,12 +145,19 @@ export default class Watcher {
 			this.files.on(method, this.handler(method));
 		});
 		/* Extra watch, Get filtered out on sync_ignore */
-		for(var a=0;a<_extraWatch.length;a++){
-			let _currentWatch : FSWatcher = chokidar.watch(_extraWatch[a], {
-				ignored: [],
+		for(var key in _extraWatch){
+			let _currentWatch : FSWatcher = chokidar.watch(upath.normalizeSafe(base+'/'+key), {
+				// ignored: [],
+				ignored: (()=>{
+					let tt = [];
+					for(var a=0;a<_extraWatch[key].length;a++){
+						tt.push(upath.normalizeSafe(base+'/'+key+'/'+_extraWatch[key][a]))
+					}
+					return tt;
+				})(),
 				ignoreInitial: true,
 				persistent: true,
-				awaitWriteFinish: false,
+				awaitWriteFinish: true,
 				ignorePermissionErrors: false
 			});
 			// Attach events
