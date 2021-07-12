@@ -160,11 +160,12 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         status: 'stdout',
         return: data
       });
-      this._deleteFile({
-        folder: data.folder,
-        base_path: data.base_path,
-        file: data.file.filename
-      })
+      /* Disable get event deleted from server */
+      // this._deleteFile({
+      //   folder: data.folder,
+      //   base_path: data.base_path,
+      //   file: data.file.filename
+      // })
     });
     event.on("heartbeat", (data: any) => {
       console.log(data.toString())
@@ -217,6 +218,9 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
             });
 
             if (err) {
+              console.log('fromFilePath -> ',fromFilePath);
+              console.log('theLocalPath -> ',pathJoin("", theLocalPath));
+              console.log('error -> ',err);
               this._onListener({
                 status: 'error',
                 return: err
@@ -262,6 +266,10 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       try {
         let fromFilePath = props.folder + '/' + props.file;
         let theLocalPath: string = this._sshConfig.local_path + this._removeSameString(fromFilePath, props.base_path);
+        /* Planning belum dibuat :
+           Harus buat fungsi pasang is has deleted collection data untuk stop prevent
+           setelah dapet event dari chokidar
+         */
         unlinkSync(pathJoin('', theLocalPath));
         delete this._folderQueue[keynya];
       } catch (ex) {
