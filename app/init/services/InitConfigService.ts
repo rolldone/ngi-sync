@@ -4,6 +4,7 @@ import Config, { ConfigInterface, CONFIG_FILE_NAME } from "../compute/Config";
 import { existsSync, writeFileSync } from 'fs';
 import * as upath from "upath";
 import { CliInterface } from "./CliService";
+import YAML from 'yaml';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 
 declare var masterData : MasterDataInterface;
@@ -154,7 +155,8 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
             writeFileSync('.sync_ignore','.sync_ignore \nsync-config.json \n.sync_temp','utf8');
           }
           masterData.saveData('generate.json',answers);
-          writeFileSync(CONFIG_FILE_NAME, JSON.stringify(answers, null, 4), 'utf8');
+          
+          writeFileSync(CONFIG_FILE_NAME, YAML.stringify(answers, null), 'utf8');
         } else {
           console.log("No config was saved.");
         }
