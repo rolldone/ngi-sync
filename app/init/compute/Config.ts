@@ -5,9 +5,10 @@ import { readFileSync, existsSync, statSync } from "fs";
 import { String } from "lodash";
 import upath from 'upath';
 const { parse } = require("jsonplus");
+import YAML from 'yaml'
 import os from 'os';
 
-export const CONFIG_FILE_NAME = "sync-config.json";
+export const CONFIG_FILE_NAME = "sync-config.yaml";
 export type trigger_permission = {
   unlink_folder : boolean
   unlink : boolean
@@ -76,7 +77,13 @@ const Config = BaseModel.extend<ConfigInterface>({
       let configraw;
       if (configraw = readFileSync(this._filename)) {
         try {
-          this._config = parse(configraw.toString());
+          this._config = YAML.parse(configraw.toString()) as any;
+          let newObject = this._config as any;
+          let testStringValue = JSON.stringify(this._config);
+          for(var key in newObject){
+            testStringValue = testStringValue.replace(new RegExp('='+key,'g'),newObject[key])
+          }
+          this._config = JSON.parse(testStringValue);
         } catch (e) {
           this.cli.usage("Could not parse DB file. Make sure JSON is correct", EXIT_CODE.RUNTIME_FAILURE);
         }
