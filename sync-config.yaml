@@ -1,32 +1,25 @@
----
-mode: local|ssh
+var : 
+project_name: test
 username: root
-privateKey: openssh_nopassword.key
-host: localhost
-port: '2222'
-localPath: D:/workspace/ngsync/storage_test
-remotePath: "/root/.ssh"
-downloads:
-- "/"
-jumps: []
-backup:
-  schedule:
-    loop: 1M|4W|1W|1D|4H|2H|1H|M30|M15|M5|timeout|once
-    delay: '100000'
-  rules:
-  - command:
-      target: local|remote
-      prompt: ls -a -l
-  - copy:
-      from: ''
-      to: ''
-      includes: []
-      excludes: []
-  - command:
-      target: local|remote
-      prompt: ls -a -l
-  - copy:
-      from: ''
-      to: ''
-      includes: []
-      excludes: []
+privateKey: d:/test
+host: 402.323.4.2
+port: "22"
+localPath: D:/workspaces/ngi-sync
+remotePath: /home/root
+ignores: []
+downloads: []
+single_sync: []
+direct_access:
+  config_file: "your ssh config file "
+  ssh_configs: 
+  - Host: test
+    HostName: =host
+  ssh_commands: 
+  - access_name: Test
+    remote_access: ssh -v test
+
+trigger_permission:
+  unlink_folder: false
+  unlink: false
+  change: false
+  add: true
