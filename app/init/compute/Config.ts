@@ -51,7 +51,13 @@ const Config = BaseModel.extend<ConfigInterface>({
   pathMode: "0777",
   construct: function (cli: CliInterface) {
     this.cli = cli;
-    this._filename = pathJoin(process.cwd(), cli.getArgument("config", CONFIG_FILE_NAME));
+    let testFile = [CONFIG_FILE_NAME,"sync-config.yml"];
+    for(var a=0;a<testFile.length;a++){
+      this._filename = pathJoin(process.cwd(), cli.getArgument("config",testFile[a]));
+      if(existsSync(this._filename) == true){
+        break;
+      }
+    }
 
   },
   ready: async function () {
