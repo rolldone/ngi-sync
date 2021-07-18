@@ -196,7 +196,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
     let gitIgnore: Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
     gitIgnore.push(this.tempFolder);
     let _ignore = ignore().add(gitIgnore);
-    let defaultIgnores: Array<string | RegExp> = ['sync-config.json', '.sync_ignore'];
+    let defaultIgnores: Array<string | RegExp> = ['sync-config.yaml', '.sync_ignore'];
     let onlyPathStringIgnores: Array<string> = [];
     let onlyFileStringIgnores: Array<string> = [];
     let onlyRegexIgnores: Array<RegExp> = [];

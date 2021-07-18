@@ -50,9 +50,10 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
         name: "authType",
         message: "How do you want to authenticate:",
         choices: [
-          "Password in config",
-          "Ask password during connection",
-          "Private key"
+          // "Password in config",
+          // "Ask password during connection",
+          // "Private key"
+          "Private key without prompt password"
         ]
       },
       {
@@ -152,7 +153,7 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
             add : true
           }
           if(existsSync('.sync_ignore') == false){
-            writeFileSync('.sync_ignore','.sync_ignore \nsync-config.json \n.sync_temp','utf8');
+            writeFileSync('.sync_ignore','.sync_ignore \nsync-config.yaml \nsync-config.yml \n.sync_temp','utf8');
           }
           masterData.saveData('generate.json',answers);
           
