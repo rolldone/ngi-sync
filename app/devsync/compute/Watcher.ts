@@ -50,7 +50,7 @@ export default class Watcher {
 		originIgnore.push(this.tempFolder);
 		let gitIgnore = Object.assign([],originIgnore);
 		let _ignore = ignore().add(gitIgnore);
-		let defaultIgnores: Array<string | RegExp> = ['sync-config.json','.sync_ignore'];
+		let defaultIgnores: Array<string | RegExp> = ['sync-config.yaml','.sync_ignore'];
 		let onlyPathStringIgnores : Array<string> = [];
 		let onlyFileStringIgnores : Array<string> = [];
 		let onlyRegexIgnores : Array<RegExp> = [];
