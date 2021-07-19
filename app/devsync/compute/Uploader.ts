@@ -193,7 +193,10 @@ export default class Uploader {
 									[upath.normalizeSafe(fileName)]: false
 								});
 								// console.log('remote - done ',remote)
-								resolve(remote);
+								reject({
+									message : 'File edited by system dont let uploaded :'+upath.normalizeSafe(fileName),
+									error: ""
+								});
 								return;
 							}
 						}
