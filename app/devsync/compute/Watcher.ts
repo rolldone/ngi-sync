@@ -1,6 +1,6 @@
 import * as chokidar from "chokidar"
 const chalk = require('chalk');
-import { FSWatcher, readFileSync, copyFile, exists, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync } from "fs";
+import { FSWatcher, readFileSync, copyFile, exists, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync, unlink } from "fs";
 import Uploader from "./Uploader";
 import Config, { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
@@ -273,6 +273,24 @@ export default class Watcher {
 		}
 	}
 
+	async deleteCacheFile(path:string){
+		try{
+			let upathParse = upath.parse(path);
+			let relativePathFile = this.removeSameString(upath.normalizeSafe(path),upath.normalizeSafe(this.config.localPath));
+			let destinationFile = upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder+'/'+relativePathFile);
+			if(existsSync(destinationFile) == false){
+				mkdirSync(upath.dirname(destinationFile),{
+					recursive : true,
+					mode : '0777'
+				});
+			}
+			unlink(destinationFile,(err)=>{});
+		}catch(ex){
+			return false;
+			// console.log('getCacheFile ',ex)
+		}
+	}
+
 	async getCacheFile(path:string){
 		try{
 			let upathParse = upath.parse(path);
@@ -290,6 +308,8 @@ export default class Watcher {
 			// console.log('getCacheFile ',ex)
 		}
 	}
+
+	
 
 	eventToWord: {
 		[key: string]: any
