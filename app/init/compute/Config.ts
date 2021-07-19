@@ -82,16 +82,24 @@ const Config = BaseModel.extend<ConfigInterface>({
     if (existsSync(this._filename)) {
       let configraw;
       if (configraw = readFileSync(this._filename)) {
+        let testStringValue = "";
         try {
           this._config = YAML.parse(configraw.toString()) as any;
           let newObject = this._config as any;
-          let testStringValue = JSON.stringify(this._config);
+          testStringValue = JSON.stringify(this._config);
           for(var key in newObject){
-            testStringValue = testStringValue.replace(new RegExp('='+key,'g'),newObject[key])
+            // console.log('-----------------------------------');
+            // console.log(key,' ',testStringValue);
+            if(typeof newObject[key] === 'string' || newObject[key] instanceof String){
+              testStringValue = testStringValue.replace(new RegExp('='+key,'g'),upath.normalizeSafe(newObject[key]))
+            }
           }
           this._config = JSON.parse(testStringValue);
         } catch (e) {
-          this.cli.usage("Could not parse DB file. Make sure JSON is correct", EXIT_CODE.RUNTIME_FAILURE);
+          console.log('Could not parse DB file. Make sure JSON is correct');
+          console.log(' ',e);
+          // this.cli.usage("Could not parse DB file. Make sure JSON is correct", e);
+          // this.cli.usage("Could not parse DB file. Make sure JSON is correct", EXIT_CODE.RUNTIME_FAILURE);
         }
       } else {
         this.cli.usage("Cannot read config file. Make sure you have permissions", EXIT_CODE.INVALID_ARGUMENT);
