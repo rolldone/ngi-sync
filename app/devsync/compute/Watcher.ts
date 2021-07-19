@@ -407,6 +407,7 @@ export default class Watcher {
 				message : "ADD :: UPLOADING "
 			})
 		}).catch((err) => {
+			this.deleteCacheFile(path);
 			this.tasks["add-err-"+path.replace(this.config.localPath,"")] = observatory.add('ADD ERR :: '+path.replace(this.config.localPath,"")+"");
 			this.tasks["add-err-"+path.replace(this.config.localPath,"")].fail('Fails').details(err.message);
 		});
@@ -428,6 +429,7 @@ export default class Watcher {
 				message : "CHANGED :: UPLOADING "
 			})
 		}).catch((err) => {
+			this.deleteCacheFile(path);
 			this.tasks["change-err-"+path.replace(this.config.localPath,"")] = observatory.add('CHANGE ERR :: '+path.replace(this.config.localPath,"")+"");
 			this.tasks["change-err-"+path.replace(this.config.localPath,"")].fail('Fails').details(err.message);
 			// this.tasks[this.change.name].fail("Fail").details(err.message);
