@@ -90,8 +90,14 @@ const Config = BaseModel.extend<ConfigInterface>({
           for(var key in newObject){
             // console.log('-----------------------------------');
             // console.log(key,' ',testStringValue);
-            if(typeof newObject[key] === 'string' || newObject[key] instanceof String){
-              testStringValue = testStringValue.replace(new RegExp('='+key,'g'),upath.normalizeSafe(newObject[key]))
+            switch(true){
+              case typeof newObject[key] === 'string':
+                testStringValue = testStringValue.replace(new RegExp('='+key,'g'),upath.normalizeSafe(newObject[key]))
+                break;
+              case typeof newObject[key] === 'number':
+                testStringValue = testStringValue.replace(new RegExp('='+key,'g'),newObject[key])
+              default:
+                break;
             }
           }
           this._config = JSON.parse(testStringValue);
