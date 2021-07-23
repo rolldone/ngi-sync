@@ -47,6 +47,7 @@
     "chokidar": "3.1.1",
     "dotenv": "^8.2.0",
     "eventemitter2": "^6.4.4",
+    "expose-gc": "^1.0.0",
     "express": "^4.17.1",
     "ignore": "^5.1.8",
     "inquirer": "^8.0.0",
