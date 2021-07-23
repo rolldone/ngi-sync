@@ -172,10 +172,10 @@ export default class Watcher {
 				mode : 0o777
 			});
 		}else{
-			this.deleteFolderRecursive(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder));
-			mkdirSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder),{
-				mode : 0o777
-			});
+			// this.deleteFolderRecursive(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder));
+			// mkdirSync(upath.normalizeSafe(this.config.localPath+'/'+this.tempFolder),{
+			// 	mode : 0o777
+			// });
 		}
 		this._getTimeoutSftp = this._setTimeoutSftp();
 
