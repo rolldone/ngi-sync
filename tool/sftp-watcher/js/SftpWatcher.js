@@ -58,6 +58,7 @@ var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileO
 	var event = self._event;
 	
 	/* Check is have pattern a file */
+	// console.log('fileOrdFolder',fileOrdFolder);
 	if(fileOrdFolder[Object.keys(fileOrdFolder).length - 1] != "/"){
 		let getFolder = path.dirname(fileOrdFolder);
 		sftp.readdir(getFolder, function (err, objList) {
@@ -68,18 +69,30 @@ var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileO
 			}
 			for(var a = 0;a<objList.length;a++){
 				let fileObj = objList[a];
-				if(fileObj.filename == path.basename(fileOrdFolder,'')){
-					event.emit("upload", {
-						host: config.host,
-						user: config.username,
-						folder: getFolder,
-						base_path: config.base_path,
-						file: fileObj
-					});
-					/* Call again remaining queue for continue process loop request */
-					self._deleteRemainingRecord.call(self, newEntryObjList);
-					break;
-				}
+				// console.log('filObj',fileObj);
+				let theFileName = removeDuplicate(getFolder + '/' + fileObj.filename, '/');
+				// console.log('theFileName->theFileName',theFileName);
+				sftp.readdir(theFileName, function (err, objList) {
+					if (objList != null) {
+						/* Jika ingin recursive aktfikan ini */
+						/* Tapi harus di sesuaikan lagi else nya biar seperti teknik syncPull */
+						// recursiveDownload.call(self, baseObjList, newEntryObjList, sftp, theFileName);
+						self._deleteRemainingRecord.call(self, newEntryObjList);
+					} else {
+						if(fileObj.filename == path.basename(fileOrdFolder,'')){
+							event.emit("upload", {
+								host: config.host,
+								user: config.username,
+								folder: getFolder,
+								base_path: config.base_path,
+								file: fileObj
+							});
+							/* Call again remaining queue for continue process loop request */
+							self._deleteRemainingRecord.call(self, newEntryObjList);
+							
+						}
+					}
+				});
 			}
 		})
 		return;
@@ -99,6 +112,9 @@ var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileO
 					if (objList != null) {
 						recursiveDownload.call(self, baseObjList, newEntryObjList, sftp, theFileName);
 					} else {
+						// console.log('theFileName -> ',theFileName)
+						// console.log('err -> ',err);
+						// console.log('objList -> ',objList);
 						if (baseObjList[theFileName] == null) {
 							fileObj.status = "uploading";
 						} else if (baseObjList[theFileName] != null && fileObj.attrs.size != baseObjList[theFileName].attrs.size) {
