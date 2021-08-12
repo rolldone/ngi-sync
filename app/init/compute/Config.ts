@@ -44,6 +44,7 @@ export interface ConfigInterface extends BaseModelInterface {
   direct_access?: Array<any>
   single_sync ?: Array<string>
   trigger_permission ?: trigger_permission
+  size_limit ?: number
 }
 
 const Config = BaseModel.extend<ConfigInterface>({
@@ -118,7 +119,7 @@ const Config = BaseModel.extend<ConfigInterface>({
     let self: {
       [key: string]: any
     } = this;
-    ["mode", "host", "port", "project_name", "username", "password", "pathMode",
+    ["mode", "host", "port", "project_name", "username", "password", "pathMode","size_limit",
       "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access","single_sync","trigger_permission"].forEach(prop => {
         if(prop == 'localPath'){
           if(upath.isAbsolute(self._config[prop] || self[prop]) == false){

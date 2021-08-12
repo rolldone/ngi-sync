@@ -146,6 +146,7 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
             ssh_configs : [],
             ssh_commands : [],
           };
+          answers.size_limit = 5; // 5MB
           answers.trigger_permission = {
             unlink_folder : false,
             unlink : false,
