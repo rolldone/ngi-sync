@@ -74,10 +74,12 @@ export default class Watcher {
 			}
 			return newpath;
 		})(onlyPathStringIgnores || []);
-		defaultIgnores = [
-			...defaultIgnores,
-			// ...tt
+
+		gitIgnore = [
+			...gitIgnore,
+			...defaultIgnores
 		]
+		
 		let resCHeckGItIgnores = (() => {
 			let newResGItIngore = [];
 			for (var a = 0; a < gitIgnore.length; a++) {
@@ -127,7 +129,7 @@ export default class Watcher {
 		}
 		console.log('-------------------------------------')
 		console.log('-------------------------------------')
-		let ignnorelist = ((defaultIgnores.concat(tt)).concat(onlyRegexIgnores)).concat(onlyFileStringIgnores).concat(resCHeckGItIgnores);
+		let ignnorelist = [].concat(onlyRegexIgnores).concat(onlyFileStringIgnores).concat(resCHeckGItIgnores);
 		/* If safe mode activated */
 		if (this.config.safe_mode == true) {
 			ignnorelist = [];

@@ -166,8 +166,8 @@ export default class Uploader {
 				}
 				size_limit = size_limit * 1000000;
 				if (stats.size > size_limit) {
-					console.log('size_limit', size_limit);
-					console.log('stats', stats);
+					// console.log('size_limit', size_limit);
+					// console.log('stats', stats);
 					this.onListener('WARNING', {
 						return: 'File size more than ' + this.config.size_limit + 'MB : ' + upath.normalizeSafe(fileName)
 					})
