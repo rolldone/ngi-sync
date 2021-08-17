@@ -16,11 +16,9 @@ const Main = BaseController.extend<MainControllerInterface>({
     return OpenRecentService.create(nameString);
   },
   index: function (props) {
-    console.log('props',props);
     let cliService = this.returnCliService();
     if (cliService.hasStartupCommand('recent')) {
       this.returnOpenRecentService(props);
-      // this.returnDevSyncService(cliService);
       return;
     }
     // Cross Cli dari cli yang lain
