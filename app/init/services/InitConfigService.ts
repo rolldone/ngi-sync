@@ -1,24 +1,53 @@
 import BaseService from "@root/base/BaseService";
 import inquirer = require("inquirer");
 import Config, { ConfigInterface, CONFIG_FILE_NAME } from "../compute/Config";
-import { existsSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import * as upath from "upath";
 import { CliInterface } from "./CliService";
 import YAML from 'yaml';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+import path = require("path");
 
-declare var masterData : MasterDataInterface;
+declare var masterData: MasterDataInterface;
 
 export interface InitConfigInterface extends BaseServiceInterface {
   returnConfigModel: { (cli: CliInterface): ConfigInterface }
   currentConf?: ConfigInterface
+  generateTemplate?: { (): void }
+  generateRandomString?: { (length:number): string }
 }
 
 const InitConfigService = BaseService.extend<InitConfigInterface>({
   returnConfigModel: function (cli: CliInterface) {
     return Config.create(cli);
   },
+  generateRandomString: function (length) {
+    var result = '';
+    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for (var i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() *
+        charactersLength));
+    }
+    return result;
+  },
+  generateTemplate: function () {
+    let basePathFolder = upath.normalizeSafe(path.dirname(__dirname));
+    let test: any = existsSync(upath.normalizeSafe(basePathFolder.replace('dist/app/init', "") + '/example.yaml'));
+    if (test == false) {
+      test = {};
+    } else {
+      test = YAML.parse(readFileSync(upath.normalizeSafe(basePathFolder.replace('dist/app/init', "") + '/example.yaml'), 'utf8'));
+    }
+    writeFileSync(this.generateRandomString(5)+'_'+CONFIG_FILE_NAME, YAML.stringify(test, null), 'utf8');
+    console.log('---------------------------------------------------')
+    console.log('  Replace xxx_sync-config.yaml to sync-config.yaml');
+    console.log('---------------------------------------------------')
+  },
   construct: function (cli: CliInterface) {
+    this.generateTemplate();
+    return;
+    /* Not use fill form anymore just use template */
     let currentConf = this.returnConfigModel(cli);
     let questions: inquirer.QuestionCollection = [
       {
@@ -114,7 +143,7 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
     ];
 
     inquirer.prompt(questions)['then']((answers) => {
-      let pass : any = null;
+      let pass: any = null;
       // if default, don't put it in config
       if (answers.port == "use default") {
         delete answers.port;
@@ -133,7 +162,7 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
         name: "yes",
         message: `${JSON.stringify(answers, null, 4)}\nDoes this look good?`
       })['then']((answer) => {
-        console.log('answer ',answers);
+        console.log('answer ', answers);
         if (answer.yes) {
           if (pass) {
             answers.password = pass;
@@ -142,21 +171,22 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
           answers.downloads = [];
           answers.single_sync = [];
           answers.direct_access = {
-            config_file : 'your ssh config file ',
-            ssh_configs : [],
-            ssh_commands : [],
+            config_file: 'your ssh config file ',
+            ssh_configs: [],
+            ssh_commands: [],
           };
+          answers.size_limit = 5; // 5MB
           answers.trigger_permission = {
-            unlink_folder : false,
-            unlink : false,
-            change : false,
-            add : true
+            unlink_folder: false,
+            unlink: false,
+            change: false,
+            add: true
           }
-          if(existsSync('.sync_ignore') == false){
-            writeFileSync('.sync_ignore','.sync_ignore \nsync-config.yaml \nsync-config.yml \n.sync_temp','utf8');
+          if (existsSync('.sync_ignore') == false) {
+            writeFileSync('.sync_ignore', '.sync_ignore \nsync-config.yaml \nsync-config.yml \n.sync_temp', 'utf8');
           }
-          masterData.saveData('generate.json',answers);
-          
+          masterData.saveData('generate.json', answers);
+
           writeFileSync(CONFIG_FILE_NAME, YAML.stringify(answers, null), 'utf8');
         } else {
           console.log("No config was saved.");
