@@ -2,6 +2,7 @@ import { AsyncJs } from "../tool";
 import StartConfig from "./StartConfig";
 import StartMasterData from "./StartMasterData";
 import StartPubSub from "./StartPubSub";
+import StartRecordOpenFolder from "./StartRecordOpenFolder";
 import StartSerializeError from "./StartSerializeError";
 
 const task : Array<any> = [
@@ -9,7 +10,8 @@ const task : Array<any> = [
   StartSerializeError,
   StartPubSub,
   StartMasterData,
-  StartConfig
+  StartConfig,
+  StartRecordOpenFolder
   // StartRedisPubSub,
   // StartMinIO,
   // StartExpress,

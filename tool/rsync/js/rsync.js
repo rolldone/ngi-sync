@@ -1,3 +1,3 @@
-const Rsync = require('@dennis14e/node-rsync/rsync');
+const Rsync = require('rsync');
 
 export default Rsync;

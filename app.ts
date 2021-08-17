@@ -52,6 +52,12 @@ BaseStart({
       case 'singlesync':
         masterData.saveData('command.forcersync.single_sync',{});
         return;
+      case 'recent':
+        if(segment1._[1] == null){
+          segment1._.push("");
+        }
+        masterData.saveData('command.recent.open',segment1._[1]);
+        return;
     }
   }
 } as AppInterface);

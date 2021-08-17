@@ -44,6 +44,7 @@ export interface ConfigInterface extends BaseModelInterface {
   direct_access?: Array<any>
   single_sync ?: Array<string>
   trigger_permission ?: trigger_permission
+  size_limit ?: number
 }
 
 const Config = BaseModel.extend<ConfigInterface>({
@@ -82,16 +83,30 @@ const Config = BaseModel.extend<ConfigInterface>({
     if (existsSync(this._filename)) {
       let configraw;
       if (configraw = readFileSync(this._filename)) {
+        let testStringValue = "";
         try {
           this._config = YAML.parse(configraw.toString()) as any;
           let newObject = this._config as any;
-          let testStringValue = JSON.stringify(this._config);
+          testStringValue = JSON.stringify(this._config);
           for(var key in newObject){
-            testStringValue = testStringValue.replace(new RegExp('='+key,'g'),newObject[key])
+            // console.log('-----------------------------------');
+            // console.log(key,' ',testStringValue);
+            switch(true){
+              case typeof newObject[key] === 'string':
+                testStringValue = testStringValue.replace(new RegExp('='+key,'g'),upath.normalizeSafe(newObject[key]))
+                break;
+              case typeof newObject[key] === 'number':
+                testStringValue = testStringValue.replace(new RegExp('='+key,'g'),newObject[key])
+              default:
+                break;
+            }
           }
           this._config = JSON.parse(testStringValue);
         } catch (e) {
-          this.cli.usage("Could not parse DB file. Make sure JSON is correct", EXIT_CODE.RUNTIME_FAILURE);
+          console.log('Could not parse DB file. Make sure JSON is correct');
+          console.log(' ',e);
+          // this.cli.usage("Could not parse DB file. Make sure JSON is correct", e);
+          // this.cli.usage("Could not parse DB file. Make sure JSON is correct", EXIT_CODE.RUNTIME_FAILURE);
         }
       } else {
         this.cli.usage("Cannot read config file. Make sure you have permissions", EXIT_CODE.INVALID_ARGUMENT);
@@ -104,7 +119,7 @@ const Config = BaseModel.extend<ConfigInterface>({
     let self: {
       [key: string]: any
     } = this;
-    ["mode", "host", "port", "project_name", "username", "password", "pathMode",
+    ["mode", "host", "port", "project_name", "username", "password", "pathMode","size_limit",
       "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access","single_sync","trigger_permission"].forEach(prop => {
         if(prop == 'localPath'){
           if(upath.isAbsolute(self._config[prop] || self[prop]) == false){

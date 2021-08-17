@@ -173,7 +173,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
     event.on("close", (data: any) => {
       // console.log('close', data);ddd
       // observatory.add(this.eventToWord[event]);
-      this._tasks['sftp-watcher'].done(data);
+      this._tasks['sftp-watcher'].done("");
     });
     event.on("error", (data: any) => {
       console.log('error', data.toString())

@@ -1,0 +1,93 @@
+---
+project_name: Workspaces Digital Ocean
+username: root
+privateKey: C:/Users/test/.ssh/id_rsa_no_password
+host: localhost
+port: '221'
+localPath: D:/workspaces_DO
+remotePath: "/home/ubuntu/workspaces"
+ignores: []
+downloads:
+- artywiz_hotfix/storage/logs/
+single_sync:
+- artywiz_broadcast_service/node_modules
+- ".ssh"
+- artywiz_hotfix_webapp
+- artywiz_hotfix/vendor
+- artywiz_hotfix/.github
+trigger_permission:
+  unlink_folder: false
+  unlink: false
+  change: true
+  add: true
+direct_access:
+  config_file: ''
+  ssh_configs:
+  - Host: workspaces_digital_ocean
+    HostName: 45.55.35.150
+    User: ubuntu
+    Port: 22
+    RequestTty: force
+    IdentityFile: C:/Users/test/.ssh/id_rsa_no_password
+    StrictHostKeyChecking: 'no'
+    RemoteCommand: cd /home/ubuntu/workspaces && bash -l
+    ServerAliveInterval: 300
+    ServerAliveCountMax: 2
+  - Host: workspaces_as_root_digital_ocean
+    HostName: 45.55.35.150
+    User: root
+    Port: 22
+    RequestTty: force
+    IdentityFile: C:/Users/test/.ssh/id_rsa_no_password
+    StrictHostKeyChecking: 'no'
+    RemoteCommand: cd /home/ubuntu/workspaces && bash -l
+    ProxyCommand: ssh -v workspaces_digital_ocean -W [%h]:[%p]
+    ServerAliveInterval: 300
+    ServerAliveCountMax: 2
+  - Host: workspace_internal_digital_ocean
+    HostName: localhost
+    User: root
+    Port: '221'
+    RequestTty: force
+    IdentityFile: C:/Users/test/.ssh/id_rsa_no_password
+    StrictHostKeyChecking: 'no'
+    RemoteCommand: cd /home/ubuntu/workspaces && bash -l
+    ServerAliveInterval: 10
+    ServerAliveCountMax: 2
+  ssh_commands:
+  - access_name: Run devsync2
+    command: ngi-sync devsync2
+  - access_name: Enter ForwardPort Workspaces Digital Ocean
+    command: ssh -v -L 221:localhost:22 workspaces_as_root_digital_ocean
+  - access_name: Enter Server Digital Ocean
+    command: ssh -v workspace_internal_digital_ocean
+  - access_name: Enter Docker Jumper Digital Ocean
+    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
+      exec -it docker_jumper bash
+  - access_name: Enter Docker Artywiz Hotfix Digital Ocean
+    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
+      exec -it artywiz_hotfix_app_1 bash
+  - access_name: Enter Docker Artywiz Hotfix WebApp Digital Ocean
+    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
+      exec -it artywiz_hotfix_webapp bash
+  - access_name: Enter Docker Artywiz Sprint Digital Ocean
+    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
+      exec -it artywiz_sprint_app_1 bash
+  - access_name: Enter Docker Artywiz Sprint WebApp Digital Ocean
+    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
+      exec -it artywiz_sprint_webapp bash
+  - access_name: Enter Docker Artywiz Staging Digital Ocean
+    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
+      exec -it artywiz_staging_app_1 bash
+  - access_name: Enter Docker Artywiz Staging WebApp Digital Ocean
+    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
+      exec -it artywiz_staging_webapp bash
+  - access_name: Enter Docker Artywiz Genertaor Hotfix Digital Ocean
+    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
+      exec -it generator_hotfix bash
+  - access_name: Enter Docker Artywiz Genertor Cluster Digital Ocean
+    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
+      exec -it generator_cluster bash
+  - access_name: Enter Docker Artywiz Broadcast Service Digital Ocean
+    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
+      exec -it artywiz_broadcast_service bash
