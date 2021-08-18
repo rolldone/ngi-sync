@@ -4,7 +4,6 @@ import inquirer = require("inquirer");
 import path from "path";
 import upath from 'upath';
 var objectScan = require('object-scan');
-import * as child_process from 'child_process';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 
 export interface OpenRecentServiceInterface extends BaseServiceInterface {
@@ -48,6 +47,8 @@ export default BaseService.extend<OpenRecentServiceInterface>({
       /* Change default open running directory */
       process.chdir(this._completeData[passAnswer.target]);
       masterData.saveData('command.direct.retry', {});
+    }).catch((err)=>{
+      console.log('err -> ',err);
     });
   },
 });
