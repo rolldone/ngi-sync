@@ -43,6 +43,9 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
     console.log('---------------------------------------------------')
     console.log('  Replace xxx_sync-config.yaml to sync-config.yaml');
     console.log('---------------------------------------------------')
+    if (existsSync('.sync_ignore') == false) {
+      writeFileSync('.sync_ignore', '.sync_ignore \nsync-config.yaml \nsync-config.yml \n.sync_temp', 'utf8');
+    }
   },
   construct: function (cli: CliInterface) {
     this.generateTemplate();

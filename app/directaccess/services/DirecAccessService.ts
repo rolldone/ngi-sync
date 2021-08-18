@@ -8,6 +8,7 @@ import * as child_process from 'child_process';
 declare var masterData : MasterDataInterface;
 
 const GIT_CLEAN_UP = 'Git clean up : git add --renormalize . && git reset';
+const RUN_DEVSYNC2 = 'Open Devsync2';
 
 export interface DirectAccessServiceInterface extends BaseServiceInterface {
   returnDirectAccess: { (config: ConfigInterface): DirectAccessInterface };
@@ -47,9 +48,12 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     await this._checkIsCygwin();
     this._cli = cli;
     this._config = this.returnConfig(this._cli);
-
     let arrayQuestions = [];
     let _directAccess: DirectAccessType = this._config.direct_access as any;
+    _directAccess.ssh_commands.push({
+      access_name : RUN_DEVSYNC2,
+      command : 'ngi-sync devsync2'
+    });
     _directAccess.ssh_commands.push({
       access_name : GIT_CLEAN_UP,
       command : 'git add --renormalize . && git reset'
