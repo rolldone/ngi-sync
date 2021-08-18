@@ -33,22 +33,32 @@ export default BaseService.extend<OpenRecentServiceInterface>({
       this._completeData[resData[a] + ' : ' + test[resData[a]]] = test[resData[a]];
     }
     let questions: inquirer.QuestionCollection = [
+
       {
-        type: "list",
+        type: "search-list",
         name: "target",
         message: "Display open recent :",
-        choices: ress
-      }
+        choices: ress,
+        validate: (answer: string) => {
+          return true;
+        },
+      },
+      {
+        type: 'default',
+        name: "Enter again "+String.fromCodePoint(0x00002386 )
+      },
     ];
     this._promptAction(questions);
   },
-  _promptAction: function (questions) {
-    inquirer.prompt(questions)['then']((passAnswer: any) => {
-      /* Change default open running directory */
-      process.chdir(this._completeData[passAnswer.target]);
+  _promptAction: async function (questions) {
+    inquirer.registerPrompt('search-list', require('inquirer-search-list'));
+    inquirer.registerPrompt('autosubmit', require('inquirer-autosubmit-prompt'));
+    try {
+      let resData = await inquirer.prompt(questions)
+      process.chdir(this._completeData[resData.target]);
       masterData.saveData('command.direct.retry', {});
-    }).catch((err)=>{
-      console.log('err -> ',err);
-    });
+    } catch (ex) {
+      console.log('err -> ', ex);
+    }
   },
 });
