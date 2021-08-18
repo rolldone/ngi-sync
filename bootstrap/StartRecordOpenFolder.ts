@@ -9,10 +9,15 @@ export default function (next: Function) {
   if (test == false) {
     test = {};
   } else {
-    test = JSON.parse(readFileSync(upath.normalizeSafe(path.dirname(__dirname) + '/recent.json'),'utf8'));
+    test = JSON.parse(readFileSync(upath.normalizeSafe(path.dirname(__dirname) + '/recent.json'), 'utf8'));
   }
   let tt = upath.parse(path.resolve(""));
   test[tt.name] = path.resolve("");
+  let existSyncConfig = existsSync(path.resolve("") + '/sync-config.yaml');
+  if (existSyncConfig == false) {
+    /* If have no sync-config.yaml dont save */
+    return next();
+  };
   writeFileSync(upath.normalizeSafe(path.dirname(__dirname) + '/recent.json'), JSON.stringify(test));
   next();
 }
