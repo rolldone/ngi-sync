@@ -9,6 +9,7 @@ import MainDirect from '@root/app/directaccess/Main';
 import MainDevsync2 from '@root/app/devsync2/Main';
 import ForceRsync from '@root/app/forcersync/Main';
 import MainRecent from '@root/app/recent/Main';
+import MainConsole from '@root/app/console/Main';
 
 declare var masterData: MasterDataInterface;
 
@@ -32,6 +33,7 @@ const Cli = BaseRouteCli.extend<BaseRouteInterface>({
     masterData.setOnListener('command.forcersync.pull', ForceRsync.binding().pull);
     masterData.setOnListener('command.forcersync.single_sync', ForceRsync.binding().index);
     masterData.setOnListener('command.recent.open', MainRecent.binding().index);
+    masterData.setOnListener('command.console.index',MainConsole.binding().index);
   }
 });
 

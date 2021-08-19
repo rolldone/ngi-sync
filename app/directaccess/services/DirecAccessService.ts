@@ -9,6 +9,7 @@ declare var masterData : MasterDataInterface;
 
 const GIT_CLEAN_UP = 'Git clean up : git add --renormalize . && git reset';
 const RUN_DEVSYNC2 = 'Open Devsync2';
+const OPEN_CONSOLE = 'Open Console';
 
 export interface DirectAccessServiceInterface extends BaseServiceInterface {
   returnDirectAccess: { (config: ConfigInterface): DirectAccessInterface };
@@ -51,6 +52,10 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     let arrayQuestions = [];
     let _directAccess: DirectAccessType = this._config.direct_access as any;
     _directAccess.ssh_commands.push({
+      access_name : OPEN_CONSOLE,
+      command : 'ngi-sync console'
+    });
+    _directAccess.ssh_commands.push({
       access_name : RUN_DEVSYNC2,
       command : 'ngi-sync devsync2'
     });
@@ -64,7 +69,7 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     
     let questions: inquirer.QuestionCollection = [
       {
-        type: "list",
+        type: "search-list",
         name: "target",
         message: "Direct Access List :",
         choices: [
@@ -79,6 +84,9 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
   _promptAction: function (questions) {
     let cli = this._cli;
     let currentConf = this._config;
+    inquirer.registerPrompt('search-list', require('inquirer-search-list'));
+    inquirer.registerPrompt('autosubmit', require('inquirer-autosubmit-prompt'));
+    
     inquirer.prompt(questions)['then']((passAnswer: any) => {
       let _directAccess: DirectAccessType = this._config.direct_access as any;
       let _select_ssh_command = {};
