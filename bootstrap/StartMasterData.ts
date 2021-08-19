@@ -61,7 +61,7 @@ export default function(next : Function){
         }
       }
     },
-    saveData: function (key, props, timeout=0) {
+    saveData: function (key, props={}, timeout=0) {
       if(props.browser == true){
         if(this.resetListener()==false) return;
       }

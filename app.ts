@@ -52,9 +52,10 @@ BaseStart({
       case 'singlesync':
         masterData.saveData('command.forcersync.single_sync',{});
         return;
+      default:
       case 'recent':
         if(segment1._[1] == null){
-          segment1._.push("");
+          segment1._[1]="";
         }
         masterData.saveData('command.recent.open',segment1._[1]);
         return;
