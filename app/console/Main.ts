@@ -1,29 +1,27 @@
 export { }; import BaseController from "@root/base/BaseController";
 import CliService, { CliInterface } from "./services/CliService";
-import OpenRecentService, { OpenRecentServiceInterface } from "./services/OpenRecentService";
+import OpenConsoleService, { OpenConsoleServiceInterface } from "./services/OpenConsoleService";
 
 export interface MainControllerInterface extends BaseControllerInterface {
   index: { (props?: any): void }
   returnCliService: { (): CliInterface }
-  returnOpenRecentService: { (nameString: string): OpenRecentServiceInterface }
+  returnOpenConsoleService: { (nameString: string): OpenConsoleServiceInterface }
 }
 
 const Main = BaseController.extend<MainControllerInterface>({
   returnCliService: function () {
     return CliService.create();
   },
-  returnOpenRecentService: function (nameString) {
-    return OpenRecentService.create(nameString);
+  returnOpenConsoleService: function (nameString) {
+    return OpenConsoleService.create(nameString);
   },
   index: function (props) {
     let cliService = this.returnCliService();
-    if (cliService.hasStartupCommand('recent')) {
-      this.returnOpenRecentService(props);
+    if (cliService.hasStartupCommand('console')) {
+      this.returnOpenConsoleService(props);
       return;
     }
     // If have no define name menu. Just display as default menu
-    this.returnOpenRecentService(props);
-    // this.returnDevSyncService(cliService,props);
   }
 })
 
