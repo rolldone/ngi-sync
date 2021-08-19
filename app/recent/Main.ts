@@ -21,7 +21,8 @@ const Main = BaseController.extend<MainControllerInterface>({
       this.returnOpenRecentService(props);
       return;
     }
-    // Cross Cli dari cli yang lain
+    // If have no define name menu. Just display as default menu
+    this.returnOpenRecentService(props);
     // this.returnDevSyncService(cliService,props);
   }
 })
