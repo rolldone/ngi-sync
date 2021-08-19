@@ -52,6 +52,9 @@ BaseStart({
       case 'singlesync':
         masterData.saveData('command.forcersync.single_sync',{});
         return;
+      case 'console':
+        masterData.saveData('command.console.index',{});
+        return;
       default:
       case 'recent':
         if(segment1._[1] == null){
