@@ -70,9 +70,9 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     ];
     this._promptAction(questions);
   },
-  _checkIsCygwin : function(){
-    return new Promise((resolve : Function,reject : Function)=>{
-      var child : any = child_process.exec('ls -a -l /cygdrive',(error : any, stdout : any, stderr : any) => {
+  _checkIsCygwin: function () {
+    return new Promise((resolve: Function, reject: Function) => {
+      var child: any = child_process.exec('ls -a -l /cygdrive', (error: any, stdout: any, stderr: any) => {
         if (error) {
           resolve()
           return;
@@ -101,16 +101,42 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           mode: 'soft'
         });
       } else if (passAnswer.target == COMMAND_TARGET.SAFE_PULL_SYNC) {
-        masterData.saveData('command.forcersync.pull', {});
+        masterData.saveData('command.forcersync.pull', {
+          callback: (err: boolean) => {
+
+          }
+        });
       } else if (passAnswer.target == COMMAND_TARGET.SAFE_SYNC_NON_FORCE) {
-        this._currentConf.safe_mode = true;
-        this._devSyncSafeSyncronise();
-      } else if(passAnswer.target == COMMAND_TARGET.FORCE_SINGLE_SYNC){
-        masterData.saveData('command.forcersync.single_sync', {
-          action : 'single_sync_nested_prompt'
+        masterData.saveData('command.forcersync.pull', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            this._currentConf.safe_mode = true;
+            this._devSyncSafeSyncronise();
+          }
+        });
+
+      } else if (passAnswer.target == COMMAND_TARGET.FORCE_SINGLE_SYNC) {
+        masterData.saveData('command.forcersync.pull', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            masterData.saveData('command.forcersync.single_sync', {
+              action: 'single_sync_nested_prompt'
+            });
+          }
         });
       } else {
-        this._devSyncSafeSyncronise();
+        masterData.saveData('command.forcersync.pull', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            this._devSyncSafeSyncronise();
+          }
+        });
       }
     });
   },
@@ -155,7 +181,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       } = {};
       syncPull.setOnListener((res: any) => {
         // console.log('props', res);
-        if (typeof res.return === 'string' || res.return instanceof String){
+        if (typeof res.return === 'string' || res.return instanceof String) {
           var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + res.return);
           taskWatchOnServer.status(res.status);
           taskWatchOnServer.fail(res.status);
@@ -179,21 +205,21 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       syncPull.submitWatch();
       let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
       this.uploader = new Uploader(currentConf, this._cli);
-      this.uploader.setOnListener((action:string,props:any)=>{
-        switch(action){
+      this.uploader.setOnListener((action: string, props: any) => {
+        switch (action) {
           case 'REJECTED':
             notifier.notify(
               {
                 title: action,
                 message: props.return,
-                icon: path.join(__dirname,'..','..','..','..','/public/img', 'failed.jpg'), // Absolute path (doesn't work on balloons)
+                icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'failed.jpg'), // Absolute path (doesn't work on balloons)
                 sound: true, // Only Notification Center or Windows Toasters
                 wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
                 type: 'error',
                 'app-name': 'ngi-sync',
-                appID : this._currentConf.project_name
+                appID: this._currentConf.project_name
               },
-              function (err : any, response : any, metadata : any) {
+              function (err: any, response: any, metadata: any) {
                 // Response is response from notification
                 // Metadata contains activationType, activationAt, deliveredAt
               }
@@ -204,14 +230,14 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
               {
                 title: action,
                 message: props.return,
-                icon: path.join(__dirname,'..','..','..','..','/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
+                icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
                 sound: true, // Only Notification Center or Windows Toasters
                 wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
                 type: 'warning',
                 'app-name': 'ngi-sync',
-                appID : this._currentConf.project_name
+                appID: this._currentConf.project_name
               },
-              function (err : any, response : any, metadata : any) {
+              function (err: any, response: any, metadata: any) {
                 // Response is response from notification
                 // Metadata contains activationType, activationAt, deliveredAt
               }
@@ -223,14 +249,14 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
               {
                 title: action,
                 message: props.return,
-                icon: path.join(__dirname,'..','..','..','..','/public/img', 'success.png'), // Absolute path (doesn't work on balloons)
+                icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'success.png'), // Absolute path (doesn't work on balloons)
                 sound: true, // Only Notification Center or Windows Toasters
                 wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
                 type: 'info',
                 'app-name': 'ngi-sync',
-                appID : this._currentConf.project_name
+                appID: this._currentConf.project_name
               },
-              function (err : any, response : any, metadata : any) {
+              function (err: any, response: any, metadata: any) {
                 // Response is response from notification
                 // Metadata contains activationType, activationAt, deliveredAt
               }
