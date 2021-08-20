@@ -76,6 +76,10 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
           ...arrayQuestions,
           'Restart'
         ]
+      },
+      {
+        type: 'default',
+        name: "Enter again "+String.fromCodePoint(0x00002386 )
       }
     ];
     this._promptAction(questions);
