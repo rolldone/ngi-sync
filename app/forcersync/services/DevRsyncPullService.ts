@@ -1,27 +1,28 @@
 import { readFileSync } from "fs";
-import SyncPull, {SynPullInterface} from "../compute/SyncPull";
+import SyncPull, { SynPullInterface } from "../compute/SyncPull";
 import { RsyncOptions } from "../compute/SyncPush";
 import { CliInterface } from "./CliService";
 const chalk = require('chalk');
 const observatory = require("observatory");
 import DevRsyncPushService, { DevRsyncPushServiceInterface } from "./DevRsyncPushService";
 
-export interface DevRsyncPullServiceInterface extends DevRsyncPushServiceInterface{
-  returnSyncPull : {(cli : CliInterface, config : RsyncOptions): SynPullInterface}
-  _syncPull ?: SynPullInterface
+export interface DevRsyncPullServiceInterface extends DevRsyncPushServiceInterface {
+  returnSyncPull: { (cli: CliInterface, config: RsyncOptions): SynPullInterface }
+  _syncPull?: SynPullInterface
 }
 
 const DevRsyncPullService = DevRsyncPushService.extend<DevRsyncPullServiceInterface>({
-  returnConfig : function(cli){
+  returnConfig: function (cli) {
     return this._super(cli);
   },
-  returnSyncPull : function(cli,props){
-    return SyncPull.create(cli,props);
+  returnSyncPull: function (cli, props) {
+    return SyncPull.create(cli, props);
   },
-  returnSyncPush : function(cli,config){
-    return this._super(cli,config);
+  returnSyncPush: function (cli, config) {
+    return this._super(cli, config);
   },
-  construct : function(cli,props){
+  construct: function (cli, props) {
+    let callback = props.callback;
     this._cli = cli;
     this.task = observatory.add("Initializing...");
     let currentConf = this.returnConfig(cli);
@@ -30,7 +31,7 @@ const DevRsyncPullService = DevRsyncPushService.extend<DevRsyncPullServiceInterf
       host: currentConf.host,
       username: currentConf.username,
       password: currentConf.password,
-      privateKeyPath : currentConf.privateKey,
+      privateKeyPath: currentConf.privateKey,
       privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
       paths: [],
       ignores: currentConf.ignores,
@@ -38,11 +39,13 @@ const DevRsyncPullService = DevRsyncPushService.extend<DevRsyncPullServiceInterf
       local_path: currentConf.localPath,
       path_mode: currentConf.pathMode,
       jumps: currentConf.jumps,
-      single_sync : currentConf.single_sync || [],
+      single_sync: currentConf.single_sync || [],
       mode: props.mode || 'hard'
     });
     this._syncPull.setOnListener((props: any) => {
-
+      if (callback != null) {
+        callback(props.return.e == 1 ? true : false);
+      }
     });
     this._syncPull.submitPush();
   }
