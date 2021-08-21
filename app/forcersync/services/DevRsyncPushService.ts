@@ -22,6 +22,7 @@ const DevRsyncPushService = BaseService.extend<DevRsyncPushServiceInterface>({
     return SyncPull.create(cli, config);
   },
   construct: function (cli, props) {
+    let callback = props.callback;
     this._cli = cli;
     this.task = observatory.add("Initializing...");
     let currentConf = this.returnConfig(cli);
@@ -42,7 +43,9 @@ const DevRsyncPushService = BaseService.extend<DevRsyncPushServiceInterface>({
       mode: props.mode || 'hard'
     });
     this._syncPush.setOnListener((props: any) => {
-
+      if (callback != null) {
+        callback(props.return.e == 1 ? true : false);
+      }
     });
     this._syncPush.submitPush();
   }

@@ -95,15 +95,45 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     let currentConf = this._currentConf;
     inquirer.prompt(questions)['then']((passAnswer: any) => {
       if (passAnswer.target == COMMAND_TARGET.FORCE_PUSH_SYNC) {
-        masterData.saveData('command.forcersync.index', {});
+        masterData.saveData('command.forcersync.index', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            masterData.saveData('command.forcersync.pull', {
+              callback: (err: boolean) => {
+                if (err == true) {
+                  return process.exit(1);
+                };
+                this._devSyncSafeSyncronise();
+              }
+            });
+          }
+        });
       } else if (passAnswer.target == COMMAND_TARGET.SOFT_PUSH_SYNC) {
         masterData.saveData('command.forcersync.index', {
-          mode: 'soft'
+          mode: 'soft',
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            masterData.saveData('command.forcersync.pull', {
+              callback: (err: boolean) => {
+                if (err == true) {
+                  return process.exit(1);
+                };
+                this._devSyncSafeSyncronise();
+              }
+            });
+          }
         });
       } else if (passAnswer.target == COMMAND_TARGET.SAFE_PULL_SYNC) {
         masterData.saveData('command.forcersync.pull', {
           callback: (err: boolean) => {
-
+            if (err == true) {
+              return process.exit(1);
+            };
+            this._devSyncSafeSyncronise();
           }
         });
       } else if (passAnswer.target == COMMAND_TARGET.SAFE_SYNC_NON_FORCE) {
@@ -118,15 +148,8 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         });
 
       } else if (passAnswer.target == COMMAND_TARGET.FORCE_SINGLE_SYNC) {
-        masterData.saveData('command.forcersync.pull', {
-          callback: (err: boolean) => {
-            if (err == true) {
-              return process.exit(1);
-            };
-            masterData.saveData('command.forcersync.single_sync', {
-              action: 'single_sync_nested_prompt'
-            });
-          }
+        masterData.saveData('command.forcersync.single_sync', {
+          action: 'single_sync_nested_prompt'
         });
       } else {
         masterData.saveData('command.forcersync.pull', {

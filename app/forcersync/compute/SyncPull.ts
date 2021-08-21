@@ -5,7 +5,7 @@ import * as upath from "upath";
 import * as child_process from 'child_process';
 import path from "path";
 
-export interface SynPullInterface extends SyncPushInterface {}
+export interface SynPullInterface extends SyncPushInterface { }
 
 const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
   tempFolder: '.sync_temp/',
@@ -25,7 +25,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
     return this._super();
   },
   submitPush: async function () {
-    try{
+    try {
       // let _listningTemplate = await this._listningTemplate();
       // console.log('_listningTemplate',_listningTemplate);
       // return;
@@ -34,14 +34,14 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
       let config = this._config;
       let _local_path = config.local_path;
       // if(isCygwin() == true){
-        // _local_path = '/cygdrive/'+this._replaceAt(_local_path,':','',0,3);
+      // _local_path = '/cygdrive/'+this._replaceAt(_local_path,':','',0,3);
       // }
-      
+
       // _local_path = this._removeSameString(upath.normalizeSafe(_local_path),upath.normalizeSafe(path.resolve("")));
-      
+
       // Convert absolute path to relative
-      _local_path = path.relative(upath.normalizeSafe(path.resolve("")),upath.normalizeSafe(_local_path));
-      
+      _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path));
+
       // if(isCygwin()==false){
       //   console.log('------------------------');
       //   console.log('YOU ARE NOT IN CYGWIN!!');
@@ -72,9 +72,9 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         /* Support multiple source too */
         source: config.username + '@' + config.host + ':' + config.base_path + '/',
         // source : upath.normalize(_local_path+'/'),
-        destination: upath.normalizeSafe('./'+_local_path+'/'),
+        destination: upath.normalizeSafe('./' + _local_path + '/'),
         /* Include First */
-        include : _filterPatternRules.pass,
+        include: _filterPatternRules.pass,
         /* Exclude after include */
         exclude: _filterPatternRules.ignores,
         // flags : '-vt',
@@ -82,9 +82,9 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         // set : '--no-perms --no-owner --no-group',
         // set : '--chmod=D777,F777',
         // set : '--perms --chmod=u=rwx,g=rwx,o=,Dg+s',
-        shell: 'ssh -i '+config.privateKeyPath+' -p ' + config.port
+        shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
       });
-      
+
       console.log('rsync command -> ', rsync.command());
       var child = child_process.spawn(rsync.command(), [''], {
         stdio: 'inherit',//['pipe', process.stdout, process.stderr]
@@ -93,11 +93,11 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
 
       child.on('exit', (e, code) => {
         this._onListener({
-              action: "exit",
-              return: {
-                e, code
-              }
-            })
+          action: "exit",
+          return: {
+            e, code
+          }
+        })
       });
 
       /** 27/Jun/2021
@@ -115,8 +115,8 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
       //     // do things like parse error output
       //   }
       // );
-    }catch(ex : any){
-      console.log('submitPush - ex ',ex);
+    } catch (ex: any) {
+      console.log('submitPush - ex ', ex);
       process.exit(1);
     }
   },
