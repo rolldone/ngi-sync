@@ -283,7 +283,7 @@ export default class Watcher {
 			// 	});
 			// }
 			unlink(destinationFile, (err) => {
-				console.log('errr', err);
+				// console.log('errr', err);
 			});
 		} catch (ex) {
 			return false;
