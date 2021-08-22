@@ -94,6 +94,7 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     ];
     this._promptAction(questions);
 
+    masterData.saveData('command.load_save.auto_save',null);
   },
   _promptAction: function (questions) {
     let cli = this._cli;
