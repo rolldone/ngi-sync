@@ -27,13 +27,15 @@ const Cli = BaseRouteCli.extend<BaseRouteInterface>({
     masterData.setOnListener('command.forcesftp.index', MainForceSftp.binding().index);
     masterData.setOnListener('command.forcesftp.pull', MainForceSftp.binding().pull);
     masterData.setOnListener('command.direct.index', MainDirect.binding().index);
+    masterData.setOnListener('command.direct.short_command', MainDirect.binding().shortCommand);
     masterData.setOnListener('command.direct.retry', MainDirect.binding().retry);
     masterData.setOnListener('command.devsync2.index', MainDevsync2.binding().index);
+    masterData.setOnListener('command.devsync2.short_command', MainDevsync2.binding().shortCommand);
     masterData.setOnListener('command.forcersync.index', ForceRsync.binding().index);
     masterData.setOnListener('command.forcersync.pull', ForceRsync.binding().pull);
     masterData.setOnListener('command.forcersync.single_sync', ForceRsync.binding().index);
     masterData.setOnListener('command.recent.open', MainRecent.binding().index);
-    masterData.setOnListener('command.console.index',MainConsole.binding().index);
+    masterData.setOnListener('command.console.index', MainConsole.binding().index);
   }
 });
 
