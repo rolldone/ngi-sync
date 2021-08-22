@@ -8,7 +8,7 @@ export interface MasterDataInterface {
   resetListener : Function
   setOnListener : {(arg1 : any, arg2 ?: any, arg3 ?: any) : any}
   removeListener : {( listenerName : string, key : string) : void }
-  saveData : {(key : string, props : any, timeout ?: number) : void}
+  saveData : {(key : string, props ?: any, timeout ?: number) : void}
   updateData : {(key : string, props : any, timeout ?: number) : void}
   getData : {(key : string, props : any) : void}
   run ?: Function
@@ -61,9 +61,11 @@ export default function(next : Function){
         }
       }
     },
-    saveData: function (key, props={}, timeout=0) {
-      if(props.browser == true){
-        if(this.resetListener()==false) return;
+    saveData: function (key, props=null, timeout=0) {
+      if(props != null){
+        if(props.browser == true){
+          if(this.resetListener()==false) return;
+        }
       }
       this.vars[key] = props;
       if (this.pending[key] != null) {

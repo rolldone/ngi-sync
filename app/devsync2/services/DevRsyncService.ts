@@ -19,8 +19,8 @@ declare var masterData: MasterDataInterface
 export interface DevRsyncServiceInterface extends BaseServiceInterface {
   returnConfig: { (cli: CliInterface): ConfigInterface }
   returnSyncPull: { (cli: CliInterface, sshConfig: SftpOptions): SyncPullInterface }
-  create?: (cli: CliInterface) => this
-  construct: { (cli: CliInterface): void }
+  create?: (cli: CliInterface, extra_command?: string) => this
+  construct: { (cli: CliInterface, extra_command?: string): void }
   _cli?: CliInterface
   _currentConf?: ConfigInterface
   _promptAction: { (questions: inquirer.QuestionCollection): void }
@@ -29,16 +29,28 @@ export interface DevRsyncServiceInterface extends BaseServiceInterface {
   watcher?: Watcher
   _devSyncSafeSyncronise: { (): void }
   _checkIsCygwin: Function
+  _executeCommand?: { (extra_command: any): void }
 }
 
-export enum COMMAND_TARGET {
-  SAFE_SYNC = 'DevSync Basic Safe Syncronise \n  - Trigger by edit file :)',
-  SAFE_PULL_SYNC = 'DevSync Pull Syncronise \n  - This feature only download by your base template \n  - And ignore all file you define on config file and .sync_ignore :)',
-  SAFE_SYNC_NON_FORCE = 'DevSync Basic with non force file \n  - Trigger by edit file :). Ignored file not activated except pull sync \n  - Caution : This mode will take a long time indexing the file. and need more consume RAM',
-  SOFT_PUSH_SYNC = 'DevSync Soft Push Data. \n  - Your sensitive data will be safe on target :)',
-  FORCE_PUSH_SYNC = 'DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
-  FORCE_SINGLE_SYNC = 'DevSync Single Syncronize \n  - You can download simple file or folder',
+export const COMMAND_SHORT = {
+  SAFE_SYNC: 'safe_sync',
+  SAFE_PULL_SYNC: 'safe_pull_sync',
+  SAFE_SYNC_NON_FORCE: 'safe_sync_non_force',
+  SOFT_PUSH_SYNC: 'soft_push_sync',
+  FORCE_PUSH_SYNC: 'force_push_sync',
+  FORCE_SINGLE_SYNC: 'force_single_sync',
 }
+
+export const COMMAND_TARGET = {
+  SAFE_SYNC: COMMAND_SHORT.SAFE_SYNC + ' :: DevSync Basic Safe Syncronise \n  - Trigger by edit file :)',
+  SAFE_PULL_SYNC: COMMAND_SHORT.SAFE_PULL_SYNC + ' :: devsync Pull Syncronise \n  - This feature only download by your base template \n  - And ignore all file you define on config file and .sync_ignore :)',
+  SAFE_SYNC_NON_FORCE: COMMAND_SHORT.SAFE_SYNC_NON_FORCE + ' :: DevSync Basic with non force file \n  - Trigger by edit file :). Ignored file not activated except pull sync \n  - Caution : This mode will take a long time indexing the file. and need more consume RAM',
+  SOFT_PUSH_SYNC: COMMAND_SHORT.SOFT_PUSH_SYNC + ' :: DevSync Soft Push Data. \n  - Your sensitive data will be safe on target :)',
+  FORCE_PUSH_SYNC: COMMAND_SHORT.FORCE_PUSH_SYNC + ' :: DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
+  FORCE_SINGLE_SYNC: COMMAND_SHORT.FORCE_SINGLE_SYNC + ' :: DevSync Single Syncronize \n  - You can download simple file or folder',
+}
+
+
 
 const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
   returnConfig: function (cli) {
@@ -47,12 +59,16 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
   returnSyncPull: function (cli, sshConfig) {
     return SyncPull.create(cli, sshConfig);
   },
-  construct: async function (cli) {
+  construct: async function (cli, extra_command) {
     this._cli = cli;
     await this._checkIsCygwin();
     this.task = observatory.add("Initializing...");
     let currentConf = this.returnConfig(cli);
     this._currentConf = currentConf;
+    console.log('extra_command',extra_command);
+    if (extra_command != null) {
+      return this._executeCommand(extra_command);
+    }
     let questions: inquirer.QuestionCollection = [
       {
         type: "list",
@@ -69,6 +85,81 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
     ];
     this._promptAction(questions);
+  },
+  _executeCommand: function (extra_command) {
+    switch (extra_command) {
+      case COMMAND_SHORT.FORCE_PUSH_SYNC:
+        masterData.saveData('command.forcersync.index', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            masterData.saveData('command.forcersync.pull', {
+              callback: (err: boolean) => {
+                if (err == true) {
+                  return process.exit(1);
+                };
+                this._devSyncSafeSyncronise();
+              }
+            });
+          }
+        });
+        break;
+      case COMMAND_SHORT.SOFT_PUSH_SYNC:
+        masterData.saveData('command.forcersync.index', {
+          mode: 'soft',
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            masterData.saveData('command.forcersync.pull', {
+              callback: (err: boolean) => {
+                if (err == true) {
+                  return process.exit(1);
+                };
+                this._devSyncSafeSyncronise();
+              }
+            });
+          }
+        });
+        break;
+      case COMMAND_SHORT.SAFE_PULL_SYNC:
+        masterData.saveData('command.forcersync.pull', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            this._devSyncSafeSyncronise();
+          }
+        });
+        break;
+      case COMMAND_SHORT.SAFE_SYNC_NON_FORCE:
+        masterData.saveData('command.forcersync.pull', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            this._currentConf.safe_mode = true;
+            this._devSyncSafeSyncronise();
+          }
+        });
+        break;
+      case COMMAND_SHORT.FORCE_SINGLE_SYNC:
+        masterData.saveData('command.forcersync.single_sync', {
+          action: 'single_sync_nested_prompt'
+        });
+        break;
+      default:
+        masterData.saveData('command.forcersync.pull', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            this._devSyncSafeSyncronise();
+          }
+        });
+        break;
+    }
   },
   _checkIsCygwin: function () {
     return new Promise((resolve: Function, reject: Function) => {
@@ -95,71 +186,17 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     let currentConf = this._currentConf;
     inquirer.prompt(questions)['then']((passAnswer: any) => {
       if (passAnswer.target == COMMAND_TARGET.FORCE_PUSH_SYNC) {
-        masterData.saveData('command.forcersync.index', {
-          callback: (err: boolean) => {
-            if (err == true) {
-              return process.exit(1);
-            };
-            masterData.saveData('command.forcersync.pull', {
-              callback: (err: boolean) => {
-                if (err == true) {
-                  return process.exit(1);
-                };
-                this._devSyncSafeSyncronise();
-              }
-            });
-          }
-        });
+        this._executeCommand(COMMAND_SHORT.FORCE_PUSH_SYNC);
       } else if (passAnswer.target == COMMAND_TARGET.SOFT_PUSH_SYNC) {
-        masterData.saveData('command.forcersync.index', {
-          mode: 'soft',
-          callback: (err: boolean) => {
-            if (err == true) {
-              return process.exit(1);
-            };
-            masterData.saveData('command.forcersync.pull', {
-              callback: (err: boolean) => {
-                if (err == true) {
-                  return process.exit(1);
-                };
-                this._devSyncSafeSyncronise();
-              }
-            });
-          }
-        });
+        this._executeCommand(COMMAND_SHORT.SOFT_PUSH_SYNC);
       } else if (passAnswer.target == COMMAND_TARGET.SAFE_PULL_SYNC) {
-        masterData.saveData('command.forcersync.pull', {
-          callback: (err: boolean) => {
-            if (err == true) {
-              return process.exit(1);
-            };
-            this._devSyncSafeSyncronise();
-          }
-        });
+        this._executeCommand(COMMAND_SHORT.SAFE_PULL_SYNC);
       } else if (passAnswer.target == COMMAND_TARGET.SAFE_SYNC_NON_FORCE) {
-        masterData.saveData('command.forcersync.pull', {
-          callback: (err: boolean) => {
-            if (err == true) {
-              return process.exit(1);
-            };
-            this._currentConf.safe_mode = true;
-            this._devSyncSafeSyncronise();
-          }
-        });
-
+        this._executeCommand(COMMAND_SHORT.SAFE_SYNC_NON_FORCE);
       } else if (passAnswer.target == COMMAND_TARGET.FORCE_SINGLE_SYNC) {
-        masterData.saveData('command.forcersync.single_sync', {
-          action: 'single_sync_nested_prompt'
-        });
+        this._executeCommand(COMMAND_SHORT.FORCE_SINGLE_SYNC);
       } else {
-        masterData.saveData('command.forcersync.pull', {
-          callback: (err: boolean) => {
-            if (err == true) {
-              return process.exit(1);
-            };
-            this._devSyncSafeSyncronise();
-          }
-        });
+        this._executeCommand(null);
       }
     });
   },

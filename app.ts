@@ -41,13 +41,16 @@ BaseStart({
         masterData.saveData('command.forcesftp.index', {});
         return;
       case 'direct':
-        masterData.saveData('command.direct.index', {});
+        if (segment1._[1] != null) {
+          return masterData.saveData('command.direct.short_command', segment1._[1]);
+        }
+        masterData.saveData('command.direct.index', null);
         return;
       case 'devsync2':
-        if (segment1._[1] == null) {
-          segment1._[1] = "";
+        if (segment1._[1] != null) {
+          return masterData.saveData('command.devsync2.short_command', segment1._[1]);
         }
-        masterData.saveData('command.devsync2.index', segment1._[1]);
+        masterData.saveData('command.devsync2.index', null);
         return;
       case 'forcersync':
         masterData.saveData('command.forcersync.index', {});

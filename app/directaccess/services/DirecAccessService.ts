@@ -5,7 +5,7 @@ import { CliInterface } from "./CliService";
 import inquirer = require("inquirer");
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import * as child_process from 'child_process';
-declare var masterData : MasterDataInterface;
+declare var masterData: MasterDataInterface;
 
 const GIT_CLEAN_UP = 'Git clean up : git add --renormalize . && git reset';
 const RUN_DEVSYNC2 = 'Open Devsync2';
@@ -14,12 +14,14 @@ const OPEN_CONSOLE = 'Open Console';
 export interface DirectAccessServiceInterface extends BaseServiceInterface {
   returnDirectAccess: { (config: ConfigInterface): DirectAccessInterface };
   returnConfig: { (cli: CliInterface): ConfigInterface };
-  create?: (cli: CliInterface) => this;
-  construct: { (cli: CliInterface): void };
+  create?: (cli: CliInterface, extra_command?: string) => this;
+  construct: { (cli: CliInterface, extra_command?: string): void };
   _cli?: CliInterface;
   _promptAction: { (questions: inquirer.QuestionCollection): void }
   _config?: ConfigInterface,
-  _checkIsCygwin: Function
+  _checkIsCygwin: Function,
+  shortCommand?: { (direct_access: Array<any>, props: any): void }
+  _executeCommand?: { (direct_access_item: any): void }
 }
 const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
   returnDirectAccess: function (config) {
@@ -28,9 +30,9 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
   returnConfig: function (cli) {
     return Config.create(cli);
   },
-  _checkIsCygwin : function(){
-    return new Promise((resolve : Function,reject : Function)=>{
-      var child : any = child_process.exec('ls -a -l /cygdrive',(error : any, stdout : any, stderr : any) => {
+  _checkIsCygwin: function () {
+    return new Promise((resolve: Function, reject: Function) => {
+      var child: any = child_process.exec('ls -a -l /cygdrive', (error: any, stdout: any, stderr: any) => {
         if (error) {
           resolve()
           return;
@@ -45,28 +47,36 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
       });
     });
   },
-  construct: async function (cli) {
+  construct: async function (cli, extra_command) {
     await this._checkIsCygwin();
     this._cli = cli;
     this._config = this.returnConfig(this._cli);
     let arrayQuestions = [];
     let _directAccess: DirectAccessType = this._config.direct_access as any;
     _directAccess.ssh_commands.push({
-      access_name : OPEN_CONSOLE,
-      command : 'ngi-sync console'
+      access_name: OPEN_CONSOLE,
+      key: 'console',
+      command: 'ngi-sync console'
     });
     _directAccess.ssh_commands.push({
-      access_name : RUN_DEVSYNC2,
-      command : 'ngi-sync devsync2'
+      access_name: RUN_DEVSYNC2,
+      key: 'devsync2',
+      command: 'ngi-sync devsync2'
     });
     _directAccess.ssh_commands.push({
-      access_name : GIT_CLEAN_UP,
-      command : 'git add --renormalize . && git reset'
+      access_name: GIT_CLEAN_UP,
+      key: 'clean',
+      command: 'git add --renormalize . && git reset'
     });
-    for (var a = 0; a < _directAccess.ssh_commands.length; a++) {
-      arrayQuestions.push(_directAccess.ssh_commands[a].access_name);
+
+    if (extra_command != null) {
+      return this.shortCommand(_directAccess.ssh_commands, extra_command);
     }
-    
+
+    for (var a = 0; a < _directAccess.ssh_commands.length; a++) {
+      arrayQuestions.push((_directAccess.ssh_commands[a].key == null ? '' : (_directAccess.ssh_commands[a].key + ' :: ')) + _directAccess.ssh_commands[a].access_name);
+    }
+
     let questions: inquirer.QuestionCollection = [
       {
         type: "search-list",
@@ -79,7 +89,7 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
       },
       {
         type: 'default',
-        name: "Enter again "+String.fromCodePoint(0x00002386 )
+        name: "Enter again " + String.fromCodePoint(0x00002386)
       }
     ];
     this._promptAction(questions);
@@ -90,31 +100,41 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     let currentConf = this._config;
     inquirer.registerPrompt('search-list', require('inquirer-search-list'));
     inquirer.registerPrompt('autosubmit', require('inquirer-autosubmit-prompt'));
-    
+
     inquirer.prompt(questions)['then']((passAnswer: any) => {
       let _directAccess: DirectAccessType = this._config.direct_access as any;
       let _select_ssh_command = {};
       for (var a = 0; a < _directAccess.ssh_commands.length; a++) {
-        if(passAnswer.target == _directAccess.ssh_commands[a].access_name){
+        if (passAnswer.target == (_directAccess.ssh_commands[a].key == null ? '' : (_directAccess.ssh_commands[a].key + ' :: ')) + _directAccess.ssh_commands[a].access_name) {
           _select_ssh_command = _directAccess.ssh_commands[a];
           break;
         }
       }
-      if(passAnswer.target == "Restart"){
-        masterData.saveData('command.direct.retry',{});
+      if (passAnswer.target == "Restart") {
+        masterData.saveData('command.direct.retry', {});
         return;
       }
-      let _direcAccess = this.returnDirectAccess(this._config);
-      _direcAccess.setOnListener(function (props: any) {
-        switch(props.action){
-          case 'exit':
-            masterData.saveData('command.direct.retry',{});
-            break;
-        }
-      });
-      _direcAccess.submitDirectAccess(_select_ssh_command);
+      this._executeCommand(_select_ssh_command);
     });
-
+  },
+  _executeCommand: function (direct_access_item) {
+    let _direcAccess = this.returnDirectAccess(this._config);
+    _direcAccess.setOnListener(function (props: any) {
+      switch (props.action) {
+        case 'exit':
+          masterData.saveData('command.direct.retry', {});
+          break;
+      }
+    });
+    _direcAccess.submitDirectAccess(direct_access_item);
+  },
+  shortCommand: function (direct_access, extra_command) {
+    for (var a = 0; a < direct_access.length; a++) {
+      if (extra_command == direct_access[a].key) {
+        this._executeCommand(direct_access[a]);
+        break;
+      }
+    }
   }
 });
 
