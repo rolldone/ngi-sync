@@ -7,6 +7,7 @@ import upath from 'upath';
 const { parse } = require("jsonplus");
 import YAML from 'yaml'
 import os from 'os';
+import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 
 export const CONFIG_FILE_NAME = "sync-config.yaml";
 export type trigger_permission = {
@@ -45,7 +46,10 @@ export interface ConfigInterface extends BaseModelInterface {
   single_sync ?: Array<string>
   trigger_permission ?: trigger_permission
   size_limit ?: number
+  saved_file_name ?: string
 }
+
+declare var masterData : MasterDataInterface;
 
 const Config = BaseModel.extend<ConfigInterface>({
   model: "",
@@ -79,7 +83,7 @@ const Config = BaseModel.extend<ConfigInterface>({
     this._expand();
   },
   _fetch: function () {
-    console.log('this._filename', this._filename);
+    // console.log('this._filename', this._filename);
     if (existsSync(this._filename)) {
       let configraw;
       if (configraw = readFileSync(this._filename)) {
@@ -119,7 +123,7 @@ const Config = BaseModel.extend<ConfigInterface>({
     let self: {
       [key: string]: any
     } = this;
-    ["mode", "host", "port", "project_name", "username", "password", "pathMode","size_limit",
+    ["saved_file_name", "mode", "host", "port", "project_name", "username", "password", "pathMode","size_limit",
       "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access","single_sync","trigger_permission"].forEach(prop => {
         if(prop == 'localPath'){
           if(upath.isAbsolute(self._config[prop] || self[prop]) == false){
@@ -129,6 +133,9 @@ const Config = BaseModel.extend<ConfigInterface>({
           }
         }else{
           self[prop] = self._config[prop] || self[prop];
+        }
+        if(prop == "saved_file_name"){
+          self[prop] = upath.normalizeSafe(self._config[prop] || 'last_open.yaml');
         }
         // self[prop] = self._config[prop] || self[prop];
       });

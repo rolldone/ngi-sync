@@ -61,6 +61,9 @@ BaseStart({
       case 'console':
         masterData.saveData('command.console.index', {});
         return;
+      case 'data':
+        masterData.saveData('command.load_save.data', {});
+        return;
       default:
       case 'recent':
         if (segment1._[1] == null) {
