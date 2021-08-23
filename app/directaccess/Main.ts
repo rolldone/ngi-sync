@@ -23,6 +23,8 @@ const Main = BaseController.extend<MainControllerInterface>({
       this.returnDirectAccessService(cliService);
       return;
     }
+    /* If have no define specific menu */
+    this.returnDirectAccessService(cliService);
   },
   shortCommand: function (props) {
     let cliService = this.returnCliService();

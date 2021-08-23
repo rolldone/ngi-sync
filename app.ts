@@ -40,12 +40,6 @@ BaseStart({
       case 'forcesftp':
         masterData.saveData('command.forcesftp.index', {});
         return;
-      case 'direct':
-        if (segment1._[1] != null) {
-          return masterData.saveData('command.direct.short_command', segment1._[1]);
-        }
-        masterData.saveData('command.direct.index', null);
-        return;
       case 'devsync2':
         if (segment1._[1] != null) {
           return masterData.saveData('command.devsync2.short_command', segment1._[1]);
@@ -64,12 +58,18 @@ BaseStart({
       case 'data':
         masterData.saveData('command.load_save.data', {});
         return;
-      default:
-      case 'recent':
+      case 'open':
         if (segment1._[1] == null) {
           segment1._[1] = "";
         }
         masterData.saveData('command.recent.open', segment1._[1]);
+        return;
+      default:
+      case 'direct':
+        if (segment1._[1] != null) {
+          return masterData.saveData('command.direct.short_command', segment1._[1]);
+        }
+        masterData.saveData('command.direct.index', null);
         return;
     }
   }
