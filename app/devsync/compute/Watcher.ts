@@ -13,6 +13,9 @@ import ignore from 'ignore'
 import { debounce, DebouncedFunc } from "lodash";
 const micromatch = require('micromatch');
 declare let masterData: MasterDataInterface;
+const workerpool = require('workerpool');
+import { dirname } from "path";
+const pool = workerpool.pool(__dirname+'/TestCache.js');
 
 export default class Watcher {
 	tempFolder = '.sync_temp/';
@@ -79,7 +82,7 @@ export default class Watcher {
 			...gitIgnore,
 			...defaultIgnores
 		]
-		
+
 		let resCHeckGItIgnores = (() => {
 			let newResGItIngore = [];
 			for (var a = 0; a < gitIgnore.length; a++) {
@@ -216,6 +219,8 @@ export default class Watcher {
 					break;
 			}
 		});
+
+		this._getPendingTerminate = this.pendingTerminate();
 	}
 
 	_replaceAt(input: string, search: string, replace: string, start: number, end: number): string {
@@ -302,6 +307,10 @@ export default class Watcher {
 			let readStream1 = createReadStream(path);
 			let readStream2 = createReadStream(destinationFile);
 			let equal = await streamEqual(readStream1, readStream2);
+			readStream1.close();
+			readStream2.close();
+			readStream2.destroy();
+			readStream1.destroy();
 			return equal;
 		} catch (ex) {
 			return false;
@@ -319,6 +328,20 @@ export default class Watcher {
 			unlink: chalk.red("DELETED"),
 			unlinkDir: chalk.red("DELETED")
 		};
+	
+	_getPendingTerminate : any = null;
+	private pendingTerminate(){
+		let db : any = null;
+		return function(){
+			if(db != null){
+				db.cancel();
+			}
+			db = debounce(()=>{
+				pool.terminate();
+			},5000);
+			db();
+		}
+	};
 
 	private handler(method: string) {
 		return (...args: string[]): Promise<any> => {
@@ -342,16 +365,43 @@ export default class Watcher {
 					break;
 				default:
 					/* This process get much eat ram if check many file suddenly, so try looking alternative or create parallel app maybe */
-					this.getCacheFile(path).then((res) => {
-						if (res == true) {
-							return;
-						}
-						let tt: {
-							[key: string]: any
-						} = this;
-						// If not, continue as ususal
-						tt[method](...args);
-					});
+
+					pool.exec('testCache', [{
+						path: path,
+						localPath: this.config.localPath,
+						tempFolder: this.tempFolder,
+						relativePathFile: this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath))
+					}])
+						.then((res: any) => {
+							// console.log('res',res);
+							if (res == true) {
+								return;
+							}
+							let tt: {
+								[key: string]: any
+							} = this;
+							// If not, continue as ususal
+							tt[method](...args);
+						})
+						.catch(function (err: any) {
+							console.error(err);
+						})
+						.then( ()=> {
+							 // terminate all workers when done
+							 this._getPendingTerminate();
+						});
+
+					// this.getCacheFile(path).then((res: any) => {
+					// 	if (res == true) {
+					// 		return;
+					// 	}
+					// 	let tt: {
+					// 		[key: string]: any
+					// 	} = this;
+					// 	// If not, continue as ususal
+					// 	tt[method](...args);
+					// 	workerFarm.end(clorkernya)
+					// })
 					return;
 			}
 			let tt: {
