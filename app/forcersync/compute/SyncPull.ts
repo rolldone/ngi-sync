@@ -79,6 +79,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         exclude: _filterPatternRules.ignores,
         // flags : '-vt',
         flags: 'avzL',
+        set : '--size-only --checksum',
         // set : '--no-perms --no-owner --no-group',
         // set : '--chmod=D777,F777',
         // set : '--perms --chmod=u=rwx,g=rwx,o=,Dg+s',
