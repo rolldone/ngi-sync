@@ -44,7 +44,9 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
   submitDirectAccess: function (_select_ssh_command) {
     var child = child_process.spawn(_select_ssh_command.command, [''], {
       stdio: 'inherit',//['pipe', process.stdout, process.stderr]
-      shell: true
+      shell: true,
+      /* Open new window */
+      // detached: true
     });
     child.on('exit', (e, code) => {
       this._onListener({

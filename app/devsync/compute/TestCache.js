@@ -22,7 +22,7 @@ async function testCache(context) {
     readStream1.destroy();
     return equal;
   } catch (ex) {
-    console.log('eeex', ex);
+    // console.log('eeex', ex);
     return false;
   }
 }

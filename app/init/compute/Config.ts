@@ -136,9 +136,9 @@ const Config = BaseModel.extend<ConfigInterface>({
         } else {
           self[prop] = self._config[prop] || self[prop];
         }
-        if (prop == "saved_file_name") {
-          self[prop] = upath.normalizeSafe(self._config[prop] || 'last_open.yaml');
-        }
+        // if (prop == "saved_file_name") {
+        //   self[prop] = upath.normalizeSafe(self._config[prop] || 'last_open.yaml');
+        // }
         // self[prop] = self._config[prop] || self[prop];
       });
   },
