@@ -9,7 +9,10 @@ import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 const RECENT_FILE_NAME = 'recent.json';
 
 export interface OpenRecentServiceInterface extends BaseServiceInterface {
-  _completeData: {
+  _realdData: {
+    [key: string]: string
+  },
+  _displayData: {
     [key: string]: string
   }
   construct: { (props: string): void }
@@ -26,7 +29,10 @@ export const ACTION = {
 declare var masterData: MasterDataInterface;
 
 export default BaseService.extend<OpenRecentServiceInterface>({
-  _completeData: {},
+  /* To store data */
+  _realdData: {},
+  /* To display data */
+  _displayData: {},
   _readRecentJSON: function (basePathFolder) {
     return JSON.parse(readFileSync(upath.normalizeSafe(basePathFolder.replace('app/recent', "") + '/' + RECENT_FILE_NAME), 'utf8'));
   },
@@ -41,11 +47,15 @@ export default BaseService.extend<OpenRecentServiceInterface>({
     } else {
       test = this._readRecentJSON(basePathFolder);
     }
+    for (var key in test) {
+      test[key] = upath.normalizeSafe(test[key]);
+    }
+    this._realdData = test;
     let resData = objectScan([props + '*'], { joined: true })(test);
     let ress = [];
     for (var a = 0; a < resData.length; a++) {
       ress.push(resData[a] + (test[resData[a]] == null ? "" : ' : ' + test[resData[a]]));
-      this._completeData[resData[a] + ' : ' + test[resData[a]]] = test[resData[a]];
+      this._displayData[resData[a] + (test[resData[a]] == null ? "" : ' : ' + test[resData[a]])] = test[resData[a]];
     }
     let questions: inquirer.QuestionCollection = [
 
@@ -77,12 +87,17 @@ export default BaseService.extend<OpenRecentServiceInterface>({
     try {
       let resData = await inquirer.prompt(questions)
       if (resData.action == ACTION.DELETE_BOORKMARK) {
-        delete this._completeData[resData.target];
-        this._writeRecentJSON(basePathFolder, this._completeData);
+        for (var key in this._realdData) {
+          if (this._displayData[resData.target] == this._realdData[key]) {
+            delete this._realdData[key];
+            break;
+          }
+        }
+        this._writeRecentJSON(basePathFolder, this._realdData);
         /* Restart to retry open recent again */
         return masterData.saveData('command.recent.retry', {});
       }
-      process.chdir(this._completeData[resData.target]);
+      process.chdir(this._displayData[resData.target]);
       /* Go to command direct with retry */
       masterData.saveData('command.direct.retry', {});
     } catch (ex) {
