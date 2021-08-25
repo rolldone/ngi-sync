@@ -4,6 +4,7 @@ import OpenRecentService, { OpenRecentServiceInterface } from "./services/OpenRe
 
 export interface MainControllerInterface extends BaseControllerInterface {
   index: { (props?: any): void }
+  retry: { (): void }
   returnCliService: { (): CliInterface }
   returnOpenRecentService: { (nameString: string): OpenRecentServiceInterface }
 }
@@ -24,6 +25,9 @@ const Main = BaseController.extend<MainControllerInterface>({
     // If have no define name menu. Just display as default menu
     this.returnOpenRecentService(props);
     // this.returnDevSyncService(cliService,props);
+  },
+  retry : function(){
+    this.index("")
   }
 })
 

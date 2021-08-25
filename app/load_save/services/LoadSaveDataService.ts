@@ -186,8 +186,8 @@ export default BaseService.extend<LoadSaveServiceInterface>({
   },
   autoSave: function () {
     try {
-      let bodyData: any = Object.assign({},this._config);
-      delete bodyData._config;
+      let bodyData: any = Object.assign({},this._config._originConfig);
+      // delete bodyData._conf;
       // console.log('autSave',bodyData.saved_file_name);
       writeFileSync(this._baseAppPathFolder + '/.sync_collections/' + bodyData.saved_file_name, YAML.stringify(bodyData, null), 'utf8');
     } catch (ex) {

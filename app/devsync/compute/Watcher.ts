@@ -2,7 +2,7 @@ import * as chokidar from "chokidar"
 const chalk = require('chalk');
 import { FSWatcher, readFileSync, copyFile, exists, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync, unlink } from "fs";
 import Uploader from "./Uploader";
-import Config, { ConfigInterface } from "./Config";
+import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
 const observatory = require("observatory");
 const streamEqual = require('stream-equal');
@@ -11,11 +11,9 @@ import parseGitIgnore from '@root/tool/parse-gitignore'
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import ignore from 'ignore'
 import { debounce, DebouncedFunc } from "lodash";
-const micromatch = require('micromatch');
 declare let masterData: MasterDataInterface;
 const workerpool = require('workerpool');
-import { dirname } from "path";
-const pool = workerpool.pool(__dirname+'/TestCache.js');
+const pool = workerpool.pool(__dirname + '/TestCache.js');
 
 export default class Watcher {
 	tempFolder = '.sync_temp/';
@@ -328,17 +326,17 @@ export default class Watcher {
 			unlink: chalk.red("DELETED"),
 			unlinkDir: chalk.red("DELETED")
 		};
-	
-	_getPendingTerminate : any = null;
-	private pendingTerminate(){
-		let db : any = null;
-		return function(){
-			if(db != null){
+
+	_getPendingTerminate: any = null;
+	private pendingTerminate() {
+		let db: any = null;
+		return function () {
+			if (db != null) {
 				db.cancel();
 			}
-			db = debounce(()=>{
+			db = debounce(() => {
 				pool.terminate();
-			},5000);
+			}, 5000);
 			db();
 		}
 	};
@@ -386,9 +384,9 @@ export default class Watcher {
 						.catch(function (err: any) {
 							console.error(err);
 						})
-						.then( ()=> {
-							 // terminate all workers when done
-							 this._getPendingTerminate();
+						.then(() => {
+							// terminate all workers when done
+							this._getPendingTerminate();
 						});
 
 					// this.getCacheFile(path).then((res: any) => {

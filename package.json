@@ -9,8 +9,9 @@
   "main": "dist/index.js",
   "scripts": {
     "type-check": "npx tsc --noEmit",
-    "dev": "npx tsc -w",
-    "build": "npx tsc",
+    "dev": "npm run copy_files && npx tsc -w",
+    "copy_files" : "copyfiles example.yaml dist",
+    "build": "npm run copy_files && npx tsc",
     "start-dev-disable": "DEBUG='nohm:*' nodemon dist/app.js",
     "start-dev": "nodemon dist/app.js",
     "test": "echo \"Error: no test specified\" && exit 1"

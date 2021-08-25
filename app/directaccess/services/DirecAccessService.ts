@@ -94,6 +94,7 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     ];
     this._promptAction(questions);
 
+    /* Call auto save */
     masterData.saveData('command.load_save.auto_save',null);
   },
   _promptAction: function (questions) {
