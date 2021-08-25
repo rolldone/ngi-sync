@@ -14,7 +14,7 @@ export interface InitConfigInterface extends BaseServiceInterface {
   returnConfigModel: { (cli: CliInterface): ConfigInterface }
   currentConf?: ConfigInterface
   generateTemplate?: { (): void }
-  generateRandomString?: { (length:number): string }
+  generateRandomString?: { (length: number): string }
 }
 
 const InitConfigService = BaseService.extend<InitConfigInterface>({
@@ -33,13 +33,13 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
   },
   generateTemplate: function () {
     let basePathFolder = upath.normalizeSafe(path.dirname(__dirname));
-    let test: any = existsSync(upath.normalizeSafe(basePathFolder.replace('dist/app/init', "") + '/example.yaml'));
+    let test: any = existsSync(upath.normalizeSafe(basePathFolder.replace('app/init', "") + '/example.yaml'));
     if (test == false) {
       test = {};
     } else {
-      test = YAML.parse(readFileSync(upath.normalizeSafe(basePathFolder.replace('dist/app/init', "") + '/example.yaml'), 'utf8'));
+      test = YAML.parse(readFileSync(upath.normalizeSafe(basePathFolder.replace('app/init', "") + '/example.yaml'), 'utf8'));
     }
-    writeFileSync(this.generateRandomString(5)+'_'+CONFIG_FILE_NAME, YAML.stringify(test, null), 'utf8');
+    writeFileSync(this.generateRandomString(5) + '_' + CONFIG_FILE_NAME, YAML.stringify(test, null), 'utf8');
     console.log('---------------------------------------------------')
     console.log('  Replace xxx_sync-config.yaml to sync-config.yaml');
     console.log('---------------------------------------------------')
