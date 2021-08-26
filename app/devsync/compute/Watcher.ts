@@ -364,23 +364,30 @@ export default class Watcher {
 				default:
 					/* This process get much eat ram if check many file suddenly, so try looking alternative or create parallel app maybe */
 
-					pool.exec('testCache', [{
+					pool.proxy().then((worker: any) => {
+						return worker.testCache({
+							path: path,
+							localPath: this.config.localPath,
+							tempFolder: this.tempFolder,
+							relativePathFile: this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath))
+						})
+					})/* .exec('testCache', [{
 						path: path,
 						localPath: this.config.localPath,
 						tempFolder: this.tempFolder,
 						relativePathFile: this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath))
-					}])
-						.then((res: any) => {
+					}]) */
+						.then(function (self: any, args: any, res: any) {
 							// console.log('res',res);
 							if (res == true) {
 								return;
 							}
 							let tt: {
 								[key: string]: any
-							} = this;
+							} = self;
 							// If not, continue as ususal
 							tt[method](...args);
-						})
+						}.bind(null, this, args))
 						.catch(function (err: any) {
 							console.error(err);
 						})
@@ -398,7 +405,6 @@ export default class Watcher {
 					// 	} = this;
 					// 	// If not, continue as ususal
 					// 	tt[method](...args);
-					// 	workerFarm.end(clorkernya)
 					// })
 					return;
 			}

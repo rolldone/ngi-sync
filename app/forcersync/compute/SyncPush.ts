@@ -293,6 +293,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
 
       console.log('rsync command -> ', rsync.command());
       var child = child_process.spawn(rsync.command(), [''], {
+        env: { IS_PROCESS: "sync_push" },
         stdio: 'inherit',//['pipe', process.stdout, process.stderr]
         shell: true
       });

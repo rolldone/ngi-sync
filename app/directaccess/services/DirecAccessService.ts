@@ -128,6 +128,12 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
           break;
       }
     });
+    switch(direct_access_item.key){
+      case 'devsync2':
+        return masterData.saveData('command.devsync2.short_command',null);
+      case 'devsync':
+        return masterData.saveData('command.devsync.short_command',null);
+    }
     _direcAccess.submitDirectAccess(direct_access_item);
   },
   shortCommand: function (direct_access, extra_command) {
