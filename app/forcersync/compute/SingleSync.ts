@@ -76,6 +76,7 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
       console.log('rsync command -> ', rsync.command());
 
       var child = child_process.spawn(rsync.command(), [''], {
+        env: { IS_PROCESS: "single_sync" },
         stdio: 'inherit',//['pipe', process.stdout, process.stderr]
         shell: true
       });

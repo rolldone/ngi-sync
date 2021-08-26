@@ -12,6 +12,14 @@ interface AppInterface extends BaseStartInterface {
   /* Todo some extra types */
 }
 
+/* Its working when enter to child_process with stedio inherit */
+process.on('SIGINT', (props:any,props2:any) => { 
+  if(process.env.IS_PROCESS == "open_console"){
+    process.exit();
+    return;
+  }
+});
+
 BaseStart({
   port: null,
   init: [
