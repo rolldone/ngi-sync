@@ -8,7 +8,7 @@ export interface OpenConsoleServiceInterface extends BaseServiceInterface {
 
 export default BaseService.extend<OpenConsoleServiceInterface>({
   construct: function (props) {
-    var shell = os.platform() === 'win32' ? 'cmd' : 'bash';
+    var shell = os.platform() === 'win32' ? '"C:\\Program Files\\Git\\bin\\bash.exe"' : 'bash';
     var child = child_process.spawn(shell, [''], {
       stdio: 'inherit',//['pipe', process.stdout, process.stderr]
       shell: true
