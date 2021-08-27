@@ -5,6 +5,7 @@ import OpenConsoleService, { OpenConsoleServiceInterface } from "./services/Open
 export interface MainControllerInterface extends BaseControllerInterface {
   index: { (props?: any): void }
   returnCliService: { (): CliInterface }
+  direct: { (props?: any): void }
   returnOpenConsoleService: { (nameString: string): OpenConsoleServiceInterface }
 }
 
@@ -22,6 +23,10 @@ const Main = BaseController.extend<MainControllerInterface>({
       return;
     }
     // If have no define name menu. Just display as default menu
+  },
+  direct: function (props) {
+    let cliService = this.returnCliService();
+    this.returnOpenConsoleService(props);
   }
 })
 
