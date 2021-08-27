@@ -138,7 +138,7 @@ export default class Uploader {
 					this.onListener('UPLOADED', {
 						return: 'Last Upload: ' + whatFile// 'Sync is done!'
 					})
-					gc();
+					// gc();
 				}
 			}, 3000 /* 10000 */);
 			debounceClose();

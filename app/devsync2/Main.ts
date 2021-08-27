@@ -5,25 +5,29 @@ import DevRsyncService, { DevRsyncServiceInterface } from "./services/DevRsyncSe
 export interface MainControllerInterface extends BaseControllerInterface {
   index: { (): void }
   returnCliService: { (): CliInterface }
-  returnDevRsyncService : { (cli : CliInterface) : DevRsyncServiceInterface }
-  _devRsyncService ?: DevRsyncServiceInterface
+  returnDevRsyncService: { (cli: CliInterface, extra_command?: string): DevRsyncServiceInterface }
+  _devRsyncService?: DevRsyncServiceInterface
+  shortCommand?: { (props: any): void }
 }
 
 const Main = BaseController.extend<MainControllerInterface>({
-  returnCliService : function(){
+  returnCliService: function () {
     return CliService.create();
   },
-  returnDevRsyncService : function(cli){
-    return DevRsyncService.create(cli);
+  returnDevRsyncService: function (cli, extra_command) {
+    return DevRsyncService.create(cli, extra_command);
   },
-  index : function(){
+  index: function () {
     let cliService = this.returnCliService();
     if (cliService.hasStartupCommand('devsync2')) {
       this.returnDevRsyncService(cliService);
       return;
     }
   },
-  
+  shortCommand: function (props) {
+    let cliService = this.returnCliService();
+    this.returnDevRsyncService(cliService, props);
+  },
 });
 
 export default Main;

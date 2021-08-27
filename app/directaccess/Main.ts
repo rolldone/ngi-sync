@@ -4,17 +4,18 @@ import DirectAccessService, { DirectAccessServiceInterface } from "./services/Di
 
 export interface MainControllerInterface extends BaseControllerInterface {
   index: { (): void }
+  shortCommand: { (props: string): void }
   returnCliService: { (): CliInterface }
-  returnDirectAccessService: { (cli: CliInterface): DirectAccessServiceInterface }
-  retry : {():void}
+  returnDirectAccessService: { (cli: CliInterface, extra_command?: string): DirectAccessServiceInterface }
+  retry: { (): void }
 }
 
 const Main = BaseController.extend<MainControllerInterface>({
   returnCliService: function () {
     return CliService.create();
   },
-  returnDirectAccessService: function (cli) {
-    return DirectAccessService.create(cli);
+  returnDirectAccessService: function (cli, extra_command) {
+    return DirectAccessService.create(cli, extra_command);
   },
   index: function () {
     let cliService = this.returnCliService();
@@ -22,8 +23,14 @@ const Main = BaseController.extend<MainControllerInterface>({
       this.returnDirectAccessService(cliService);
       return;
     }
+    /* If have no define specific menu */
+    this.returnDirectAccessService(cliService);
   },
-  retry : function(){
+  shortCommand: function (props) {
+    let cliService = this.returnCliService();
+    this.returnDirectAccessService(cliService, props);
+  },
+  retry: function () {
     let cliService = this.returnCliService();
     this.returnDirectAccessService(cliService);
   }

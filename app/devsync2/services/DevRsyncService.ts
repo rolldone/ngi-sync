@@ -19,8 +19,8 @@ declare var masterData: MasterDataInterface
 export interface DevRsyncServiceInterface extends BaseServiceInterface {
   returnConfig: { (cli: CliInterface): ConfigInterface }
   returnSyncPull: { (cli: CliInterface, sshConfig: SftpOptions): SyncPullInterface }
-  create?: (cli: CliInterface) => this
-  construct: { (cli: CliInterface): void }
+  create?: (cli: CliInterface, extra_command?: string) => this
+  construct: { (cli: CliInterface, extra_command?: string): void }
   _cli?: CliInterface
   _currentConf?: ConfigInterface
   _promptAction: { (questions: inquirer.QuestionCollection): void }
@@ -29,16 +29,28 @@ export interface DevRsyncServiceInterface extends BaseServiceInterface {
   watcher?: Watcher
   _devSyncSafeSyncronise: { (): void }
   _checkIsCygwin: Function
+  _executeCommand?: { (extra_command: any): void }
 }
 
-export enum COMMAND_TARGET {
-  SAFE_SYNC = 'DevSync Basic Safe Syncronise \n  - Trigger by edit file :)',
-  SAFE_PULL_SYNC = 'DevSync Pull Syncronise \n  - This feature only download by your base template \n  - And ignore all file you define on config file and .sync_ignore :)',
-  SAFE_SYNC_NON_FORCE = 'DevSync Basic with non force file \n  - Trigger by edit file :). Ignored file not activated except pull sync \n  - Caution : This mode will take a long time indexing the file. and need more consume RAM',
-  SOFT_PUSH_SYNC = 'DevSync Soft Push Data. \n  - Your sensitive data will be safe on target :)',
-  FORCE_PUSH_SYNC = 'DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
-  FORCE_SINGLE_SYNC = 'DevSync Single Syncronize \n  - You can download simple file or folder',
+export const COMMAND_SHORT = {
+  SAFE_SYNC: 'safe_sync',
+  SAFE_PULL_SYNC: 'safe_pull_sync',
+  SAFE_SYNC_NON_FORCE: 'safe_sync_non_force',
+  SOFT_PUSH_SYNC: 'soft_push_sync',
+  FORCE_PUSH_SYNC: 'force_push_sync',
+  FORCE_SINGLE_SYNC: 'force_single_sync',
 }
+
+export const COMMAND_TARGET = {
+  SAFE_SYNC: COMMAND_SHORT.SAFE_SYNC + ' :: DevSync Basic Safe Syncronise \n  - Trigger by edit file :)',
+  SAFE_PULL_SYNC: COMMAND_SHORT.SAFE_PULL_SYNC + ' :: devsync Pull Syncronise \n  - This feature only download by your base template \n  - And ignore all file you define on config file and .sync_ignore :)',
+  SAFE_SYNC_NON_FORCE: COMMAND_SHORT.SAFE_SYNC_NON_FORCE + ' :: DevSync Basic with non force file \n  - Trigger by edit file :). Ignored file not activated except pull sync \n  - Caution : This mode will take a long time indexing the file. and need more consume RAM',
+  SOFT_PUSH_SYNC: COMMAND_SHORT.SOFT_PUSH_SYNC + ' :: DevSync Soft Push Data. \n  - Your sensitive data will be safe on target :)',
+  FORCE_PUSH_SYNC: COMMAND_SHORT.FORCE_PUSH_SYNC + ' :: DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
+  FORCE_SINGLE_SYNC: COMMAND_SHORT.FORCE_SINGLE_SYNC + ' :: DevSync Single Syncronize \n  - You can download simple file or folder',
+}
+
+
 
 const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
   returnConfig: function (cli) {
@@ -47,12 +59,16 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
   returnSyncPull: function (cli, sshConfig) {
     return SyncPull.create(cli, sshConfig);
   },
-  construct: async function (cli) {
+  construct: async function (cli, extra_command) {
     this._cli = cli;
     await this._checkIsCygwin();
     this.task = observatory.add("Initializing...");
     let currentConf = this.returnConfig(cli);
     this._currentConf = currentConf;
+    console.log('extra_command',extra_command);
+    if (extra_command != null) {
+      return this._executeCommand(extra_command);
+    }
     let questions: inquirer.QuestionCollection = [
       {
         type: "list",
@@ -70,9 +86,84 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     ];
     this._promptAction(questions);
   },
-  _checkIsCygwin : function(){
-    return new Promise((resolve : Function,reject : Function)=>{
-      var child : any = child_process.exec('ls -a -l /cygdrive',(error : any, stdout : any, stderr : any) => {
+  _executeCommand: function (extra_command) {
+    switch (extra_command) {
+      case COMMAND_SHORT.FORCE_PUSH_SYNC:
+        masterData.saveData('command.forcersync.index', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            masterData.saveData('command.forcersync.pull', {
+              callback: (err: boolean) => {
+                if (err == true) {
+                  return process.exit(1);
+                };
+                this._devSyncSafeSyncronise();
+              }
+            });
+          }
+        });
+        break;
+      case COMMAND_SHORT.SOFT_PUSH_SYNC:
+        masterData.saveData('command.forcersync.index', {
+          mode: 'soft',
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            masterData.saveData('command.forcersync.pull', {
+              callback: (err: boolean) => {
+                if (err == true) {
+                  return process.exit(1);
+                };
+                this._devSyncSafeSyncronise();
+              }
+            });
+          }
+        });
+        break;
+      case COMMAND_SHORT.SAFE_PULL_SYNC:
+        masterData.saveData('command.forcersync.pull', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            this._devSyncSafeSyncronise();
+          }
+        });
+        break;
+      case COMMAND_SHORT.SAFE_SYNC_NON_FORCE:
+        masterData.saveData('command.forcersync.pull', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            this._currentConf.safe_mode = true;
+            this._devSyncSafeSyncronise();
+          }
+        });
+        break;
+      case COMMAND_SHORT.FORCE_SINGLE_SYNC:
+        masterData.saveData('command.forcersync.single_sync', {
+          action: 'single_sync_nested_prompt'
+        });
+        break;
+      default:
+        masterData.saveData('command.forcersync.pull', {
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            this._devSyncSafeSyncronise();
+          }
+        });
+        break;
+    }
+  },
+  _checkIsCygwin: function () {
+    return new Promise((resolve: Function, reject: Function) => {
+      var child: any = child_process.exec('ls -a -l /cygdrive', (error: any, stdout: any, stderr: any) => {
         if (error) {
           resolve()
           return;
@@ -95,22 +186,17 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     let currentConf = this._currentConf;
     inquirer.prompt(questions)['then']((passAnswer: any) => {
       if (passAnswer.target == COMMAND_TARGET.FORCE_PUSH_SYNC) {
-        masterData.saveData('command.forcersync.index', {});
+        this._executeCommand(COMMAND_SHORT.FORCE_PUSH_SYNC);
       } else if (passAnswer.target == COMMAND_TARGET.SOFT_PUSH_SYNC) {
-        masterData.saveData('command.forcersync.index', {
-          mode: 'soft'
-        });
+        this._executeCommand(COMMAND_SHORT.SOFT_PUSH_SYNC);
       } else if (passAnswer.target == COMMAND_TARGET.SAFE_PULL_SYNC) {
-        masterData.saveData('command.forcersync.pull', {});
+        this._executeCommand(COMMAND_SHORT.SAFE_PULL_SYNC);
       } else if (passAnswer.target == COMMAND_TARGET.SAFE_SYNC_NON_FORCE) {
-        this._currentConf.safe_mode = true;
-        this._devSyncSafeSyncronise();
-      } else if(passAnswer.target == COMMAND_TARGET.FORCE_SINGLE_SYNC){
-        masterData.saveData('command.forcersync.single_sync', {
-          action : 'single_sync_nested_prompt'
-        });
+        this._executeCommand(COMMAND_SHORT.SAFE_SYNC_NON_FORCE);
+      } else if (passAnswer.target == COMMAND_TARGET.FORCE_SINGLE_SYNC) {
+        this._executeCommand(COMMAND_SHORT.FORCE_SINGLE_SYNC);
       } else {
-        this._devSyncSafeSyncronise();
+        this._executeCommand(null);
       }
     });
   },
@@ -155,7 +241,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       } = {};
       syncPull.setOnListener((res: any) => {
         // console.log('props', res);
-        if (typeof res.return === 'string' || res.return instanceof String){
+        if (typeof res.return === 'string' || res.return instanceof String) {
           var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + res.return);
           taskWatchOnServer.status(res.status);
           taskWatchOnServer.fail(res.status);
@@ -179,21 +265,21 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       syncPull.submitWatch();
       let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
       this.uploader = new Uploader(currentConf, this._cli);
-      this.uploader.setOnListener((action:string,props:any)=>{
-        switch(action){
+      this.uploader.setOnListener((action: string, props: any) => {
+        switch (action) {
           case 'REJECTED':
             notifier.notify(
               {
                 title: action,
                 message: props.return,
-                icon: path.join(__dirname,'..','..','..','..','/public/img', 'failed.jpg'), // Absolute path (doesn't work on balloons)
+                icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'failed.jpg'), // Absolute path (doesn't work on balloons)
                 sound: true, // Only Notification Center or Windows Toasters
                 wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
                 type: 'error',
                 'app-name': 'ngi-sync',
-                appID : this._currentConf.project_name
+                appID: this._currentConf.project_name
               },
-              function (err : any, response : any, metadata : any) {
+              function (err: any, response: any, metadata: any) {
                 // Response is response from notification
                 // Metadata contains activationType, activationAt, deliveredAt
               }
@@ -204,14 +290,14 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
               {
                 title: action,
                 message: props.return,
-                icon: path.join(__dirname,'..','..','..','..','/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
+                icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
                 sound: true, // Only Notification Center or Windows Toasters
                 wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
                 type: 'warning',
                 'app-name': 'ngi-sync',
-                appID : this._currentConf.project_name
+                appID: this._currentConf.project_name
               },
-              function (err : any, response : any, metadata : any) {
+              function (err: any, response: any, metadata: any) {
                 // Response is response from notification
                 // Metadata contains activationType, activationAt, deliveredAt
               }
@@ -223,14 +309,14 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
               {
                 title: action,
                 message: props.return,
-                icon: path.join(__dirname,'..','..','..','..','/public/img', 'success.png'), // Absolute path (doesn't work on balloons)
+                icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'success.png'), // Absolute path (doesn't work on balloons)
                 sound: true, // Only Notification Center or Windows Toasters
                 wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
                 type: 'info',
                 'app-name': 'ngi-sync',
-                appID : this._currentConf.project_name
+                appID: this._currentConf.project_name
               },
-              function (err : any, response : any, metadata : any) {
+              function (err: any, response: any, metadata: any) {
                 // Response is response from notification
                 // Metadata contains activationType, activationAt, deliveredAt
               }
