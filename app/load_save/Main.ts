@@ -1,32 +1,31 @@
 export { }; import BaseController from "@root/base/BaseController";
 import CliService, { CliInterface } from "./services/CliService";
-import OpenConsoleService, { OpenConsoleServiceInterface } from "./services/OpenConsoleService";
+import LoadSaveDataService, { LoadSaveServiceInterface } from "./services/LoadSaveDataService";
 
 export interface MainControllerInterface extends BaseControllerInterface {
   index: { (props?: any): void }
+  autoSave : {():void}
   returnCliService: { (): CliInterface }
-  direct: { (props?: any): void }
-  returnOpenConsoleService: { (nameString: string): OpenConsoleServiceInterface }
+  returnLoadSaveService: { (cli: CliInterface, nameString: string): LoadSaveServiceInterface }
 }
 
 const Main = BaseController.extend<MainControllerInterface>({
   returnCliService: function () {
     return CliService.create();
   },
-  returnOpenConsoleService: function (nameString) {
-    return OpenConsoleService.create(nameString);
+  returnLoadSaveService: function (cli, nameString) {
+    return LoadSaveDataService.create(cli, nameString);
   },
   index: function (props) {
     let cliService = this.returnCliService();
-    if (cliService.hasStartupCommand('console')) {
-      this.returnOpenConsoleService(props);
+    if (cliService.hasStartupCommand('data')) {
+      this.returnLoadSaveService(cliService, 'data');
       return;
     }
-    // If have no define name menu. Just display as default menu
   },
-  direct: function (props) {
+  autoSave: function(){
     let cliService = this.returnCliService();
-    this.returnOpenConsoleService(props);
+    this.returnLoadSaveService(cliService, 'auto_save');
   }
 })
 

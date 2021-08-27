@@ -28,7 +28,7 @@ direct_access:
     User: ubuntu
     Port: 22
     RequestTty: force
-    IdentityFile: C:/Users/test/.ssh/id_rsa_no_password
+    IdentityFile: =privateKey
     StrictHostKeyChecking: 'no'
     RemoteCommand: cd /home/ubuntu/workspaces && bash -l
     ServerAliveInterval: 300
@@ -38,7 +38,7 @@ direct_access:
     User: root
     Port: 22
     RequestTty: force
-    IdentityFile: C:/Users/test/.ssh/id_rsa_no_password
+    IdentityFile: =privateKey
     StrictHostKeyChecking: 'no'
     RemoteCommand: cd /home/ubuntu/workspaces && bash -l
     ProxyCommand: ssh -v workspaces_digital_ocean -W [%h]:[%p]
@@ -49,7 +49,7 @@ direct_access:
     User: root
     Port: '221'
     RequestTty: force
-    IdentityFile: C:/Users/test/.ssh/id_rsa_no_password
+    IdentityFile: =privateKey
     StrictHostKeyChecking: 'no'
     RemoteCommand: cd /home/ubuntu/workspaces && bash -l
     ServerAliveInterval: 10
@@ -64,30 +64,3 @@ direct_access:
   - access_name: Enter Docker Jumper Digital Ocean
     command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
       exec -it docker_jumper bash
-  - access_name: Enter Docker Artywiz Hotfix Digital Ocean
-    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
-      exec -it artywiz_hotfix_app_1 bash
-  - access_name: Enter Docker Artywiz Hotfix WebApp Digital Ocean
-    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
-      exec -it artywiz_hotfix_webapp bash
-  - access_name: Enter Docker Artywiz Sprint Digital Ocean
-    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
-      exec -it artywiz_sprint_app_1 bash
-  - access_name: Enter Docker Artywiz Sprint WebApp Digital Ocean
-    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
-      exec -it artywiz_sprint_webapp bash
-  - access_name: Enter Docker Artywiz Staging Digital Ocean
-    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
-      exec -it artywiz_staging_app_1 bash
-  - access_name: Enter Docker Artywiz Staging WebApp Digital Ocean
-    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
-      exec -it artywiz_staging_webapp bash
-  - access_name: Enter Docker Artywiz Genertaor Hotfix Digital Ocean
-    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
-      exec -it generator_hotfix bash
-  - access_name: Enter Docker Artywiz Genertor Cluster Digital Ocean
-    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
-      exec -it generator_cluster bash
-  - access_name: Enter Docker Artywiz Broadcast Service Digital Ocean
-    command: ssh -v -o RemoteCommand=none workspace_internal_digital_ocean -t docker
-      exec -it artywiz_broadcast_service bash

@@ -9,7 +9,7 @@ export default function (next: Function) {
   if (test == false) {
     test = {};
   } else {
-    test = JSON.parse(readFileSync(upath.normalizeSafe(path.dirname(__dirname) + '/recent.json'), 'utf8'));
+    test = JSON.parse(readFileSync(upath.normalizeSafe(path.dirname(__dirname) + '/recent.json')||'{}', 'utf8'));
   }
   let tt = upath.parse(path.resolve(""));
   test[tt.name] = path.resolve("");

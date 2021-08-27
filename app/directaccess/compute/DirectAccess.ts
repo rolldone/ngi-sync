@@ -42,9 +42,22 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
     writeFileSync(_configFilePath, SSHConfig.stringify(this._ssh_config));
   },
   submitDirectAccess: function (_select_ssh_command) {
-    var child = child_process.spawn(_select_ssh_command.command, [''], {
+
+    let env =  { IS_PROCESS: "direct_access" };
+    /* env not working if going to external place like 
+       ssh */
+    if(_select_ssh_command.command.includes('ssh')){
+      env = null;
+    }
+    var child = child_process.spawn(_select_ssh_command.command, [], {
+      env : env,
       stdio: 'inherit',//['pipe', process.stdout, process.stderr]
       shell: true
+      /* Open new window */
+      // detached: true
+    });
+    child.on('error', function(err) {
+      console.log('Spawn error : ' + err);
     });
     child.on('exit', (e, code) => {
       this._onListener({

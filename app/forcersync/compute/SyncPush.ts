@@ -28,7 +28,7 @@ export interface SyncPushInterface extends BaseModelInterface {
   submitPushSelective: { (): void }
   construct: { (cli: CliInterface, config: RsyncOptions): void }
   _splitIgnoreDatas: { (datas: Array<string | RegExp>, type: string): Array<string | RegExp> }
-  _listningTemplate : {():Promise<Array<string>>}
+  _listningTemplate: { (): Promise<Array<string>> }
   _clossStackValidation?: { (): { (path: string, passBasePath: string): boolean } }
 }
 
@@ -46,7 +46,7 @@ export interface RsyncOptions {
   ignores?: Array<string | RegExp>
   path_mode?: string
   mode?: string
-  single_sync : Array<string>
+  single_sync: Array<string>
 }
 
 /** 
@@ -90,7 +90,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
     /* From file git ignore */
     let _config = this._config;
     let gitIgnores: Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
-    let ig = ignore().add([...gitIgnores,..._config.ignores]);
+    let ig = ignore().add([...gitIgnores, ..._config.ignores]);
     let gitIgnoreFiles: Array<string> = [];
     let gitIgnoreDirectories: Array<string> = [];
     let _filterPatternRule = this._filterPatternRule();
@@ -234,7 +234,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
     }
   },
   submitPush: async function () {
-    try{
+    try {
       // let _listningTemplate = await this._listningTemplate();
       // console.log('_listningTemplate',_listningTemplate);
       // return;
@@ -243,14 +243,14 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       let config = this._config;
       let _local_path = config.local_path;
       // if(isCygwin() == true){
-        // _local_path = '/cygdrive/'+this._replaceAt(_local_path,':','',0,3);
+      // _local_path = '/cygdrive/'+this._replaceAt(_local_path,':','',0,3);
       // }
-      
+
       // _local_path = this._removeSameString(upath.normalizeSafe(_local_path),upath.normalizeSafe(path.resolve("")));
-      
+
       // Convert absolute path to relative
-      _local_path = path.relative(upath.normalizeSafe(path.resolve("")),upath.normalizeSafe(_local_path));
-      
+      _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path));
+
       // if(isCygwin()==false){
       //   console.log('------------------------');
       //   console.log('YOU ARE NOT IN CYGWIN!!');
@@ -279,31 +279,32 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       // console.log('_listningTemplate',_listningTemplate);
       var rsync = Rsync.build({
         /* Support multiple source too */
-        source: upath.normalizeSafe('./'+_local_path+'/'),
+        source: upath.normalizeSafe('./' + _local_path + '/'),
         // source : upath.normalize(_local_path+'/'),
         destination: config.username + '@' + config.host + ':' + config.base_path + '/',
         /* Include First */
-        include : _filterPatternRules.pass,
+        include: _filterPatternRules.pass,
         /* Exclude after include */
         exclude: _filterPatternRules.ignores,
         // flags : '-vt',
         flags: '-avzL',
-        shell: 'ssh -i '+config.privateKeyPath+' -p ' + config.port
+        shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
       });
-      
+
       console.log('rsync command -> ', rsync.command());
       var child = child_process.spawn(rsync.command(), [''], {
+        env: { IS_PROCESS: "sync_push" },
         stdio: 'inherit',//['pipe', process.stdout, process.stderr]
         shell: true
       });
 
       child.on('exit', (e, code) => {
         this._onListener({
-              action: "exit",
-              return: {
-                e, code
-              }
-            })
+          action: "exit",
+          return: {
+            e, code
+          }
+        })
       });
 
       /** 27/Jun/2021
@@ -321,13 +322,13 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       //     // do things like parse error output
       //   }
       // );
-    }catch(ex : any){
+    } catch (ex: any) {
       // console.log('submitPush - ex ',ex);
       process.exit(1);
     }
-    
+
   },
-  submitPushSelective: function () {}
+  submitPushSelective: function () { }
 });
 
 export default SyncPush;

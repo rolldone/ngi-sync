@@ -5,60 +5,62 @@ import SyncPush, { SyncPushInterface } from "./SyncPush";
 import * as upath from "upath";
 import * as child_process from 'child_process';
 
-export interface SingleSyncInterface extends Omit<SyncPushInterface,'submitPushSelective'|'model'>{
-  submitPushSelective : {(props:{
-    option : string
-    single_sync_list : string
-  }):void}
+export interface SingleSyncInterface extends Omit<SyncPushInterface, 'submitPushSelective' | 'model'> {
+  submitPushSelective: {
+    (props: {
+      option: string
+      single_sync_list: string
+    }): void
+  }
 }
 
 const SingleSync = SyncPush.extend<SingleSyncInterface>({
-  tempFolder : '.sync_temp/',
-  setOnListener : function(func){
+  tempFolder: '.sync_temp/',
+  setOnListener: function (func) {
     return this._super(func);
   },
-  construct : function(cli,config){
-    this._super(cli,config);
+  construct: function (cli, config) {
+    this._super(cli, config);
   },
-  _filterPatternRule : function(){
+  _filterPatternRule: function () {
     return this._super();
   },
-  submitPush : function(){
-    
+  submitPush: function () {
+
   },
-  submitPushSelective : function(props){
-    try{
+  submitPushSelective: function (props) {
+    try {
       let _filterPatternRules = this._filterPatternRule();
       // console.log('_filterPatternRules',_filterPatternRules);
       let config = this._config;
-      let _local_path = config.local_path+'/'+props.single_sync_list;
+      let _local_path = config.local_path + '/' + props.single_sync_list;
 
-      let _source = (()=>{
-        switch(props.option.toLowerCase()){
+      let _source = (() => {
+        switch (props.option.toLowerCase()) {
           case 'upload':
-            let _local_path = upath.normalizeSafe(config.local_path+'/'+props.single_sync_list);
+            let _local_path = upath.normalizeSafe(config.local_path + '/' + props.single_sync_list);
             // Convert absolute path to relative
-            _local_path = path.relative(upath.normalizeSafe(path.resolve("")),upath.normalizeSafe(_local_path));
-            return upath.normalizeSafe(_local_path+'/');
-            case 'download':
-            return config.username + '@' + config.host + ':'+upath.normalizeSafe(config.base_path+'/'+props.single_sync_list+'/');
+            _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path));
+            return upath.normalizeSafe(_local_path + '/');
+          case 'download':
+            return config.username + '@' + config.host + ':' + upath.normalizeSafe(config.base_path + '/' + props.single_sync_list + '/');
         }
       })()
 
-      let _destination = (()=>{
-        switch(props.option.toLowerCase()){
+      let _destination = (() => {
+        switch (props.option.toLowerCase()) {
           case 'upload':
-            return config.username + '@' + config.host + ':'+upath.normalizeSafe(config.base_path+'/'+props.single_sync_list+'/');
+            return config.username + '@' + config.host + ':' + upath.normalizeSafe(config.base_path + '/' + props.single_sync_list + '/');
           case 'download':
-            let _local_path = upath.normalizeSafe(config.local_path+'/'+props.single_sync_list);
+            let _local_path = upath.normalizeSafe(config.local_path + '/' + props.single_sync_list);
             // Convert absolute path to relative
-            _local_path = path.relative(upath.normalizeSafe(path.resolve("")),upath.normalizeSafe(_local_path));
-            return upath.normalizeSafe(_local_path+'/');
+            _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path));
+            return upath.normalizeSafe(_local_path + '/');
         }
       })()
 
       // console.log('_source',_source,props);
-      
+
       var rsync = Rsync.build({
         /* Support multiple source too */
         source: _source,
@@ -69,22 +71,23 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
         // exclude: _filterPatternRules.ignores,
         // flags : '-vt',
         flags: 'avzL',
-        shell: 'ssh -i '+config.privateKeyPath+' -p ' + config.port
+        shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
       });
       console.log('rsync command -> ', rsync.command());
 
       var child = child_process.spawn(rsync.command(), [''], {
+        env: { IS_PROCESS: "single_sync" },
         stdio: 'inherit',//['pipe', process.stdout, process.stderr]
         shell: true
       });
 
       child.on('exit', (e, code) => {
         this._onListener({
-              action: "exit",
-              return: {
-                e, code
-              }
-            })
+          action: "exit",
+          return: {
+            e, code
+          }
+        })
       });
 
       /** 27/Jun/2021
@@ -102,15 +105,15 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
       //     // do things like parse error output
       //   }
       // );
-    }catch(ex : any){
-      console.log('submitPush - ex ',ex);
+    } catch (ex: any) {
+      console.log('submitPush - ex ', ex);
       process.exit(1);
     }
   },
-  _splitIgnoreDatas : function (datas, type) {
-    return this._super(datas,type);
+  _splitIgnoreDatas: function (datas, type) {
+    return this._super(datas, type);
   },
-  _listningTemplate : function(){
+  _listningTemplate: function () {
     return this._super();
   }
   //, , 

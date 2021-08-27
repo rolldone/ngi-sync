@@ -9,8 +9,9 @@
   "main": "dist/index.js",
   "scripts": {
     "type-check": "npx tsc --noEmit",
-    "dev": "npx tsc -w",
-    "build": "npx tsc",
+    "dev": "npm run copy_files && npx tsc -w",
+    "copy_files" : "copyfiles example.yaml dist",
+    "build": "npm run copy_files && npx tsc",
     "start-dev-disable": "DEBUG='nohm:*' nodemon dist/app.js",
     "start-dev": "nodemon dist/app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -43,7 +44,7 @@
     "body-parser": "^1.19.0",
     "bull": "^3.22.0",
     "chalk": "^4.1.1",
-    "chokidar": "3.1.1",
+    "chokidar": "3.5.2",
     "dotenv": "^8.2.0",
     "eventemitter2": "^6.4.4",
     "expose-gc": "^1.0.0",
@@ -90,6 +91,7 @@
     "typescript": "^4.2.4",
     "uberproto": "^2.0.6",
     "upath": "^2.0.1",
-    "validatorjs": "^3.22.1"
+    "validatorjs": "^3.22.1",
+    "workerpool": "^6.1.5"
   }
 }
