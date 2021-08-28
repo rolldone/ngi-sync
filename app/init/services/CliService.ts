@@ -1,7 +1,10 @@
 import BaseService from "@root/base/BaseService";
 import * as minimist from "minimist";
 import inquirer = require("inquirer");
+import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 const chalk = require('chalk');
+
+declare var masterData : MasterDataInterface
 
 export enum EXIT_CODE {
   /**
@@ -160,9 +163,16 @@ const CliService = BaseService.extend<CliInterface>({
     this.write(chalk.yellow.underline("\nUSAGE:\n"));
     this.write("Make sure you have the config file by running.\n");
     this.write(chalk.green("ngi-sync init\n"));
-    this.write("--------------------\n");
+    this.write("------------------------------\n");
     this.write("For more details please visit. https://github.com/rolldone/ngi-sync \n");
-    process.exit(code);
+    this.write("-----------------------------------------------------------------------------\n");
+
+    /* And display recent workspaces too */
+    this.write("\n");
+    this.write("Display recent workspaces : \n");
+    masterData.saveData('command.recent.open',"");
+    return;
+    // process.exit(code);
   },
 
   /**

@@ -61,7 +61,7 @@ BaseStart({
         masterData.saveData('command.forcersync.single_sync', {});
         return;
       case 'console':
-        masterData.saveData('command.console.index', {});
+        masterData.saveData('command.console.index', []);
         return;
       case 'data':
         masterData.saveData('command.load_save.data', {});
@@ -78,7 +78,7 @@ BaseStart({
           return masterData.saveData('command.direct.short_command', segment1._[1]);
         }
         masterData.saveData('command.direct.index', null);
-        return;
+        return;        
     }
   }
 } as AppInterface);
