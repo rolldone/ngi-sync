@@ -3,18 +3,19 @@ import CliService, { CliInterface } from "./services/CliService";
 import OpenConsoleService, { OpenConsoleServiceInterface } from "./services/OpenConsoleService";
 
 export interface MainControllerInterface extends BaseControllerInterface {
-  index: { (props?: any): void }
+  index: { (props?: Array<string>): void }
   returnCliService: { (): CliInterface }
-  direct: { (props?: any): void }
-  returnOpenConsoleService: { (nameString: string): OpenConsoleServiceInterface }
+  direct: { (props?: Array<string>): void }
+  returnOpenConsoleService: { (commands: Array<string>): OpenConsoleServiceInterface }
+  nodeTTY: { (props?: Array<string>): void }
 }
 
 const Main = BaseController.extend<MainControllerInterface>({
   returnCliService: function () {
     return CliService.create();
   },
-  returnOpenConsoleService: function (nameString) {
-    return OpenConsoleService.create(nameString);
+  returnOpenConsoleService: function (commands) {
+    return OpenConsoleService.create(commands);
   },
   index: function (props) {
     let cliService = this.returnCliService();
@@ -25,6 +26,10 @@ const Main = BaseController.extend<MainControllerInterface>({
     // If have no define name menu. Just display as default menu
   },
   direct: function (props) {
+    let cliService = this.returnCliService();
+    this.returnOpenConsoleService(props);
+  },
+  nodeTTY: function (props) {
     let cliService = this.returnCliService();
     this.returnOpenConsoleService(props);
   }

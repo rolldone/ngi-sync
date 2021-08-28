@@ -13,6 +13,11 @@ export default function (next: Function) {
   }
   let tt = upath.parse(path.resolve(""));
   test[tt.name] = path.resolve("");
+  process.stdout.write.bind(process.stdout)('You are in: '+path.resolve("")+'\n');
+  test = {
+    ...test,
+    recent : path.resolve(""),
+  }
   let existSyncConfig = existsSync(path.resolve("") + '/sync-config.yaml');
   if (existSyncConfig == false) {
     /* If have no sync-config.yaml dont save */
