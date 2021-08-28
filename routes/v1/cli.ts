@@ -40,6 +40,7 @@ const Cli = BaseRouteCli.extend<BaseRouteInterface>({
     masterData.setOnListener('command.console.index', MainConsole.binding().index);
     masterData.setOnListener('command.console.direct', MainConsole.binding().direct);
     masterData.setOnListener('command.load_save.data', MainLoadSave.binding().index);
+    /* Auto save current open to recent */
     masterData.setOnListener('command.load_save.auto_save', MainLoadSave.binding().autoSave);
   }
 });

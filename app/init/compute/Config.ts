@@ -80,7 +80,8 @@ const Config = BaseModel.extend<ConfigInterface>({
     });
   },
   _loadConfig: function () {
-    this._fetch();
+    let result : any = this._fetch();
+    if(result == false) return;
     this._expand();
   },
   _fetch: function () {
@@ -116,31 +117,37 @@ const Config = BaseModel.extend<ConfigInterface>({
         }
       } else {
         this.cli.usage("Cannot read config file. Make sure you have permissions", EXIT_CODE.INVALID_ARGUMENT);
+        return false;
       }
     } else {
       this.cli.usage("Config file not found", EXIT_CODE.INVALID_ARGUMENT);
+      return false;
     }
   },
   _expand: function () {
-    let self: {
-      [key: string]: any
-    } = this;
-    ["saved_file_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
-      "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission"].forEach(prop => {
-        if (prop == 'localPath') {
-          if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
-            self[prop] = upath.normalizeSafe(path.resolve(self._config[prop] || self[prop]));
+    try{
+      let self: {
+        [key: string]: any
+      } = this;
+      ["saved_file_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
+        "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission"].forEach(prop => {
+          if (prop == 'localPath') {
+            if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
+              self[prop] = upath.normalizeSafe(path.resolve(self._config[prop] || self[prop]));
+            } else {
+              self[prop] = upath.normalizeSafe(self._config[prop] || self[prop]);
+            }
           } else {
-            self[prop] = upath.normalizeSafe(self._config[prop] || self[prop]);
+            self[prop] = self._config[prop] || self[prop];
           }
-        } else {
-          self[prop] = self._config[prop] || self[prop];
-        }
-        // if (prop == "saved_file_name") {
-        //   self[prop] = upath.normalizeSafe(self._config[prop] || 'last_open.yaml');
-        // }
-        // self[prop] = self._config[prop] || self[prop];
-      });
+          // if (prop == "saved_file_name") {
+          //   self[prop] = upath.normalizeSafe(self._config[prop] || 'last_open.yaml');
+          // }
+          // self[prop] = self._config[prop] || self[prop];
+        });
+    }catch(ex){
+      console.log('_expand -> ex ',ex);
+    }
   },
 
 });

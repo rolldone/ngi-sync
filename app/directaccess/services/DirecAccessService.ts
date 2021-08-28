@@ -53,6 +53,9 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     this._config = this.returnConfig(this._cli);
     let arrayQuestions = [];
     let _directAccess: DirectAccessType = this._config.direct_access as any;
+    if (_directAccess == null) {
+      return;
+    }
     _directAccess.ssh_commands.push({
       access_name: OPEN_CONSOLE,
       key: 'console',
@@ -95,7 +98,7 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     this._promptAction(questions);
 
     /* Call auto save */
-    masterData.saveData('command.load_save.auto_save',null);
+    masterData.saveData('command.load_save.auto_save', null);
   },
   _promptAction: function (questions) {
     let cli = this._cli;
@@ -128,11 +131,11 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
           break;
       }
     });
-    switch(direct_access_item.key){
+    switch (direct_access_item.key) {
       case 'devsync2':
-        return masterData.saveData('command.devsync2.short_command',null);
+        return masterData.saveData('command.devsync2.short_command', null);
       case 'devsync':
-        return masterData.saveData('command.devsync.short_command',null);
+        return masterData.saveData('command.devsync.short_command', null);
     }
     _direcAccess.submitDirectAccess(direct_access_item);
   },
