@@ -13,7 +13,7 @@ export default function (next: Function) {
   }
   let tt = upath.parse(path.resolve(""));
   test[tt.name] = path.resolve("");
-  console.log('path.resolve("")',path.resolve(""));
+  process.stdout.write.bind(process.stdout)('You are in: '+path.resolve("")+'\n');
   test = {
     ...test,
     recent : path.resolve(""),
