@@ -163,8 +163,13 @@ const CliService = BaseService.extend<CliInterface>({
     this.write(chalk.yellow.underline("\nUSAGE:\n"));
     this.write("Make sure you have the config file by running.\n");
     this.write(chalk.green("ngi-sync init\n"));
-    this.write("--------------------\n");
+    this.write("------------------------------\n");
     this.write("For more details please visit. https://github.com/rolldone/ngi-sync \n");
+    this.write("-----------------------------------------------------------------------------\n");
+
+    /* And display recent workspaces too */
+    this.write("\n");
+    this.write("Display recent workspaces : \n");
     masterData.saveData('command.recent.open',"");
     return;
     // process.exit(code);

@@ -18,7 +18,7 @@ export type trigger_permission = {
 }
 export interface ConfigInterface extends BaseModelInterface {
   ready?: { (): Promise<void> }
-  _fetch?: { (): void }
+  _fetch?: { (): void | boolean }
   _expand?: { (): void }
 
   _filename?: string;
@@ -80,8 +80,9 @@ const Config = BaseModel.extend<ConfigInterface>({
     });
   },
   _loadConfig: function () {
-    let result : any = this._fetch();
-    if(result == false) return;
+    let result = this._fetch();
+    /* If get error return it */
+    if (result == false) return;
     this._expand();
   },
   _fetch: function () {
@@ -109,9 +110,11 @@ const Config = BaseModel.extend<ConfigInterface>({
             }
           }
           this._config = JSON.parse(testStringValue);
+          return true;
         } catch (e) {
           console.log('Could not parse DB file. Make sure JSON is correct');
           console.log(' ', e);
+          return false;
           // this.cli.usage("Could not parse DB file. Make sure JSON is correct", e);
           // this.cli.usage("Could not parse DB file. Make sure JSON is correct", EXIT_CODE.RUNTIME_FAILURE);
         }
@@ -125,7 +128,7 @@ const Config = BaseModel.extend<ConfigInterface>({
     }
   },
   _expand: function () {
-    try{
+    try {
       let self: {
         [key: string]: any
       } = this;
@@ -145,8 +148,8 @@ const Config = BaseModel.extend<ConfigInterface>({
           // }
           // self[prop] = self._config[prop] || self[prop];
         });
-    }catch(ex){
-      console.log('_expand -> ex ',ex);
+    } catch (ex) {
+      console.log('_expand -> ex ', ex);
     }
   },
 
