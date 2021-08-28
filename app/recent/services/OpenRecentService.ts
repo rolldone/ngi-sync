@@ -54,8 +54,18 @@ export default BaseService.extend<OpenRecentServiceInterface>({
     let resData = objectScan([props + '*'], { joined: true })(test);
     let ress = [];
     for (var a = 0; a < resData.length; a++) {
-      ress.push(resData[a] + (test[resData[a]] == null ? "" : ' : ' + test[resData[a]]));
-      this._displayData[resData[a] + (test[resData[a]] == null ? "" : ' : ' + test[resData[a]])] = test[resData[a]];
+      if(resData[a] == 'recent'){
+        ress.push(resData[a] + (test[resData[a]] == null ? "" : ' : ' + test[resData[a]]));
+        this._displayData[resData[a] + (test[resData[a]] == null ? "" : ' : ' + test[resData[a]])] = test[resData[a]];
+        ress.push('--------------------------------------')
+        break;
+      }
+    }
+    for (var a = 0; a < resData.length; a++) {
+      if(resData[a] != "recent"){
+        ress.push(resData[a] + (test[resData[a]] == null ? "" : ' : ' + test[resData[a]]));
+        this._displayData[resData[a] + (test[resData[a]] == null ? "" : ' : ' + test[resData[a]])] = test[resData[a]];
+      }
     }
     let questions: inquirer.QuestionCollection = [
 
@@ -100,7 +110,7 @@ export default BaseService.extend<OpenRecentServiceInterface>({
       process.chdir(this._displayData[resData.target]);
       /* Go to command direct with retry */
       // masterData.saveData('command.direct.retry', {});
-      masterData.saveData('command.console.direct',"");
+      masterData.saveData('command.console.direct',[]);
     } catch (ex) {
       console.log('err -> ', ex);
     }
