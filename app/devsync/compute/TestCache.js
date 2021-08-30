@@ -1,4 +1,4 @@
-import { createReadStream, existsSync } from 'fs';
+import { createReadStream, existsSync, statSync } from 'fs';
 import upath from 'upath';
 const streamEqual = require('stream-equal');
 const workerpool = require('workerpool');
@@ -13,6 +13,11 @@ function testCache(context) {
       let destinationFile = upath.normalizeSafe(localPath + '/' + tempFolder + '/' + relativePathFile);
       if (existsSync(destinationFile) == false) {
         return resolve(false);
+      }
+      let sizeFileNew = statSync(path);
+      let sizeFileOld = statSync(destinationFile);
+      if(sizeFileNew.size != sizeFileOld.size){
+        return resolve(false);;
       }
       let readStream1 = createReadStream(path);
       let readStream2 = createReadStream(destinationFile);
