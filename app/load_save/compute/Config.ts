@@ -8,7 +8,7 @@ export interface ConfigInterface extends CommandConfigInterface {
 const Config = CommandConfig.extend<Omit<ConfigInterface,'model'>>({
   construct: function (cli: CliInterface) {
     this._super(cli);
-    this._loadConfig();
+    // this._loadConfig();
   }
 });
 
