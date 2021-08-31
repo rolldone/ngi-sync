@@ -22,6 +22,7 @@ const Main = BaseController.extend<MainControllerInterface>({
       this.returnLoadSaveService(cliService, 'data');
       return;
     }
+    this.returnLoadSaveService(cliService, 'data');
   },
   autoSave: function(){
     let cliService = this.returnCliService();
