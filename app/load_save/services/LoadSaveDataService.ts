@@ -25,6 +25,7 @@ export interface LoadSaveServiceInterface extends BaseServiceInterface {
   loadDataSave: { (): void }
   deleteDataPrompt: { (): void }
   deleteDataSave: { (): void }
+  _existConfig : {(path:string):boolean}
 }
 
 declare var masterData: MasterDataInterface;
@@ -40,9 +41,15 @@ export default BaseService.extend<LoadSaveServiceInterface>({
   returnConfig: function (cli) {
     return Config.create(cli);
   },
+  _existConfig : function(path){
+    return existsSync(path);
+  },
   construct: function (cli, action) {
     this._config = this.returnConfig(cli);
     /* Display project folder base path */
+    if(this._existConfig(this._config._filename) == false){
+      process.exit();
+    }
     let resolvePathFolder = upath.normalizeSafe(path.resolve());
     this._baseAppPathFolder = resolvePathFolder;
     let test: any = existsSync(upath.normalizeSafe(resolvePathFolder + '/.sync_collections'));
