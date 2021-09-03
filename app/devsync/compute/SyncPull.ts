@@ -24,8 +24,8 @@ export interface SftpOptions {
   base_path: string,
   local_path: string,
   jumps: Array<object>
-  trigger_permission : trigger_permission
-  
+  trigger_permission: trigger_permission
+
 }
 
 type propsDownload = {
@@ -33,12 +33,12 @@ type propsDownload = {
   base_path: string;
   file: string;
   size: number;
-  mtime : number;
+  mtime: number;
 };
 
 export interface SyncPullInterface extends BaseModelInterface {
-  _tasks ?: {
-    [key : string] : any
+  _tasks?: {
+    [key: string]: any
   }
   construct: { (cli: CliInterface, jsonConfig: SftpOptions): void }
   create?: (cli: CliInterface, jsonConfig: object) => this
@@ -59,8 +59,8 @@ export interface SyncPullInterface extends BaseModelInterface {
   returnClient: {
     (props: object): Client
   }
-  _rememberError ?: {
-    [key : string] : any
+  _rememberError?: {
+    [key: string]: any
   }
   _deleteFile?: {
     (props: {
@@ -70,14 +70,14 @@ export interface SyncPullInterface extends BaseModelInterface {
     }): void
   }
   _removeSameString?: { (fullPath: string, basePath: string): string }
-  startWatchingWithTimeOut?: { (args?: any): { (): void } }
-  _event ?: EventEmitter
+  startWatchingWithTimeOut?: { (args?: any): { (isCancel?: boolean): void } }
+  _event?: EventEmitter
 }
 
 const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   _folderQueue: {},
-  _rememberError : {},
-  _tasks : {},
+  _rememberError: {},
+  _tasks: {},
   returnClient: function (props) {
     //if (this._clientApp == null) {
     this._clientApp = new Client(props);
@@ -97,10 +97,16 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   },
   startWatchingWithTimeOut: function () {
     let _pendingStopWatch: any = null;
-    return () => {
+    return (isCancel = false) => {
+      if (isCancel == true) {
+        if (_pendingStopWatch != null) {
+          return _pendingStopWatch.cancel();
+        }
+        return;
+      }
       if (_pendingStopWatch != null) {
         _pendingStopWatch.cancel();
-      }else{
+      } else {
         this.submitWatch();
       }
       _pendingStopWatch = _.debounce(() => {
@@ -123,22 +129,22 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       // console.log('data.file.attr',data);
       /* If more than 1MB dont let download it */
       let fromFilePath = data.folder;
-      let keyFile = this._removeSameString(fromFilePath+'/'+data.file.filename, data.base_path);
-      if(this._rememberError[keyFile] != null){
+      let keyFile = this._removeSameString(fromFilePath + '/' + data.file.filename, data.base_path);
+      if (this._rememberError[keyFile] != null) {
         return;
       }
-      if(data.file.attrs.size > 2097152){ 
+      if (data.file.attrs.size > 2097152) {
         // masterData.updateData('file_edit_from_server', {
         //   [this._sshConfig.local_path + this._removeSameString(fromFilePath, data.base_path)]: true,
         // });
-        
+
         this._onListener({
           status: 'error',
-          return: data.folder+' cannot downloaded. More than 2MB'
+          return: data.folder + ' cannot downloaded. More than 2MB'
         });
         // console.log('aaaaaaaaa',this._removeSameString(fromFilePath+'/'+data.file.filename, data.base_path));
         this._rememberError[keyFile] = data;
-      }else{
+      } else {
         // console.log('upload', data)
         delete this._rememberError[keyFile];
         this._onListener({
@@ -150,7 +156,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
           base_path: data.base_path,
           file: data.file.filename,
           size: data.file.attrs.size,
-          mtime : data.file.attrs.mtime
+          mtime: data.file.attrs.mtime
         })
       }
     });
@@ -173,7 +179,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
     event.on("close", (data: any) => {
       // console.log('close', data);ddd
       // observatory.add(this.eventToWord[event]);
-      this._tasks['sftp-watcher'].done("");
+      this._tasks['sftp-watcher'].done("Stopped");
     });
     event.on("error", (data: any) => {
       console.log('error', data.toString())
@@ -182,7 +188,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         return: data
       });
     });
-    this._event = event as any; 
+    this._event = event as any;
     masterData.setOnListener('call.start.waching.data', () => {
 
     });
@@ -203,9 +209,9 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       });
       /* Check is have pattern a file create directory from dirname */
       let tt = upath.dirname(theLocalPath);
-      mkdirSync(pathJoin('', tt), { 
-        mode : '0777',
-        recursive: true 
+      mkdirSync(pathJoin('', tt), {
+        mode: '0777',
+        recursive: true
       });
       stat(pathJoin("", theLocalPath), (err, data) => {
         var downloadNow = () => {
@@ -218,9 +224,9 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
             });
 
             if (err) {
-              console.log('fromFilePath -> ',fromFilePath);
-              console.log('theLocalPath -> ',pathJoin("", theLocalPath));
-              console.log('error -> ',err);
+              console.log('fromFilePath -> ', fromFilePath);
+              console.log('theLocalPath -> ', pathJoin("", theLocalPath));
+              console.log('error -> ', err);
               this._onListener({
                 status: 'error',
                 return: err
@@ -242,7 +248,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         //  console.log('bool',props.mtime > parseInt(data.mtimeMs.toString().substring(0,props.mtime.toString().length)));
         //  console.log('aaaaaaaaa',parseInt(data.mtimeMs.toString().substring(0,props.mtime.toString().length)));
         // if (props.size != data.size) {
-        if (props.mtime > parseInt(data.mtimeMs.toString().substring(0,props.mtime.toString().length))) {
+        if (props.mtime > parseInt(data.mtimeMs.toString().substring(0, props.mtime.toString().length))) {
           // if(data.size > )
           downloadNow();
         } else {

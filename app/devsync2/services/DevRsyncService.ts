@@ -11,7 +11,8 @@ import SyncPull, { SftpOptions, SyncPullInterface } from "../compute/SyncPull";
 import path = require("path");
 const notifier = require('node-notifier');
 import * as child_process from 'child_process';
-
+import rl, { ReadLine } from 'readline';
+require('expose-gc');
 const chalk = require('chalk');
 const observatory = require("observatory");
 declare var masterData: MasterDataInterface
@@ -30,6 +31,7 @@ export interface DevRsyncServiceInterface extends BaseServiceInterface {
   _devSyncSafeSyncronise: { (): void }
   _checkIsCygwin: Function
   _executeCommand?: { (extra_command: any): void }
+  _readLine?: ReadLine
 }
 
 export const COMMAND_SHORT = {
@@ -63,9 +65,10 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     this._cli = cli;
     await this._checkIsCygwin();
     this.task = observatory.add("Initializing...");
-    let currentConf = this.returnConfig(cli);
-    this._currentConf = currentConf;
-    console.log('extra_command',extra_command);
+    if (this._currentConf == null) {
+      this._currentConf = this.returnConfig(cli);
+    }
+    console.log('extra_command', extra_command);
     if (extra_command != null) {
       return this._executeCommand(extra_command);
     }
@@ -209,7 +212,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     }
 
     currentConf.ready().then(() => {
-      this._currentConf = currentConf;
       let syncPull = this.returnSyncPull(this._cli, {
         // get ssh config
         port: currentConf.port,
@@ -267,6 +269,24 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       this.uploader = new Uploader(currentConf, this._cli);
       this.uploader.setOnListener((action: string, props: any) => {
         switch (action) {
+          case 'RESTART':
+            notifier.notify(
+              {
+                title: "Restart",
+                message: "Devsync Restarted",
+                icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
+                sound: true, // Only Notification Center or Windows Toasters
+                wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+                type: 'warning',
+                'app-name': 'ngi-sync',
+                appID: this._currentConf.project_name
+              },
+              function (err: any, response: any, metadata: any) {
+                // Response is response from notification
+                // Metadata contains activationType, activationAt, deliveredAt
+              }
+            );
+            break;
           case 'REJECTED':
             notifier.notify(
               {
@@ -324,6 +344,48 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             break;
         }
       });
+
+      /* Define readline nodejs for listen CTRL + R */
+      this._readLine = rl.createInterface({
+        input: process.stdin,
+        // output : process.stdout,
+        terminal: true
+      });
+      let remoteFuncKeypress = (key: any, data: any) => {
+        switch (data.sequence) {
+          case '\x03':
+            process.exit();
+            return;
+          case '\x12':
+            _startWatchingWithTimeOut(true);
+            syncPull.stopSubmitWatch();
+            syncPull = null;
+            /* Close readline */
+            this._readLine.close();
+            this._readLine = null;
+
+            /* Restart the syncronize */
+            this.uploader.onListener('RESTART', {});
+            // this.uploader.client.close();
+            this.uploader = null;
+
+            this.watcher.close();
+            this.watcher = null;
+
+            this._currentConf = null;
+
+            process.stdin.off('keypress', remoteFuncKeypress);
+            this.task.done();
+            
+            console.clear();
+            global.gc();
+            this.construct(this._cli);
+
+            break;
+        }
+      }
+      process.stdin.on('keypress', remoteFuncKeypress);
+
       this.watcher = new Watcher(this.uploader, currentConf, this._cli);
       this.watcher.setOnListener((props: {
         action: string
@@ -337,6 +399,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       return this.watcher.ready();
     }).then(() => {
       var reCallCurrentCOnf = () => {
+        if (this.uploader == null) return;
         this.task.status("connecting server");
         this.uploader.connect((err: any, res: any) => {
           if (err) {
@@ -350,6 +413,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     }).then(() => {
       // All done, stop indicator and show workspace
       // this.cli.stopProgress();
+      if (this.uploader == null) return;
       this.task.done("Connected").details(this._currentConf.host);
       this._cli.workspace();
     });
