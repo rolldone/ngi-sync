@@ -39,7 +39,7 @@ declare module "scp2" {
       write(options: writeOptions, callback: (err: string) => void);
       upload(src: string, destination: string, callback: (err: string) => void);
       download(src: string, destination: string, callback: (err: string) => void);
-      on(eventName: string, callback: () => void);
+      on(eventName: string, callback: (err?:any) => void);
       exec(command:string, callback : Function); 
   }
 

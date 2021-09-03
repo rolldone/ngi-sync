@@ -118,7 +118,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   },
   stopSubmitWatch: function () {
     this._event.emit('stop');
-    this._event = null;
+    // this._event = null;
   },
   submitWatch: function () {
     let event = SftpWatcher({
