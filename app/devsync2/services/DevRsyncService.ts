@@ -65,9 +65,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     this._cli = cli;
     await this._checkIsCygwin();
     this.task = observatory.add("Initializing...");
-    if (this._currentConf == null) {
-      this._currentConf = this.returnConfig(cli);
-    }
+    this._currentConf = this.returnConfig(cli);
     console.log('extra_command', extra_command);
     if (extra_command != null) {
       return this._executeCommand(extra_command);
@@ -210,7 +208,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       case 'local':
         return masterData.saveData('command.devsync_local.index', {});
     }
-
+  
     currentConf.ready().then(() => {
       let syncPull = this.returnSyncPull(this._cli, {
         // get ssh config
@@ -351,7 +349,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         // output : process.stdout,
         terminal: true
       });
-      let remoteFuncKeypress = (key: any, data: any) => {
+      let remoteFuncKeypress = async (key: any, data: any) => {
         switch (data.sequence) {
           case '\x03':
             process.exit();
@@ -369,16 +367,16 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             // this.uploader.client.close();
             this.uploader = null;
 
-            this.watcher.close();
+            await this.watcher.close();
             this.watcher = null;
 
-            this._currentConf = null;
+            // this._currentConf = null;
 
             process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
             
             console.clear();
-            global.gc();
+            // global.gc();
             this.construct(this._cli);
 
             break;
@@ -403,20 +401,21 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         this.task.status("connecting server");
         this.uploader.connect((err: any, res: any) => {
           if (err) {
+            console.log('err',err);
             return setTimeout(() => {
               reCallCurrentCOnf();
             }, 1000);
           }
+          if (this.uploader == null) return;
+          // All done, stop indicator and show workspace
+          // this.cli.stopProgress();
+          // console.log('2x');
+          this.task.done(res).details(this._currentConf.host);
+          this._cli.workspace();
         });
       }
       reCallCurrentCOnf();
-    }).then(() => {
-      // All done, stop indicator and show workspace
-      // this.cli.stopProgress();
-      if (this.uploader == null) return;
-      this.task.done("Connected").details(this._currentConf.host);
-      this._cli.workspace();
-    });
+    })
 
 
   }
