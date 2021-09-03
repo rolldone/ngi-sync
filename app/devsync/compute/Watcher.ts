@@ -471,8 +471,9 @@ export default class Watcher {
 		if(this._sameAddPath == path){
 			console.log('Ups get 2x add ',path);
 			this._sameAddPath = null;
+		}else{
+			this._sameAddPath = path;
 		}
-		this._sameAddPath = path;
 		this.uploader.uploadFile(path, this._getTimeoutSftp()).then(remote => {
 			setTimeout(() => {
 				this.setCacheFile(path);
@@ -501,8 +502,9 @@ export default class Watcher {
 		if(this._sameChangePath == path){
 			console.log('Ups get 2x change ',path);
 			this._sameChangePath = null;
+		}else{
+			this._sameChangePath = path;
 		}
-		this._sameChangePath = path;
 		this.uploader.uploadFile(path, this._getTimeoutSftp()).then(remote => {
 			setTimeout(() => {
 				this.setCacheFile(path);
@@ -532,8 +534,9 @@ export default class Watcher {
 		if(this._sameUnlinkPath == path){
 			console.log('Ups get 2x unlink',path);
 			this._sameUnlinkPath = null;
+		}else{
+			this._sameUnlinkPath = path;
 		}
-		this._sameUnlinkPath = path;
 		this.uploader.unlinkFile(path, this._getTimeoutSftp(50)).then(remote => {
 			this.deleteCacheFile(path);
 			if (this.tasks['unlink'] != null) {
