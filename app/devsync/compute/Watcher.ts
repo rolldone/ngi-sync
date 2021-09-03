@@ -253,6 +253,11 @@ export default class Watcher {
 		});
 	}
 
+	close():void{
+		this.uploader.client.close();
+		this.files.close();
+	}
+
 	setOnListener(onListener: Function) {
 		this._onListener = onListener;
 	}
