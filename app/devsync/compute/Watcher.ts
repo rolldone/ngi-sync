@@ -262,7 +262,6 @@ export default class Watcher {
 		for(var a=0;a<this._unwatch.length;a++){
 			await this._unwatch[a].close();
 		}
-		// this.files.close().then(() => console.log('watch closed!'));
 	}
 
 	setOnListener(onListener: Function) {
@@ -328,8 +327,6 @@ export default class Watcher {
 		}
 	}
 
-
-
 	eventToWord: {
 		[key: string]: any
 	} = {
@@ -384,12 +381,7 @@ export default class Watcher {
 							tempFolder: this.tempFolder,
 							relativePathFile: this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath))
 						})
-					})/* .exec('testCache', [{
-						path: path,
-						localPath: this.config.localPath,
-						tempFolder: this.tempFolder,
-						relativePathFile: this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath))
-					}]) */
+					})
 						.then(function (self: any, args: any, res: any) {
 							// console.log('res',res);
 							if (res == true) {

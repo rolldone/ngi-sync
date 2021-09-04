@@ -43,7 +43,10 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
   },
   submitDirectAccess: function (_select_ssh_command) {
 
-    let env =  { IS_PROCESS: "direct_access" };
+    let env =  { 
+      IS_PROCESS: "direct_access",
+      PASSWORD : this._config.password
+     };
     /* env not working if going to external place like 
        ssh */
     if(_select_ssh_command.command.includes('ssh')){
