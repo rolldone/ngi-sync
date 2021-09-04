@@ -117,20 +117,21 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
     _ptyProcess.on('data', (data: string) => {
       // console.log(data)
       process.stdout.write(data);
-      if (data.includes('Are you sure you want to continue connecting')) {
-        _ptyProcess.write('yes\r')
-      }
-      if (data.includes('Enter passphrase for key')) {
-        _ptyProcess.write(this._currentConf.password + '\r')
-      }
-      if (data.includes('password:')) {
-        _ptyProcess.write(this._currentConf.password + '\r')
-      }
-      if(data.includes('total size')){
-        _ptyProcess.write('exit' + '\r')
-      }
-      if(data.includes('No such file or directory')){
-        _ptyProcess.write('exit' + '\r')
+      switch(true){
+        case data.includes('Are you sure you want to continue connecting'):
+          _ptyProcess.write('yes\r')
+          break;
+        case data.includes('Enter passphrase for key'):
+        case data.includes('password:'):
+          _ptyProcess.write(this._currentConf.password + '\r')
+          break;
+        case data.includes('total size'):
+          _ptyProcess.write('exit' + '\r')
+          break;
+        case data.includes('No such file or directory'):
+        case data.includes('rsync error:'):
+          _ptyProcess.write('exit' + '\r')
+          break;
       }
     });
     process.stdout.on('resize', function () {
