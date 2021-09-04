@@ -1,7 +1,7 @@
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import { CliInterface, EXIT_CODE } from "../services/CliService";
 import path, { join as pathJoin } from "path";
-import { readFileSync, existsSync, statSync } from "fs";
+import { readFileSync, existsSync, statSync, createReadStream } from "fs";
 import { String } from "lodash";
 import upath from 'upath';
 const { parse } = require("jsonplus");
@@ -48,6 +48,7 @@ export interface ConfigInterface extends BaseModelInterface {
   trigger_permission?: trigger_permission
   size_limit?: number
   saved_file_name?: string
+  _hasPassphrase?: { (ssh_path: string): Promise<boolean> }
 }
 
 declare var masterData: MasterDataInterface;
@@ -64,13 +65,87 @@ const Config = BaseModel.extend<ConfigInterface>({
         break;
       }
     }
-
   },
-  ready: async function () {
-    return new Promise<void>((resolve) => {
-      // Temporary
-      if (!this.password && !this.privateKey) {
-        this.cli.read("Enter password to connect:", true).then(answer => {
+  _hasPassphrase: function (ssh_path) {
+    const get_line = (filename: string, line_no: any, callback: Function) => {
+      const stream = createReadStream(filename, {
+        flags: 'r',
+        encoding: 'utf-8',
+        fd: null,
+        mode: 0o666,
+        highWaterMark: 64 * 1024
+      });
+
+      let fileData = '';
+
+      stream.on('data', (data) => {
+        fileData += data;
+
+        // The next lines should be improved
+        let lines = fileData.split("\n");
+
+        if (lines.length >= +line_no) {
+          stream.destroy();
+          callback(null, lines[+line_no]);
+        }
+      });
+
+      stream.on('error', () => {
+        callback('Error', null);
+      });
+
+      stream.on('end', () => {
+        callback('File end reached without finding line', null);
+      });
+    }
+    return new Promise((resolve, reject) => {
+      try {
+        get_line(ssh_path, 1, (err: any, hasPasspharse: string) => {
+          if (hasPasspharse.includes('ENCRYPTED')) {
+            resolve(true);
+            return;
+          }
+          resolve(false);
+        });
+      } catch (ex) {
+        console.error('_hasPassphrase - ex ', ex);
+        reject(ex);
+      }
+    })
+  },
+  ready: function () {
+    return new Promise<void>(async (resolve) => {
+    
+      /* If there is no config resolve it! */
+      if(this._config == null) return resolve();
+      
+      /* If have env password fill from parent process, get it! */
+      if(process.env.PASSWORD != null){
+        this.password = process.env.PASSWORD || null;
+      }
+
+      let dataConfig : any = masterData.getData('data.config',null);
+      
+      if(dataConfig != null){
+        if(dataConfig.password != null){
+          this.password = dataConfig.password;
+        }
+      }
+
+      if (this.password != null) {
+        return resolve();
+      }
+      if (this.privateKey == "" || this.privateKey == null) {
+        this.cli.read("Enter Password to connect : ", true).then(answer => {
+          this.password = this._config.password = answer;
+          resolve();
+          return;
+        });
+        return;
+      }
+      let hasPasspharse = await this._hasPassphrase(this._config.privateKey);
+      if (hasPasspharse == true) {
+        this.cli.read("Enter Passphrase to connect : ", true).then(answer => {
           this.password = this._config.password = answer;
           resolve();
         });
@@ -84,6 +159,10 @@ const Config = BaseModel.extend<ConfigInterface>({
     /* If get error return it */
     if (result == false) return;
     this._expand();
+    let dataConfig = masterData.getData('data.config',null);
+    if(dataConfig == null){
+      masterData.saveData('data.config',this);
+    }
   },
   _fetch: function () {
     // console.log('this._filename', this._filename);

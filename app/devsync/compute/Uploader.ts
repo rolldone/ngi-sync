@@ -46,14 +46,18 @@ export default class Uploader {
 		});
 
 		let pendingClose: any = null;
-		this.client.on('close', () => {
-			if (pendingClose != null) {
-				pendingClose.cancel();
-			}
-			pendingClose = _.debounce(() => {
-				callback(CustomError('SftpErrorConectionException', 'There was a problem with connection'), null);
-			}, 5000);
-			pendingClose();
+		this.client.on('close', (err:any) => {
+			// if (pendingClose != null) {
+			// 	pendingClose.cancel();
+			// }
+			// pendingClose = _.debounce(() => {
+			// 	console.log('2vmfdkvm');
+			// 	console.log('2vmfdkvm');
+			// 	console.log('2vmfdkvm');
+			// 	callback(CustomError('SftpErrorConectionException', 'There was a problem with connection'), null);
+			// }, 5000);
+			// pendingClose();
+			callback(err, null);
 		});
 
 		this._exeHandlePush = this._handlePush();

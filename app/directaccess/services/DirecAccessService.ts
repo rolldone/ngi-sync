@@ -51,6 +51,7 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     await this._checkIsCygwin();
     this._cli = cli;
     this._config = this.returnConfig(this._cli);
+    await this._config.ready();
     let arrayQuestions = [];
     let _directAccess: DirectAccessType = this._config.direct_access as any;
     if (_directAccess == null) {
@@ -116,6 +117,8 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
         }
       }
       if (passAnswer.target == "Restart") {
+        /* Clear persistent config first  */
+        masterData.saveData('data.config',null);
         masterData.saveData('command.direct.retry', {});
         return;
       }
