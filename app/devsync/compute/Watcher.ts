@@ -17,7 +17,8 @@ const pool = workerpool.pool(__dirname + '/TestCache.js');
 
 export default class Watcher {
 	tempFolder = '.sync_temp/';
-	files: FSWatcher;
+	_unwatch ?: Array<any>
+	files: any;
 	_onListener: Function;
 	_getTimeoutSftp: { (overrideTimeout?: number): number };
 	_setTimeoutSftp() {
@@ -135,6 +136,7 @@ export default class Watcher {
 		if (this.config.safe_mode == true) {
 			ignnorelist = [];
 		}
+		this._unwatch = [];
 		/* Main Watch */
 		this.files = chokidar.watch(base, {
 			ignored: ignnorelist,
@@ -143,13 +145,14 @@ export default class Watcher {
 			awaitWriteFinish: true,
 			ignorePermissionErrors: false
 		});
+		this._unwatch.push(this.files);
 		// Attach events
 		["all", "add", "change", "unlink", "unlinkDir"].forEach(method => {
 			this.files.on(method, this.handler(method));
 		});
 		/* Extra watch, Get filtered out on sync_ignore */
 		for (var key in _extraWatch) {
-			let _currentWatch: FSWatcher = chokidar.watch(upath.normalizeSafe(base + '/' + key), {
+			let _currentWatch: any = chokidar.watch(upath.normalizeSafe(base + '/' + key), {
 				// ignored: [],
 				ignored: (() => {
 					let tt = [];
@@ -163,6 +166,7 @@ export default class Watcher {
 				awaitWriteFinish: true,
 				ignorePermissionErrors: false
 			});
+			this._unwatch.push(_currentWatch);
 			// Attach events
 			["all", "add", "change", "unlink", "unlinkDir"].forEach(method => {
 				_currentWatch.on(method, this.handler(method));
@@ -253,6 +257,13 @@ export default class Watcher {
 		});
 	}
 
+	async close(): Promise<void> {
+		this.uploader.client.close();
+		for(var a=0;a<this._unwatch.length;a++){
+			await this._unwatch[a].close();
+		}
+	}
+
 	setOnListener(onListener: Function) {
 		this._onListener = onListener;
 	}
@@ -316,8 +327,6 @@ export default class Watcher {
 		}
 	}
 
-
-
 	eventToWord: {
 		[key: string]: any
 	} = {
@@ -336,7 +345,7 @@ export default class Watcher {
 			}
 			db = debounce(() => {
 				pool.terminate();
-			}, 5000);
+			}, 20000);
 			db();
 		}
 	};
@@ -360,6 +369,7 @@ export default class Watcher {
 			switch (method) {
 				case 'unlink':
 				case 'unlinkDir':
+				case 'all':
 					break;
 				default:
 					/* This process get much eat ram if check many file suddenly, so try looking alternative or create parallel app maybe */
@@ -371,12 +381,7 @@ export default class Watcher {
 							tempFolder: this.tempFolder,
 							relativePathFile: this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath))
 						})
-					})/* .exec('testCache', [{
-						path: path,
-						localPath: this.config.localPath,
-						tempFolder: this.tempFolder,
-						relativePathFile: this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath))
-					}]) */
+					})
 						.then(function (self: any, args: any, res: any) {
 							// console.log('res',res);
 							if (res == true) {
@@ -388,8 +393,9 @@ export default class Watcher {
 							// If not, continue as ususal
 							tt[method](...args);
 						}.bind(null, this, args))
-						.catch(function (err: any) {
+						.catch((err: any) => {
 							console.error(err);
+							this._getPendingTerminate();
 						})
 						.then(() => {
 							// terminate all workers when done
@@ -446,12 +452,19 @@ export default class Watcher {
 		}
 	};
 
+	private _sameAddPath : string = ""
 	private add = (path: string) => {
 		if (this.config.trigger_permission.add == false) {
 			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('ADD ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot add data sync on server");
 			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
 			return;
+		}
+		if(this._sameAddPath == path){
+			console.log('Ups get 2x add ',path);
+			this._sameAddPath = null;
+		}else{
+			this._sameAddPath = path;
 		}
 		this.uploader.uploadFile(path, this._getTimeoutSftp()).then(remote => {
 			setTimeout(() => {
@@ -470,12 +483,19 @@ export default class Watcher {
 		});
 	};
 
+	private _sameChangePath : string = ""
 	private change = (path: string) => {
 		if (this.config.trigger_permission.change == false) {
 			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('CHANGE ERR :: ' + path.replace(this.config.localPath, "") + "");
 			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot update data sync on server");
 			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
 			return;
+		}
+		if(this._sameChangePath == path){
+			console.log('Ups get 2x change ',path);
+			this._sameChangePath = null;
+		}else{
+			this._sameChangePath = path;
 		}
 		this.uploader.uploadFile(path, this._getTimeoutSftp()).then(remote => {
 			setTimeout(() => {
@@ -495,12 +515,19 @@ export default class Watcher {
 		});
 	};
 
+	private _sameUnlinkPath : string = ""
 	private unlink = (path: string) => {
 		if (this.config.trigger_permission.unlink == false) {
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot unlink data sync on server");
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
 			return;
+		}
+		if(this._sameUnlinkPath == path){
+			console.log('Ups get 2x unlink',path);
+			this._sameUnlinkPath = null;
+		}else{
+			this._sameUnlinkPath = path;
 		}
 		this.uploader.unlinkFile(path, this._getTimeoutSftp(50)).then(remote => {
 			this.deleteCacheFile(path);

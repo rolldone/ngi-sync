@@ -122,9 +122,12 @@ export default function(next : Function){
     },
     getData: function(key : string, exceptionProps : any){
       let data = this.vars[key];
-      data = {
+      /* data = {
         ...exceptionProps,
         ...this.vars[key]
+      } */
+      if(data == null){
+        data = exceptionProps;
       }
       this.vars[key] = data;
       return this.vars[key];
