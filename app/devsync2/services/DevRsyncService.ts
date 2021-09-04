@@ -12,7 +12,6 @@ import path = require("path");
 const notifier = require('node-notifier');
 import * as child_process from 'child_process';
 import rl, { ReadLine } from 'readline';
-require('expose-gc');
 const chalk = require('chalk');
 const observatory = require("observatory");
 declare var masterData: MasterDataInterface
@@ -201,223 +200,228 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
     });
   },
-  _devSyncSafeSyncronise: function () {
+  _devSyncSafeSyncronise: async function () {
     // console.log('currentConf',currentConf);
     let currentConf: ConfigInterface = this._currentConf;
     switch (currentConf.mode) {
       case 'local':
         return masterData.saveData('command.devsync_local.index', {});
     }
-  
-    currentConf.ready().then(() => {
-      let syncPull = this.returnSyncPull(this._cli, {
-        // get ssh config
-        port: currentConf.port,
-        host: currentConf.host,
-        username: currentConf.username,
-        password: currentConf.password,
-        privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
-        paths: (() => {
-          let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;
-          for (var a = 0; a < arrayString.length; a++) {
-            arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
-            /**
-             * Remove if folder have file extention
-             * Not Use anymore just keep it the original
-             */
-            // var isSame = arrayString[a].substr(arrayString[a].lastIndexOf('.') + 1);
-            // if (isSame != arrayString[a]) {
-            //   arrayString[a] = arrayString[a].split("/").slice(0, -1).join("/");
-            // }
-          }
-          return arrayString;
-        })(),
-        base_path: currentConf.remotePath,
-        local_path: currentConf.localPath,
-        jumps: currentConf.jumps
-      });
-      let historyStatus: {
-        [key: string]: any
-      } = {};
-      syncPull.setOnListener((res: any) => {
-        // console.log('props', res);
-        if (typeof res.return === 'string' || res.return instanceof String) {
-          var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + res.return);
-          taskWatchOnServer.status(res.status);
-          taskWatchOnServer.fail(res.status);
-          return;
+
+    await currentConf.ready();
+
+    let syncPull = this.returnSyncPull(this._cli, {
+      // get ssh config
+      port: currentConf.port,
+      host: currentConf.host,
+      username: currentConf.username,
+      password: currentConf.password,
+      privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
+      paths: (() => {
+        let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;
+        for (var a = 0; a < arrayString.length; a++) {
+          arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
+          /**
+           * Remove if folder have file extention
+           * Not Use anymore just keep it the original
+           */
+          // var isSame = arrayString[a].substr(arrayString[a].lastIndexOf('.') + 1);
+          // if (isSame != arrayString[a]) {
+          //   arrayString[a] = arrayString[a].split("/").slice(0, -1).join("/");
+          // }
         }
-        if (res.return.folder == null) {
-          var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null ? 'No Such file of directory' : res.return.file.filename));
-          taskWatchOnServer.status(res.status);
-          taskWatchOnServer.fail(res.status);
-          return;
-        }
-        let thePath = upath.normalizeSafe(res.return.folder + '/' + res.return.file.filename);
-        if (historyStatus[thePath] == res.status) {
-          return;
-        }
-        historyStatus[thePath] = res.status;
+        return arrayString;
+      })(),
+      base_path: currentConf.remotePath,
+      local_path: currentConf.localPath,
+      jumps: currentConf.jumps
+    });
+
+    let historyStatus: {
+      [key: string]: any
+    } = {};
+
+    syncPull.setOnListener((res: any) => {
+      // console.log('props', res);
+      if (typeof res.return === 'string' || res.return instanceof String) {
+        var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + res.return);
+        taskWatchOnServer.status(res.status);
+        taskWatchOnServer.fail(res.status);
+        return;
+      }
+      if (res.return.folder == null) {
         var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null ? 'No Such file of directory' : res.return.file.filename));
-        // taskWatchOnServer.status(res.status);
-        taskWatchOnServer.done();
-      });
-      syncPull.submitWatch();
-      let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
-      this.uploader = new Uploader(currentConf, this._cli);
-      this.uploader.setOnListener((action: string, props: any) => {
-        switch (action) {
-          case 'RESTART':
-            notifier.notify(
-              {
-                title: "Restart",
-                message: "Devsync Restarted",
-                icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
-                sound: true, // Only Notification Center or Windows Toasters
-                wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
-                type: 'warning',
-                'app-name': 'ngi-sync',
-                appID: this._currentConf.project_name
-              },
-              function (err: any, response: any, metadata: any) {
-                // Response is response from notification
-                // Metadata contains activationType, activationAt, deliveredAt
-              }
-            );
-            break;
-          case 'REJECTED':
-            notifier.notify(
-              {
-                title: action,
-                message: props.return,
-                icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'failed.jpg'), // Absolute path (doesn't work on balloons)
-                sound: true, // Only Notification Center or Windows Toasters
-                wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
-                type: 'error',
-                'app-name': 'ngi-sync',
-                appID: this._currentConf.project_name
-              },
-              function (err: any, response: any, metadata: any) {
-                // Response is response from notification
-                // Metadata contains activationType, activationAt, deliveredAt
-              }
-            );
-            break;
-          case 'WARNING':
-            notifier.notify(
-              {
-                title: action,
-                message: props.return,
-                icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
-                sound: true, // Only Notification Center or Windows Toasters
-                wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
-                type: 'warning',
-                'app-name': 'ngi-sync',
-                appID: this._currentConf.project_name
-              },
-              function (err: any, response: any, metadata: any) {
-                // Response is response from notification
-                // Metadata contains activationType, activationAt, deliveredAt
-              }
-            );
-            break;
-          case 'ONGOING':
-          case 'UPLOADED':
-            notifier.notify(
-              {
-                title: action,
-                message: props.return,
-                icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'success.png'), // Absolute path (doesn't work on balloons)
-                sound: true, // Only Notification Center or Windows Toasters
-                wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
-                type: 'info',
-                'app-name': 'ngi-sync',
-                appID: this._currentConf.project_name
-              },
-              function (err: any, response: any, metadata: any) {
-                // Response is response from notification
-                // Metadata contains activationType, activationAt, deliveredAt
-              }
-            );
-            break;
-        }
-      });
-
-      /* Define readline nodejs for listen CTRL + R */
-      this._readLine = rl.createInterface({
-        input: process.stdin,
-        // output : process.stdout,
-        terminal: true
-      });
-      let remoteFuncKeypress = async (key: any, data: any) => {
-        switch (data.sequence) {
-          case '\x03':
-            process.exit();
-            return;
-          case '\x12':
-            _startWatchingWithTimeOut(true);
-            syncPull.stopSubmitWatch();
-            syncPull = null;
-            /* Close readline */
-            this._readLine.close();
-            this._readLine = null;
-
-            /* Restart the syncronize */
-            this.uploader.onListener('RESTART', {});
-            // this.uploader.client.close();
-            this.uploader = null;
-
-            await this.watcher.close();
-            this.watcher = null;
-
-            // this._currentConf = null;
-
-            process.stdin.off('keypress', remoteFuncKeypress);
-            this.task.done();
-            
-            console.clear();
-            // global.gc();
-            this.construct(this._cli);
-
-            break;
-        }
+        taskWatchOnServer.status(res.status);
+        taskWatchOnServer.fail(res.status);
+        return;
       }
-      process.stdin.on('keypress', remoteFuncKeypress);
+      let thePath = upath.normalizeSafe(res.return.folder + '/' + res.return.file.filename);
+      if (historyStatus[thePath] == res.status) {
+        return;
+      }
+      historyStatus[thePath] = res.status;
+      var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null ? 'No Such file of directory' : res.return.file.filename));
+      // taskWatchOnServer.status(res.status);
+      taskWatchOnServer.done();
+    });
 
-      this.watcher = new Watcher(this.uploader, currentConf, this._cli);
-      this.watcher.setOnListener((props: {
-        action: string
-      }) => {
-        switch (props.action) {
-          case 'ALL_EVENT':
-            _startWatchingWithTimeOut();
-            break;
+    syncPull.submitWatch();
+
+    let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
+    this.uploader = new Uploader(currentConf, this._cli);
+    this.uploader.setOnListener((action: string, props: any) => {
+      switch (action) {
+        case 'RESTART':
+          notifier.notify(
+            {
+              title: "Restart",
+              message: "Devsync Restarted",
+              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
+              sound: true, // Only Notification Center or Windows Toasters
+              wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+              type: 'warning',
+              'app-name': 'ngi-sync',
+              appID: this._currentConf.project_name
+            },
+            function (err: any, response: any, metadata: any) {
+              // Response is response from notification
+              // Metadata contains activationType, activationAt, deliveredAt
+            }
+          );
+          break;
+        case 'REJECTED':
+          notifier.notify(
+            {
+              title: action,
+              message: props.return,
+              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'failed.jpg'), // Absolute path (doesn't work on balloons)
+              sound: true, // Only Notification Center or Windows Toasters
+              wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+              type: 'error',
+              'app-name': 'ngi-sync',
+              appID: this._currentConf.project_name
+            },
+            function (err: any, response: any, metadata: any) {
+              // Response is response from notification
+              // Metadata contains activationType, activationAt, deliveredAt
+            }
+          );
+          break;
+        case 'WARNING':
+          notifier.notify(
+            {
+              title: action,
+              message: props.return,
+              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
+              sound: true, // Only Notification Center or Windows Toasters
+              wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+              type: 'warning',
+              'app-name': 'ngi-sync',
+              appID: this._currentConf.project_name
+            },
+            function (err: any, response: any, metadata: any) {
+              // Response is response from notification
+              // Metadata contains activationType, activationAt, deliveredAt
+            }
+          );
+          break;
+        case 'ONGOING':
+        case 'UPLOADED':
+          notifier.notify(
+            {
+              title: action,
+              message: props.return,
+              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'success.png'), // Absolute path (doesn't work on balloons)
+              sound: true, // Only Notification Center or Windows Toasters
+              wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+              type: 'info',
+              'app-name': 'ngi-sync',
+              appID: this._currentConf.project_name
+            },
+            function (err: any, response: any, metadata: any) {
+              // Response is response from notification
+              // Metadata contains activationType, activationAt, deliveredAt
+            }
+          );
+          break;
+      }
+    });
+
+    /* Define readline nodejs for listen CTRL + R */
+    this._readLine = rl.createInterface({
+      input: process.stdin,
+      // output : process.stdout,
+      terminal: true
+    });
+
+    let remoteFuncKeypress = async (key: any, data: any) => {
+      switch (data.sequence) {
+        case '\x03':
+          process.exit();
+          return;
+        case '\x12':
+          _startWatchingWithTimeOut(true);
+          syncPull.stopSubmitWatch();
+          syncPull = null;
+          /* Close readline */
+          this._readLine.close();
+          this._readLine = null;
+
+          /* Restart the syncronize */
+          this.uploader.onListener('RESTART', {});
+          // this.uploader.client.close();
+          this.uploader = null;
+
+          await this.watcher.close();
+          this.watcher = null;
+
+          // this._currentConf = null;
+
+          process.stdin.off('keypress', remoteFuncKeypress);
+          this.task.done();
+
+          console.clear();
+          
+          this.construct(this._cli);
+
+          break;
+      }
+    }
+
+    process.stdin.on('keypress', remoteFuncKeypress);
+
+    this.watcher = new Watcher(this.uploader, currentConf, this._cli);
+    this.watcher.setOnListener((props: {
+      action: string
+    }) => {
+      switch (props.action) {
+        case 'ALL_EVENT':
+          _startWatchingWithTimeOut();
+          break;
+      }
+    });
+
+    this.watcher.ready();
+
+    var reCallCurrentCOnf = () => {
+      if (this.uploader == null) return;
+      this.task.status("connecting server");
+      this.uploader.connect((err: any, res: any) => {
+        if (err) {
+          console.log('err', err);
+          return setTimeout(() => {
+            reCallCurrentCOnf();
+          }, 1000);
         }
-      });
-      return this.watcher.ready();
-    }).then(() => {
-      var reCallCurrentCOnf = () => {
         if (this.uploader == null) return;
-        this.task.status("connecting server");
-        this.uploader.connect((err: any, res: any) => {
-          if (err) {
-            console.log('err',err);
-            return setTimeout(() => {
-              reCallCurrentCOnf();
-            }, 1000);
-          }
-          if (this.uploader == null) return;
-          // All done, stop indicator and show workspace
-          // this.cli.stopProgress();
-          // console.log('2x');
-          this.task.done(res).details(this._currentConf.host);
-          this._cli.workspace();
-        });
-      }
-      reCallCurrentCOnf();
-    })
-
-
+        // All done, stop indicator and show workspace
+        // this.cli.stopProgress();
+        // console.log('2x');
+        this.task.done(res).details(this._currentConf.host);
+        this._cli.workspace();
+      });
+    }
+    reCallCurrentCOnf();
   }
 });
 

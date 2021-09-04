@@ -1,9 +1,9 @@
 import SyncPush, { SyncPushInterface } from "./SyncPush";
-const isCygwin = require('is-cygwin');
 import Rsync from "@root/tool/rsync";
 import * as upath from "upath";
 import * as child_process from 'child_process';
 import path from "path";
+import os from 'os';
 
 export interface SynPullInterface extends SyncPushInterface { }
 
@@ -26,48 +26,18 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
   },
   submitPush: async function () {
     try {
-      // let _listningTemplate = await this._listningTemplate();
-      // console.log('_listningTemplate',_listningTemplate);
-      // return;
+      /* Loading the password */
+      await this._currentConf.ready();
+      
       let _filterPatternRules = this._filterPatternRule();
       // console.log('_filterPatternRules',_filterPatternRules);
       let config = this._config;
       let _local_path = config.local_path;
-      // if(isCygwin() == true){
-      // _local_path = '/cygdrive/'+this._replaceAt(_local_path,':','',0,3);
-      // }
-
-      // _local_path = this._removeSameString(upath.normalizeSafe(_local_path),upath.normalizeSafe(path.resolve("")));
 
       // Convert absolute path to relative
       _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path));
 
-      // if(isCygwin()==false){
-      //   console.log('------------------------');
-      //   console.log('YOU ARE NOT IN CYGWIN!!');
-      //   console.log('------------------------');
-      //   process.exit(1);
-      // }else{
-      //   var _checkCommand = ()=>{
-      //     return new Promise((resolve : Function,reject : Function)=>{
-      //       var child = child_process.exec('ls -a -l '+_local_path,(error : any, stdout : any, stderr : any) => {
-      //         if (error) {
-      //           // console.error(`exec error: ${error}`);
-      //           console.log('------------------------');
-      //           console.log('YOU ARE NOT IN CYGWIN!!');
-      //           console.log('------------------------');
-      //           reject()
-      //           return;
-      //         }
-      //         // console.log(`stdout: ${stdout}`);
-      //         // console.error(`stderr: ${stderr}`);
-      //         resolve();
-      //       })
-      //     });
-      //   }
-      //   // await _checkCommand();
-      // }
-      // console.log('_listningTemplate',_listningTemplate);
+
       var rsync = Rsync.build({
         /* Support multiple source too */
         source: config.username + '@' + config.host + ':' + config.base_path + '/',
@@ -79,14 +49,48 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         exclude: _filterPatternRules.ignores,
         // flags : '-vt',
         flags: 'avzL',
-        set : '--size-only --checksum',
+        set: '--size-only --checksum',
         // set : '--no-perms --no-owner --no-group',
         // set : '--chmod=D777,F777',
         // set : '--perms --chmod=u=rwx,g=rwx,o=,Dg+s',
         shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
       });
 
+
       console.log('rsync command -> ', rsync.command());
+
+      var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+      var ptyProcess = this.iniPtyProcess(shell, []);
+      ptyProcess.write(rsync.command() + '\r');
+      ptyProcess.on('exit', (exitCode: any, signal: any) => {
+        this._onListener({
+          action: "exit",
+          return: {
+            exitCode, signal
+          }
+        })
+      });
+      // ptyProcess.write('pwd\n')
+      var _readLine = this.initReadLine();
+      var theCallback = (key: any, data: any) => {
+        // console.log(data);
+        if (data.sequence == "\u0003") {
+          ptyProcess.write('\u0003');
+          _readLine = this.initReadLine();
+          process.stdin.off('keypress', theCallback);
+          recursive();
+          return;
+        }
+        ptyProcess.write(data.sequence);
+      }
+
+      var recursive = () => {
+        process.stdin.on('keypress', theCallback);
+      }
+
+      recursive();
+      return;
+
       var child = child_process.spawn(rsync.command(), [''], {
         env: { IS_PROCESS: "sync_pull" },
         stdio: 'inherit',//['pipe', process.stdout, process.stderr]
@@ -102,21 +106,6 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         })
       });
 
-      /** 27/Jun/2021
-       * Use rsync by library
-       * But now still study with this.
-       * Only use to get the result command */
-      // rsync.execute(
-      //   function (error: any, code: any, cmd: any) {
-      //     // we're done
-      //   }, function (data: any) {
-      //     console.log(data.toString());
-      //     // do things like parse progress
-      //   }, function (data: any) {
-      //     console.log('error', data.toString());
-      //     // do things like parse error output
-      //   }
-      // );
     } catch (ex: any) {
       console.log('submitPush - ex ', ex);
       process.exit(1);

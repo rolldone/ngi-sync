@@ -1,7 +1,7 @@
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import Rsync from "@root/tool/rsync";
 import { CliInterface } from "../services/CliService";
-import { ConfigInterface } from "./Config";
+import Config, { ConfigInterface } from "./Config";
 import * as upath from "upath";
 import * as child_process from 'child_process';
 import parseGitIgnore from '@root/tool/parse-gitignore'
@@ -12,7 +12,15 @@ import { readdirSync, readFileSync, statSync } from "fs";
 import path from "path";
 const isCygwin = require('is-cygwin');
 
+import { IPty } from 'node-pty';
+var os = require('os');
+var pty = require('node-pty');
+import rl, { ReadLine } from 'readline';
+var size = require('window-size');
+
 export interface SyncPushInterface extends BaseModelInterface {
+  _currentConf?: ConfigInterface
+  returnConfig?: { (cli: CliInterface): ConfigInterface }
   tempFolder: string
   setOnListener: { (func: Function): void }
   _onListener?: Function
@@ -30,6 +38,8 @@ export interface SyncPushInterface extends BaseModelInterface {
   _splitIgnoreDatas: { (datas: Array<string | RegExp>, type: string): Array<string | RegExp> }
   _listningTemplate: { (): Promise<Array<string>> }
   _clossStackValidation?: { (): { (path: string, passBasePath: string): boolean } }
+  iniPtyProcess?: { (shell: string, props?: Array<string>): IPty }
+  initReadLine?: { (): ReadLine }
 }
 
 export interface RsyncOptions {
@@ -55,14 +65,80 @@ export interface RsyncOptions {
  * extend BaseModel
  */
 const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
+  returnConfig: function (cli) {
+    return Config.create(cli);
+  },
   tempFolder: '.sync_temp/',
   construct: function (cli, config) {
     // console.log('config -> ', config);
     this._cli = cli;
     this._config = config;
+    this._currentConf = this.returnConfig(cli);
   },
   setOnListener: function (func) {
     this._onListener = func;
+  },
+
+  initReadLine: function () {
+    let _i = rl.createInterface({
+      input: process.stdin,
+      // output : process.stdout,
+      terminal: true
+    });
+    // i.question("What do you think of node.js?", function(answer) {
+    //   // console.log("Thank you for your valuable feedback.");
+    //   // i.close();
+    //   // process.stdin.destroy();
+    // });
+
+    /* Every enter get at here */
+    _i.on('line', (input) => {
+      return;
+      console.log(`Received: ${input}`);
+    });
+
+    return _i;
+  },
+  iniPtyProcess: function (shell, props = []) {
+    let _ptyProcess = pty.spawn(shell, props, {
+      name: 'xterm-color',
+      cols: size.width,
+      rows: size.height,
+      cwd: process.env.HOME,
+      env: {
+        /* Fill from parent process.env */
+        ...process.env,
+        /* Override for this value */
+        IS_PROCESS: "open_console"
+      },
+      handleFlowControl: true
+    });
+    _ptyProcess.write('cd '+this._currentConf.localPath+'\r');
+    _ptyProcess.on('data', (data: string) => {
+      // console.log(data)
+      process.stdout.write(data);
+      if (data.includes('Are you sure you want to continue connecting')) {
+        _ptyProcess.write('yes\r')
+      }
+      if (data.includes('Enter passphrase for key')) {
+        _ptyProcess.write(this._currentConf.password + '\r')
+      }
+      if (data.includes('password:')) {
+        _ptyProcess.write(this._currentConf.password + '\r')
+      }
+      if(data.includes('total size')){
+        _ptyProcess.write('exit' + '\r')
+      }
+      if(data.includes('No such file or directory')){
+        _ptyProcess.write('exit' + '\r')
+      }
+    });
+    process.stdout.on('resize', function () {
+      let { width, height } = size.get();
+      _ptyProcess.resize(width, height)
+    });
+
+    return _ptyProcess;
   },
   _splitIgnoreDatas: function (datas, type) {
     try {
@@ -235,6 +311,8 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
   },
   submitPush: async function () {
     try {
+      /* Loading the password */
+      await this._currentConf.ready();
       // let _listningTemplate = await this._listningTemplate();
       // console.log('_listningTemplate',_listningTemplate);
       // return;
@@ -292,11 +370,48 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       });
 
       console.log('rsync command -> ', rsync.command());
+      
+      var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+      var ptyProcess = this.iniPtyProcess(shell, []);
+      ptyProcess.write(rsync.command() + '\r');
+      ptyProcess.on('exit', (exitCode: any, signal: any) => {
+        this._onListener({
+          action: "exit",
+          return: {
+            exitCode, signal
+          }
+        })
+      });
+      // ptyProcess.write('pwd\n')
+      var _readLine = this.initReadLine();
+      var theCallback = (key: any, data: any) => {
+        // console.log(data);
+        if (data.sequence == "\u0003") {
+          ptyProcess.write('\u0003');
+          _readLine = this.initReadLine();
+          process.stdin.off('keypress', theCallback);
+          recursive();
+          return;
+        }
+        ptyProcess.write(data.sequence);
+      }
+
+      var recursive = () => {
+        process.stdin.on('keypress', theCallback);
+      }
+
+      recursive();
+
+      return;
       var child = child_process.spawn(rsync.command(), [''], {
         env: { IS_PROCESS: "sync_push" },
         stdio: 'inherit',//['pipe', process.stdout, process.stderr]
         shell: true
       });
+
+      child.on('data', data => {
+        console.log(data);
+      })
 
       child.on('exit', (e, code) => {
         this._onListener({

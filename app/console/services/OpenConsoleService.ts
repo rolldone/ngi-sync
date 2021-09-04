@@ -5,19 +5,26 @@ import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { IPty } from 'node-pty';
 var pty = require('node-pty');
 import rl, { ReadLine } from 'readline';
+import { CliInterface } from "./CliService";
+import Config, { ConfigInterface } from "../compute/Config";
 var size = require('window-size');
 
 declare var masterData: MasterDataInterface;
 
 export interface OpenConsoleServiceInterface extends BaseServiceInterface {
-  construct: { (props: Array<string>): void }
-  create?: (props: Array<string>) => this
+  construct: { (cli: CliInterface, props: Array<string>): void }
+  create?: (cli: CliInterface, props: Array<string>) => this
   iniPtyProcess?: { (shell: string, props?: Array<string>): IPty }
   initReadLine?: { (): ReadLine }
   childrenProcess?: { (props?: Array<string>): void }
+  returnConfig: { (cli: CliInterface): ConfigInterface }
+  _currentConf?: ConfigInterface
 }
 
 export default BaseService.extend<OpenConsoleServiceInterface>({
+  returnConfig: function (cli) {
+    return Config.create(cli)
+  },
   initReadLine: function () {
     let _i = rl.createInterface({
       input: process.stdin,
@@ -46,14 +53,17 @@ export default BaseService.extend<OpenConsoleServiceInterface>({
       cwd: process.env.HOME,
       env: {
         ...process.env,
+        /* Override this value always from parent */
         IS_PROCESS: "open_console"
       },
       handleFlowControl: true
     });
+    
     _ptyProcess.on('data', function (data: any) {
       // console.log(data)
       process.stdout.write(data);
     });
+
     _ptyProcess.on('exit', function (exitCode: any, signal: any) {
       console.log(`exiting with  ${signal}`)
       process.exit();
@@ -65,9 +75,11 @@ export default BaseService.extend<OpenConsoleServiceInterface>({
     });
 
     _ptyProcess.write('ngi-sync\r');
+    
     return _ptyProcess;
   },
-  construct: function (props = []) {
+  construct: function (cli, props = []) {
+    this._currentConf = this.returnConfig(cli);
     var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
     var ptyProcess = this.iniPtyProcess(shell, props);
     var _readLine = this.initReadLine();
@@ -93,7 +105,10 @@ export default BaseService.extend<OpenConsoleServiceInterface>({
   childrenProcess: function (props) {
     var shell = os.platform() === 'win32' ? '"c:\\Program Files\\Git\\bin\\bash.exe"' : 'bash';
     var child = child_process.spawn(shell, props, {
-      env: { IS_PROCESS: "open_console" },
+      env: {
+        IS_PROCESS: "open_console",
+        PASSWORD: this._currentConf.password
+      },
       stdio: 'inherit',//['pipe', process.stdout, process.stderr]
       shell: true
     });

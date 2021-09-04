@@ -50,6 +50,7 @@ var recurSived = function(hoopings,connectionsArray,index,parseStream = null,cal
   if(index > 0){
     masterCon.connect({
       password : hoopings[index].password,
+      passphrase : hoopings[index].password,
       privateKey : hoopings[index].privateKey != null ? readFileSync(hoopings[index].privateKey) : null,
       username: hoopings[index].username,
       // port : hoopings[index].port,
@@ -58,6 +59,7 @@ var recurSived = function(hoopings,connectionsArray,index,parseStream = null,cal
   }else{
     masterCon.connect({
       password : hoopings[index].password,
+      passphrase : hoopings[index].password,
       privateKey : hoopings[index].privateKey != null ? readFileSync(hoopings[index].privateKey) : null,
       host: hoopings[index].host,
       port: hoopings[index].port,
@@ -74,6 +76,7 @@ Client.prototype.sftp = function(callback) {
   }
   var remote = _.defaults(this.remote, this._options);
   remote.jumps = remote.jumps || [];
+  remote.passphrase = remote.password;
   if(remote.jumps.length > 0){
     var hoopings = remote.jumps;
     var connectionsArray = ((arrData)=>{
@@ -163,7 +166,8 @@ Client.prototype.download = function(src, dest, callback) {
 Client.prototype.exec = function(command,callback) {
   var self = this;
   var remote = _.defaults(this.remote, this._options);
-
+  
+  remote.passphrase = remote.password;
   remote.jumps = remote.jumps || [];
   if(remote.jumps.length > 0){
     var hoopings = remote.jumps;
