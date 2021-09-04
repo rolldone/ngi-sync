@@ -113,11 +113,11 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       },
       handleFlowControl: true
     });
-    _ptyProcess.write('cd '+this._currentConf.localPath+'\r');
+    _ptyProcess.write('cd ' + this._currentConf.localPath + '\r');
     _ptyProcess.on('data', (data: string) => {
       // console.log(data)
       process.stdout.write(data);
-      switch(true){
+      switch (true) {
         case data.includes('Are you sure you want to continue connecting'):
           _ptyProcess.write('yes\r')
           break;
@@ -134,11 +134,14 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           break;
       }
     });
-    process.stdout.on('resize', function () {
+    const resizeFunc = function () {
       let { width, height } = size.get();
       _ptyProcess.resize(width, height)
+    }
+    process.stdout.on('resize', resizeFunc);
+    _ptyProcess.on('exit', (exitCode: any, signal: any) => {
+      process.stdout.removeListener('resize', resizeFunc);
     });
-
     return _ptyProcess;
   },
   _splitIgnoreDatas: function (datas, type) {
@@ -371,7 +374,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       });
 
       console.log('rsync command -> ', rsync.command());
-      
+
       var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
       var ptyProcess = this.iniPtyProcess(shell, []);
       ptyProcess.write(rsync.command() + '\r');
