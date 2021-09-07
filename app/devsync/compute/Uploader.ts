@@ -191,14 +191,14 @@ export default class Uploader {
 						if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
 							if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
 								this.onListener('REJECTED', {
-									return: 'File edited by system dont let uploaded : ' + upath.normalizeSafe(fileName)
+									return: 'File edited by system dont let uploaded.'  // upath.normalizeSafe(fileName)
 								})
 								delete this._pendingQueue[remote];
 								masterData.updateData('file_edit_from_server', {
 									[upath.normalizeSafe(fileName)]: false
 								});
 								reject({
-									message: 'File edited by system dont let uploaded :' + upath.normalizeSafe(fileName),
+									message: 'File edited by system dont let uploaded.',  // upath.normalizeSafe(fileName)
 									error: ""
 								});
 								return;
