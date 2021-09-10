@@ -10,8 +10,9 @@ const CliService = CommandCliService.extend<CliInterface>({
     // this.clear();
 
     this.write(`Started monitoring \n`);
-    this.write(`Restart the script with    : CONTROL-R\n`);
-    this.write(`Quit the script with       : CONTROL-C\n`);
+    this.write(`Restart the script with    : CTRL+R\n`);
+    this.write(`Quit the script with       : CTRL+C\n`);
+    this.write(`Clear Screen               : CTRL+L\n`);
     this.write(chalk.magenta("-----------------------------------------------------------\n"));
     // this.showPrompt();
   },
