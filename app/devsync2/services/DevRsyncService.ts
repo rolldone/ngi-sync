@@ -356,6 +356,12 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
 
     let remoteFuncKeypress = async (key: any, data: any) => {
       switch (data.sequence) {
+        case '\f':
+          console.clear();
+          return;
+        case '\r':
+          _startWatchingWithTimeOut();
+          return;
         case '\x03':
           process.exit();
           return;
@@ -401,8 +407,9 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
     });
 
-    this.watcher.ready();
-
+    await this.watcher.ready();
+    _startWatchingWithTimeOut();
+    
     var reCallCurrentCOnf = () => {
       if (this.uploader == null) return;
       this.task.status("connecting server");

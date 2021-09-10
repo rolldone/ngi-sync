@@ -101,11 +101,18 @@ const Config = BaseModel.extend<ConfigInterface>({
     return new Promise((resolve, reject) => {
       try {
         get_line(ssh_path, 1, (err: any, hasPasspharse: string) => {
-          if (hasPasspharse.includes('ENCRYPTED')) {
-            resolve(true);
-            return;
+          try{
+            if(hasPasspharse == null){
+              throw new Error("SSH path is not found!");
+            }
+            if (hasPasspharse.includes('ENCRYPTED')) {
+              resolve(true);
+              return;
+            }
+            resolve(false);
+          }catch(ex){
+            reject(ex);
           }
-          resolve(false);
         });
       } catch (ex) {
         console.error('_hasPassphrase - ex ', ex);
