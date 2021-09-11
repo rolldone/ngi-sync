@@ -17,6 +17,7 @@ export type trigger_permission = {
   add: boolean
 }
 export interface ConfigInterface extends BaseModelInterface {
+  reset_cache?: boolean
   ready?: { (): Promise<void> }
   _fetch?: { (): void | boolean }
   _expand?: { (): void }
@@ -58,14 +59,21 @@ const Config = BaseModel.extend<ConfigInterface>({
   pathMode: "0777",
   construct: function (cli: CliInterface) {
     this.cli = cli;
+    /* Check sync-config on current directory */
     let testFile = [CONFIG_FILE_NAME, "sync-config.yml"];
     for (var a = 0; a < testFile.length; a++) {
+      /* If exist get it */
       this._filename = pathJoin(process.cwd(), cli.getArgument("config", testFile[a]));
       if (existsSync(this._filename) == true) {
         break;
       }
     }
   },
+  /**
+   * Check privateKey is have password or not 
+   * @param {string} ssh_path
+   * @return {Promise<boolean>} 
+   */
   _hasPassphrase: function (ssh_path) {
     const get_line = (filename: string, line_no: any, callback: Function) => {
       const stream = createReadStream(filename, {
@@ -101,8 +109,8 @@ const Config = BaseModel.extend<ConfigInterface>({
     return new Promise((resolve, reject) => {
       try {
         get_line(ssh_path, 1, (err: any, hasPasspharse: string) => {
-          try{
-            if(hasPasspharse == null){
+          try {
+            if (hasPasspharse == null) {
               throw new Error("SSH path is not found!");
             }
             if (hasPasspharse.includes('ENCRYPTED')) {
@@ -110,7 +118,7 @@ const Config = BaseModel.extend<ConfigInterface>({
               return;
             }
             resolve(false);
-          }catch(ex){
+          } catch (ex) {
             reject(ex);
           }
         });
@@ -122,19 +130,19 @@ const Config = BaseModel.extend<ConfigInterface>({
   },
   ready: function () {
     return new Promise<void>(async (resolve) => {
-    
+
       /* If there is no config resolve it! */
-      if(this._config == null) return resolve();
-      
+      if (this._config == null) return resolve();
+
       /* If have env password fill from parent process, get it! */
-      if(process.env.PASSWORD != null){
+      if (process.env.PASSWORD != null) {
         this.password = process.env.PASSWORD || null;
       }
 
-      let dataConfig : any = masterData.getData('data.config',null);
-      
-      if(dataConfig != null){
-        if(dataConfig.password != null){
+      let dataConfig: any = masterData.getData('data.config', null);
+
+      if (dataConfig != null) {
+        if (dataConfig.password != null) {
           this.password = dataConfig.password;
         }
       }
@@ -150,6 +158,7 @@ const Config = BaseModel.extend<ConfigInterface>({
         });
         return;
       }
+      /** @type {boolean} */
       let hasPasspharse = await this._hasPassphrase(this._config.privateKey);
       if (hasPasspharse == true) {
         this.cli.read("Enter Passphrase to connect : ", true).then(answer => {
@@ -166,13 +175,12 @@ const Config = BaseModel.extend<ConfigInterface>({
     /* If get error return it */
     if (result == false) return;
     this._expand();
-    let dataConfig = masterData.getData('data.config',null);
-    if(dataConfig == null){
-      masterData.saveData('data.config',this);
+    let dataConfig = masterData.getData('data.config', null);
+    if (dataConfig == null) {
+      masterData.saveData('data.config', this);
     }
   },
   _fetch: function () {
-    // console.log('this._filename', this._filename);
     if (existsSync(this._filename)) {
       let configraw;
       if (configraw = readFileSync(this._filename)) {
@@ -183,8 +191,6 @@ const Config = BaseModel.extend<ConfigInterface>({
           let newObject = this._config as any;
           testStringValue = JSON.stringify(this._config);
           for (var key in newObject) {
-            // console.log('-----------------------------------');
-            // console.log(key,' ',testStringValue);
             switch (true) {
               case typeof newObject[key] === 'string':
                 testStringValue = testStringValue.replace(new RegExp('=' + key, 'g'), upath.normalizeSafe(newObject[key]))
@@ -201,8 +207,6 @@ const Config = BaseModel.extend<ConfigInterface>({
           console.log('Could not parse DB file. Make sure JSON is correct');
           console.log(' ', e);
           return false;
-          // this.cli.usage("Could not parse DB file. Make sure JSON is correct", e);
-          // this.cli.usage("Could not parse DB file. Make sure JSON is correct", EXIT_CODE.RUNTIME_FAILURE);
         }
       } else {
         this.cli.usage("Cannot read config file. Make sure you have permissions", EXIT_CODE.INVALID_ARGUMENT);
@@ -218,7 +222,7 @@ const Config = BaseModel.extend<ConfigInterface>({
       let self: {
         [key: string]: any
       } = this;
-      ["saved_file_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
+      ["reset_cache", "saved_file_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
         "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission"].forEach(prop => {
           if (prop == 'localPath') {
             if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
@@ -229,16 +233,11 @@ const Config = BaseModel.extend<ConfigInterface>({
           } else {
             self[prop] = self._config[prop] || self[prop];
           }
-          // if (prop == "saved_file_name") {
-          //   self[prop] = upath.normalizeSafe(self._config[prop] || 'last_open.yaml');
-          // }
-          // self[prop] = self._config[prop] || self[prop];
         });
     } catch (ex) {
       console.log('_expand -> ex ', ex);
     }
-  },
-
+  }
 });
 
 export default Config;

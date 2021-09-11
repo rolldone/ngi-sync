@@ -6,38 +6,47 @@ import { CliInterface } from "./CliService";
 import { RsyncOptions } from "../compute/SyncPush";
 import SingleSync, { SingleSyncInterface } from "../compute/SingleSync";
 import { readFileSync } from "fs";
+var inquirerFileTreeSelection = require("inquirer-file-tree-selection-prompt");
+import upath from 'upath';
+import { ConfigInterface } from "../compute/Config";
 
 declare var masterData: MasterDataInterface
 
 export enum PROMPT_CHOICE {
   DOWNLOAD = 'Download',
-  UPLOAD = 'Upload'
+  UPLOAD = 'Upload',
+  BROWSE_OTHER = "Browse other",
+  EXIT = "Exit"
 }
-export interface SingleSyncServiceInterface extends DevRsyncPushServiceInterface{
-  returnSingleSync : {(cli:CliInterface,config:RsyncOptions):SingleSyncInterface}
+export interface SingleSyncServiceInterface extends DevRsyncPushServiceInterface {
+  returnSingleSync: { (cli: CliInterface, config: RsyncOptions): SingleSyncInterface }
   _promptAction: { (questions: inquirer.QuestionCollection): void }
-  _props ?: any
+  _props?: any
+  _config?: ConfigInterface
 }
 const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>({
   returnConfig: function (cli) {
     return this._super(cli);
   },
-  returnSingleSync : function(cli,config){
-    return SingleSync.create(cli,config);
+  returnSingleSync: function (cli, config) {
+    return SingleSync.create(cli, config);
   },
   returnSyncPush: function (cli, config) {
-    return this._super(cli,config);
+    return this._super(cli, config);
   },
   construct: function (cli, props) {
     this._cli = cli;
     this._props = props;
-    let _config = this.returnConfig(this._cli);
+    this._config = this.returnConfig(this._cli);
+    let _config = this._config;
 
     // let arrayQuestions = [];
     // let _directAccess: DirectAccessType = this._config.direct_access as any;
     // for (var a = 0; a < _directAccess.ssh_commands.length; a++) {
     //   arrayQuestions.push(_directAccess.ssh_commands[a].access_name);
     // }
+
+    inquirer.registerPrompt('file-tree-selection', inquirerFileTreeSelection);
     let questions: inquirer.QuestionCollection = [
       {
         type: "list",
@@ -46,14 +55,41 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
         choices: [
           PROMPT_CHOICE.DOWNLOAD,
           PROMPT_CHOICE.UPLOAD,
+          PROMPT_CHOICE.EXIT
           // 'Restart'
         ]
       },
       {
         type: "list",
         name: "single_sync_list",
-        message: "Which file / folder :",
-        choices: _config.single_sync
+        message: "Which folder :",
+        when: function (va1: any) {
+          if(va1.option == "Exit"){
+            process.exit(0);
+            return
+          }
+          return true;
+        },
+        choices: [
+          ..._config.single_sync,
+          PROMPT_CHOICE.BROWSE_OTHER,
+          PROMPT_CHOICE.EXIT
+        ]
+      },
+      {
+        type: "file-tree-selection",
+        name: "browse_file",
+        message: "Select folder",
+        when: function (va1: any) {
+          if (va1.single_sync_list == "Browse other") {
+            return true;
+          }
+          if(va1.single_sync_list == "Exit"){
+            process.exit(0);
+            return;
+          }
+          return false;
+        }
       }
     ];
     this._promptAction(questions);
@@ -64,12 +100,19 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
     let props = this._props;
     inquirer.prompt(questions)['then']((passAnswer: any) => {
       // console.log('passAnswer',passAnswer);
-      let _singleSync = this.returnSingleSync(cli,{
+      if (passAnswer.browse_file != null) {
+        let fixPath = upath.normalizeSafe(passAnswer.browse_file);
+        fixPath = fixPath.replace(this._config.localPath, '');
+        fixPath = fixPath.replace('/', '');
+        passAnswer.single_sync_list = fixPath;
+        delete passAnswer.browse_file;
+      }
+      let _singleSync = this.returnSingleSync(cli, {
         port: currentConf.port,
         host: currentConf.host,
         username: currentConf.username,
         password: currentConf.password,
-        privateKeyPath : currentConf.privateKey,
+        privateKeyPath: currentConf.privateKey,
         privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
         paths: [],
         ignores: currentConf.ignores,
@@ -77,14 +120,14 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
         local_path: currentConf.localPath,
         path_mode: currentConf.pathMode,
         jumps: currentConf.jumps,
-        single_sync : currentConf.single_sync || [],
+        single_sync: currentConf.single_sync || [],
         mode: props.mode || 'hard'
       });
-      _singleSync.setOnListener(function(props : any){
-        
+      _singleSync.setOnListener(function (props: any) {
+
       })
-      _singleSync.submitPushSelective(passAnswer); 
-      
+      _singleSync.submitPushSelective(passAnswer);
+
     });
   },
 });
