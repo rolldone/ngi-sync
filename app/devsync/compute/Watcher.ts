@@ -174,6 +174,11 @@ export default class Watcher {
 		}
 
 		/* generate .sync_temp */
+		if(this.config.reset_cache == true){
+			if (existsSync(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder)) == true) {
+				this.deleteFolderRecursive(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder));
+			}
+		}
 		if (existsSync(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder)) == false) {
 			mkdirSync(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder), {
 				mode: 0o777

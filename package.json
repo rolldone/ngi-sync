@@ -55,6 +55,7 @@
     "ignore": "^5.1.8",
     "inquirer": "8.1.2",
     "inquirer-autosubmit-prompt": "^0.2.0",
+    "inquirer-file-tree-selection-prompt": "^1.0.12",
     "inquirer-search-list": "^1.2.6",
     "is-cygwin": "^2.0.0",
     "jsonplus": "^1.2.1",

@@ -2701,6 +2701,17 @@ inquirer-autosubmit-prompt@^0.2.0:
     inquirer "^6.2.1"
     rxjs "^6.3.3"
 
+inquirer-file-tree-selection-prompt@^1.0.12:
+  version "1.0.12"
+  resolved "https://registry.yarnpkg.com/inquirer-file-tree-selection-prompt/-/inquirer-file-tree-selection-prompt-1.0.12.tgz#f30f696532ced0bc862454ae076a83ba236d16f7"
+  integrity sha512-XUdh+lxTnj+nNoO38MgLWvO/btCyXJkHpRK5F2q+Wh6NLbSjuVaPeQ1OVPkvB3ZS7DtXzK0uDzGXv9tQqbr4lA==
+  dependencies:
+    chalk "^4.1.1"
+    cli-cursor "^3.1.0"
+    figures "^3.0.0"
+    lodash "^4.17.11"
+    rxjs "^6.5.2"
+
 inquirer-search-list@^1.2.6:
   version "1.2.6"
   resolved "https://registry.npmjs.org/inquirer-search-list/-/inquirer-search-list-1.2.6.tgz"
@@ -4321,7 +4332,7 @@ rx-lite@*, rx-lite@^4.0.8:
   resolved "https://registry.npmjs.org/rx-lite/-/rx-lite-4.0.8.tgz"
   integrity sha1-Cx4Rr4vESDbwSmQH6S2kJGe3lEQ=
 
-rxjs@^6.3.3, rxjs@^6.4.0:
+rxjs@^6.3.3, rxjs@^6.4.0, rxjs@^6.5.2:
   version "6.6.7"
   resolved "https://registry.npmjs.org/rxjs/-/rxjs-6.6.7.tgz"
   dependencies:
