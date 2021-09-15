@@ -102,6 +102,8 @@ export default class Watcher {
 			}
 			return newResGItIngore;
 		})();
+
+		/* Define extra watch if get ! on git ignore */
 		let _extraWatch = (() => {
 			let newExtraWatch: {
 				[key: string]: Array<string>
@@ -114,7 +116,8 @@ export default class Watcher {
 			}
 			return newExtraWatch;
 		})();
-		/* Check ignore rule again for group ignore */
+
+		/* Get ignore rule again for group ignore special for extraWatch */
 		for (var key in _extraWatch) {
 			for (var a = 0; a < originIgnore.length; a++) {
 				if (originIgnore[a][Object.keys(originIgnore[a])[0]] != '!') {
