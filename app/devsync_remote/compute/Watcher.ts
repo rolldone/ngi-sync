@@ -104,6 +104,7 @@ const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 	},
 	handler(method) {
 		return (...args: string[]) => {
+			console.log(args);
 			let path: string,
 				event = method;
 			// Handle argument difference
