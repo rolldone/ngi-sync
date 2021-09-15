@@ -54,6 +54,9 @@ BaseStart({
         }
         masterData.saveData('command.devsync2.index', null);
         return;
+      case 'devsync_remote':
+        masterData.saveData('command.devsync_remote.index',segment1._[1]);
+        return;
       case 'forcersync':
         masterData.saveData('command.forcersync.index', {});
         return;
