@@ -1,15 +1,12 @@
 import BaseService from "@root/base/BaseService";
 import os from 'os';
 import * as child_process from 'child_process';
-import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { IPty } from 'node-pty';
 var pty = require('node-pty');
 import rl, { ReadLine } from 'readline';
 import { CliInterface } from "./CliService";
 import Config, { ConfigInterface } from "../compute/Config";
 var size = require('window-size');
-
-declare var masterData: MasterDataInterface;
 
 export interface OpenConsoleServiceInterface extends BaseServiceInterface {
   construct: { (cli: CliInterface, props: Array<string>): void }
@@ -31,6 +28,7 @@ export default BaseService.extend<OpenConsoleServiceInterface>({
       // output : process.stdout,
       terminal: true
     });
+
     // i.question("What do you think of node.js?", function(answer) {
     //   // console.log("Thank you for your valuable feedback.");
     //   // i.close();
@@ -58,7 +56,7 @@ export default BaseService.extend<OpenConsoleServiceInterface>({
       },
       handleFlowControl: true
     });
-    
+
     _ptyProcess.on('data', function (data: any) {
       // console.log(data)
       process.stdout.write(data);
@@ -75,7 +73,7 @@ export default BaseService.extend<OpenConsoleServiceInterface>({
     });
 
     _ptyProcess.write('ngi-sync\r');
-    
+
     return _ptyProcess;
   },
   construct: function (cli, props = []) {

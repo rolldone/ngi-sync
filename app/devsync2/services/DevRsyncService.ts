@@ -14,6 +14,8 @@ import * as child_process from 'child_process';
 import rl, { ReadLine } from 'readline';
 const chalk = require('chalk');
 const observatory = require("observatory");
+import HttpEvent, { HttpEventInterface } from "../compute/HttpEvent";
+
 declare var masterData: MasterDataInterface
 
 export interface DevRsyncServiceInterface extends BaseServiceInterface {
@@ -31,6 +33,9 @@ export interface DevRsyncServiceInterface extends BaseServiceInterface {
   _checkIsCygwin: Function
   _executeCommand?: { (extra_command: any): void }
   _readLine?: ReadLine
+  returnHttpEvent?: { (cli: CliInterface, config: ConfigInterface): HttpEventInterface }
+  _httpEvent?: HttpEventInterface
+  _task ?: any
 }
 
 export const COMMAND_SHORT = {
@@ -59,6 +64,9 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
   },
   returnSyncPull: function (cli, sshConfig) {
     return SyncPull.create(cli, sshConfig);
+  },
+  returnHttpEvent: function (cli, sshConfig) {
+    return HttpEvent.create(cli, sshConfig);
   },
   construct: async function (cli, extra_command) {
     this._cli = cli;
@@ -150,6 +158,8 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         });
         break;
       default:
+        this._devSyncSafeSyncronise();
+        return;
         masterData.saveData('command.forcersync.pull', {
           callback: (err: boolean) => {
             if (err == true) {
@@ -209,7 +219,42 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     }
 
     await currentConf.ready();
-
+    this._task = {};
+    this._httpEvent = this.returnHttpEvent(this._cli, this._currentConf);
+    this._httpEvent.setOnChangeListener((action, props) => {
+      switch (action) {
+        case 'LISTEN_PORT':
+					this._task['LISTEN_PORT'] = observatory.add("Listen Reverse Port :: "+props);// observatory.add(this.eventToWord[event]);
+					this._task['LISTEN_PORT'].done();
+          break;
+        case 'add':
+          if(this._task['ADD'] == null){
+            this._task['ADD'] = observatory.add("ADD :: "+props);
+          }
+          this._task['ADD'].status('ADD :: '+props);
+          // observatory.add(this.eventToWord[event]);
+          break;
+        case 'update':
+          if(this._task['UPDATE'] == null){
+            this._task['UPDATE'] = observatory.add("UPDATE :: "+props);
+          }
+          this._task['UPDATE'].status('UPDATE :: '+props);
+          break;
+        case 'unlink':
+          if(this._task['UNLINK'] == null){
+            this._task['UNLINK'] = observatory.add("UNLINK :: "+props);
+          }
+          this._task['UNLINK'].status('UNLINK :: '+props);
+          break;
+        case 'unlink_folder':
+          if(this._task['UNLINK_FOLDER'] == null){
+            this._task['UNLINK_FOLDER'] = observatory.add("UNLINK_FOLDER :: "+props);
+          }
+          this._task['UNLINK_FOLDER'].status('UNLINK_FOLDER :: '+props);
+          break;
+      }
+    })
+    return;
     let syncPull = this.returnSyncPull(this._cli, {
       // get ssh config
       port: currentConf.port,
@@ -347,6 +392,8 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
     });
 
+
+
     /* Define readline nodejs for listen CTRL + R */
     this._readLine = rl.createInterface({
       input: process.stdin,
@@ -366,6 +413,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           process.exit();
           return;
         case '\x12':
+          this._httpEvent.stop();
           _startWatchingWithTimeOut(true);
           syncPull.stopSubmitWatch();
           syncPull = null;
@@ -387,7 +435,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           this.task.done();
 
           console.clear();
-          
+
           this.construct(this._cli);
 
           break;
@@ -409,7 +457,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
 
     await this.watcher.ready();
     _startWatchingWithTimeOut();
-    
+
     var reCallCurrentCOnf = () => {
       if (this.uploader == null) return;
       this.task.status("connecting server");
