@@ -4,14 +4,15 @@ import http, { IncomingMessage, ServerResponse } from 'http';
 export interface ParseDataInterface extends BaseModelInterface {
   construct?: { (port: string): void }
   _port?: number | string
-  get?: { (): any }
+  getConfig?: { (): any }
+  sendData?: { (action: string, path: string): any }
 }
 
 const ParseData = BaseModel.extend<Omit<ParseDataInterface, 'model'>>({
   construct(port) {
     this._port = port;
   },
-  get() {
+  getConfig() {
     var options = {
       host: 'localhost',
       path: '/',
@@ -34,6 +35,31 @@ const ParseData = BaseModel.extend<Omit<ParseDataInterface, 'model'>>({
       var req = http.request(options, callback);
       req.end();
     })
+  },
+  sendData(action, path) {
+    try {
+      var options = {
+        host: 'localhost',
+        path: `/?action=${action}&path=${path}`,
+        //since we are listening on a custom port, we need to specify it by hand
+        port: this._port,
+        //This is what changes the request to a POST request
+        method: 'GET'
+      };
+      var callback = function (response: IncomingMessage): void {
+        var str = ''
+        response.on('data', function (chunk) {
+          str += chunk;
+        });
+        response.on('end', function () {
+
+        });
+      }
+      var req = http.request(options, callback);
+      req.end();
+    } catch (ex) {
+      console.log('post - ex ', ex);
+    }
   }
 });
 

@@ -26,9 +26,13 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
   construct: async function (props) {
     this.task = observatory.add("Initializing...");
     this._parseData = this.returnParseData(props);
-    let parseData = await this._parseData.get();
+    let parseData = await this._parseData.getConfig();
     this.watcher = this.returnWatcher(JSON.parse(parseData));
-
+    this.watcher.setOnChangeListener((action, path) => {
+      console.log('action :: ', action);
+      console.log('path :: ', path);
+      this._parseData.sendData(action, path);
+    })
   },
   _devSyncSafeSyncronise: async function () {
     // console.log('currentConf',currentConf);
