@@ -196,9 +196,6 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       });
     });
     this._event = event as any;
-    masterData.setOnListener('call.start.waching.data', () => {
-
-    });
   },
   _downloadFile: function (props) {
     let keynya = props.folder + '/' + props.file;
