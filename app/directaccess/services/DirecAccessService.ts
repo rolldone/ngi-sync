@@ -9,6 +9,7 @@ declare var masterData: MasterDataInterface;
 
 const GIT_CLEAN_UP = 'Git clean up : git add --renormalize . && git reset';
 const RUN_DEVSYNC2 = 'Open Devsync2';
+const RUN_DEVSYNC = 'Open Devsync';
 const OPEN_CONSOLE = 'Open Console';
 
 export interface DirectAccessServiceInterface extends BaseServiceInterface {
@@ -61,6 +62,11 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
       access_name: OPEN_CONSOLE,
       key: 'console',
       command: 'ngi-sync console'
+    });
+    _directAccess.ssh_commands.push({
+      access_name: RUN_DEVSYNC,
+      key: 'devsync',
+      command: 'ngi-sync devsync'
     });
     _directAccess.ssh_commands.push({
       access_name: RUN_DEVSYNC2,
