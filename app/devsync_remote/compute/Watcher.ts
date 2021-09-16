@@ -5,7 +5,6 @@ import * as chokidar from "chokidar"
 import { ConfigInterface } from "./Config";
 import upath from 'upath';
 const workerpool = require('workerpool');
-const pool = workerpool.pool(__dirname + '/TestCache.js');
 
 export interface WatcherInterface extends BaseModelInterface {
 	create?: (props: {
@@ -27,11 +26,12 @@ export interface WatcherInterface extends BaseModelInterface {
 	change: { (path: string): void }
 	unlink: { (path: string): void }
 	unlinkDir: { (path: string): void }
+	_onChangeListener?: Function
+	setOnChangeListener: { (func: { (action: string, path: string): void }): void }
 }
 
 const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 	construct: function (props) {
-		console.log('aaaaaa', props);
 		let {
 			config,
 			sync_ignores,
@@ -51,10 +51,10 @@ const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 			[key: string]: Array<string>
 		} = {};
 		for (var a = 0; a < downloads.length; a++) {
-			let key = upath.normalizeSafe(config.remotePath + '/' + downloads[a]);
+			let key = upath.normalizeSafe(downloads[a]);
 			newDownloads[key] = [];
 		}
-
+		
 		for (var key in complateExtraWatchs) {
 			for (var key2 in newDownloads) {
 				if (key2.includes(key)) {
@@ -80,7 +80,6 @@ const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 		console.log('theFinalExtraWatch', theFinalExtraWatchs);
 		/* Extra watch, Get filtered out on sync_ignore */
 		for (var key in theFinalExtraWatchs) {
-			console.log('theFinalExtraWatchs',key);
 			let _currentWatch: any = chokidar.watch(key, {
 				// ignored: [],
 				ignored: (() => {
@@ -102,16 +101,17 @@ const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 			});
 		}
 	},
+	setOnChangeListener(func) {
+		this._onChangeListener = func;
+	},
 	handler(method) {
 		return (...args: string[]) => {
-			console.log(args);
 			let path: string,
 				event = method;
 			// Handle argument difference
 			if (method === 'all') {
 				path = args[1];
 				event = args[0]
-				console.log(method);
 				/* if (this._onListener != null) {
 					this._onListener({
 						action: 'ALL_EVENT'
@@ -142,20 +142,19 @@ const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 	},
 
 	all(event: string, path: string) {
-		console.log('path -> ',path);
+		// console.log('path -> ', path);
 	},
 	add(path) {
-
+		this._onChangeListener('ADD', path);
 	},
 	change(path) {
-
+		this._onChangeListener('CHANGE', path);
 	},
 	unlink(path) {
-
+		this._onChangeListener('UNLINK', path);
 	},
-
 	unlinkDir(path) {
-
+		this._onChangeListener('UNLINK_DIR', path);
 	}
 });
 
