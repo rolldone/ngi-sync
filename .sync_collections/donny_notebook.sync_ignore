@@ -1,0 +1,5 @@
+.sync_ignore 
+sync-config.yaml
+.git
+node_modules
+dist/*

@@ -1,0 +1,33 @@
+reset_cache: true
+project_name: Ngi-sync
+username: root
+privateKey: C:\Users\donny\.ssh\openssh_nopassword.key
+host: virtualbox.lan
+port: 22
+localPath: .
+remotePath: /root/workspaces/ngi-sync
+ignores: []
+downloads: []
+single_sync: []
+trigger_permission:
+  unlink_folder: true
+  unlink: true
+  change: true
+  add: true
+direct_access:
+  config_file: ""
+  ssh_configs:
+    - Host: workspaces_ngi_sync
+      HostName: =host
+      User: =username
+      Port: =port
+      RequestTty: force
+      IdentityFile: =privateKey
+      StrictHostKeyChecking: no
+      RemoteCommand: cd =remotePath && bash -l
+      ServerAliveInterval: 300
+      ServerAliveCountMax: 2
+  ssh_commands:
+    - access_name: Enter Server
+      command: ssh -v workspaces_ngi_sync
+saved_file_name: donny_notebook.yaml

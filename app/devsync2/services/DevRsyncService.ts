@@ -254,12 +254,16 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           }
           break;
         case 'STOP':
-          this._task['STOP_DOWNLOAD'].status("TRYING STOP_DOWNLOAD :: Stop")
+          if (this._task['STOP_DOWNLOAD'] == null) {
+            this._task['STOP_DOWNLOAD'] = observatory.add("TRYING STOP_DOWNLOAD");
+          }
+          this._task['STOP_DOWNLOAD'].status("Stop")
           this._task['STOP_DOWNLOAD'].done();
           this._task['STOP_DOWNLOAD'] = null;
           break;
       }
     });
+
     this._httpEvent = this.returnHttpEvent(this._cli, this._currentConf);
     this._httpEvent.setOnChangeListener(async (action, props) => {
       await this._download.startSftp();
@@ -294,64 +298,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           break;
       }
     })
-    // let syncPull = this.returnSyncPull(this._cli, {
-    //   // get ssh config
-    //   port: currentConf.port,
-    //   host: currentConf.host,
-    //   username: currentConf.username,
-    //   password: currentConf.password,
-    //   privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
-    //   paths: (() => {
-    //     let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;
-    //     for (var a = 0; a < arrayString.length; a++) {
-    //       arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
-    //       /**
-    //        * Remove if folder have file extention
-    //        * Not Use anymore just keep it the original
-    //        */
-    //       // var isSame = arrayString[a].substr(arrayString[a].lastIndexOf('.') + 1);
-    //       // if (isSame != arrayString[a]) {
-    //       //   arrayString[a] = arrayString[a].split("/").slice(0, -1).join("/");
-    //       // }
-    //     }
-    //     return arrayString;
-    //   })(),
-    //   base_path: currentConf.remotePath,
-    //   local_path: currentConf.localPath,
-    //   jumps: currentConf.jumps
-    // });
 
-    // let historyStatus: {
-    //   [key: string]: any
-    // } = {};
-
-    // syncPull.setOnListener((res: any) => {
-    //   // console.log('props', res);
-    //   if (typeof res.return === 'string' || res.return instanceof String) {
-    //     var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + res.return);
-    //     taskWatchOnServer.status(res.status);
-    //     taskWatchOnServer.fail(res.status);
-    //     return;
-    //   }
-    //   if (res.return.folder == null) {
-    //     var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null ? 'No Such file of directory' : res.return.file.filename));
-    //     taskWatchOnServer.status(res.status);
-    //     taskWatchOnServer.fail(res.status);
-    //     return;
-    //   }
-    //   let thePath = upath.normalizeSafe(res.return.folder + '/' + res.return.file.filename);
-    //   if (historyStatus[thePath] == res.status) {
-    //     return;
-    //   }
-    //   historyStatus[thePath] = res.status;
-    //   var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null ? 'No Such file of directory' : res.return.file.filename));
-    //   // taskWatchOnServer.status(res.status);
-    //   taskWatchOnServer.done();
-    // });
-
-    // syncPull.submitWatch();
-
-    // let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
     this.uploader = new Uploader(currentConf, this._cli);
     this.uploader.setOnListener((action: string, props: any) => {
       switch (action) {
@@ -431,8 +378,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
     });
 
-
-
     /* Define readline nodejs for listen CTRL + R */
     this._readLine = rl.createInterface({
       input: process.stdin,
@@ -452,10 +397,19 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           process.exit();
           return;
         case '\x12':
+
+          /* Stop httpEvent */
           this._httpEvent.stop();
+          this._httpEvent = null;
           // _startWatchingWithTimeOut(true);
           // syncPull.stopSubmitWatch();
           // syncPull = null;
+
+          /* Stop download */
+          _pendingTimeoutStopDownload(true);
+          this._download.stop(this._download.status.SILENT);
+          this._download = null;
+
           /* Close readline */
           this._readLine.close();
           this._readLine = null;
