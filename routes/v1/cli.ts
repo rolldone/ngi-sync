@@ -25,6 +25,7 @@ const Cli = BaseRouteCli.extend<BaseRouteInterface>({
     masterData.setOnListener('command.rsync.upload', function (props: any) { });
     masterData.setOnListener('command.rsync.download', function (props: any) { });
     masterData.setOnListener('command.devsync.index', Main.binding().index);
+    masterData.setOnListener('command.devsync.short_command', Main.binding().shortCommand);
     masterData.setOnListener('command.devsync_local.index', MainDevSyncLocal.binding().index);
     masterData.setOnListener('command.forcesftp.index', MainForceSftp.binding().index);
     masterData.setOnListener('command.forcesftp.pull', MainForceSftp.binding().pull);

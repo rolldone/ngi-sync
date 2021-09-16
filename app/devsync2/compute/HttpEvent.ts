@@ -45,6 +45,7 @@ export interface HttpEventInterface extends BaseModelInterface {
     (gitIgnore: Array<any>): void
   }
   removeSameString: { (fullPath: string, basePath: string): string }
+  _randomPort ?: number
 }
 
 const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
@@ -191,7 +192,8 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
       const { port, address } = this._server.address() as AddressInfo
       this._onChangeListener('LISTEN_PORT', port + "");
       let ssh_config = this.generateSSHConfig();
-      this.startReversePort(`ssh -T -R localhost:${port}:127.0.0.1:${port} ${ssh_config.Host}`, []);
+      this._randomPort = port;
+      this.startReversePort(`ssh -R localhost:${port}:127.0.0.1:${port} ${ssh_config.Host}`, []);
     });
   },
   setOnChangeListener(func) {
@@ -272,6 +274,11 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
         case data.includes('rsync error:'):
           _ptyProcess.write('exit' + '\r')
           break;
+        case data.includes('Connection reset'):
+        case data.includes('ngi-sync: command not found'):
+          console.log('ERROR ON REMOTE :: ',data);
+          process.exit(0);
+          break;
       }
     });
 
@@ -286,6 +293,8 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
     });
 
     _ptyProcess.write(sshCommand + "\r");
+    _ptyProcess.write(`cd ${this._config.remotePath} \r`);
+    _ptyProcess.write(`ngi-sync devsync_remote ${this._randomPort}` + "\r");
 
     return _ptyProcess;
   },
