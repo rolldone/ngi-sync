@@ -14,6 +14,7 @@ declare var masterData: MasterDataInterface;
 declare var CustomError: { (name: string, message: string): any }
 
 export interface DownloadInterface extends BaseModelInterface {
+  status: downloadStatus
   _client?: sftpClient
   _sftpOptions?: SftpOptions
   returnSftpConfig: { (props: SftpOptions): SftpOptions }
@@ -44,8 +45,8 @@ export interface DownloadInterface extends BaseModelInterface {
     [key: string]: any
   }
   getLocalPath: { (remotePath: string): string }
-  stop: { (): void }
-  startPendingTimeoutStop: { (): { (): void } }
+  stop: { (is_silent?: number): void }
+  startPendingTimeoutStop: { (): { (stop?:boolean): void } }
   deleteFile: { (path: any): void }
   deleteFolder: { (path: any, oportunity: number): void }
 }
@@ -56,7 +57,14 @@ export const STATUS_UPLOAD = {
   CANCEL: 3,
 }
 
+type downloadStatus = {
+  SILENT: number
+}
+
 const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
+  status: {
+    SILENT: 1
+  },
   /* Set to be 1 because ssh2-sftp-client is have concurent include */
   _concurent: 1,
   returnSftpConfig(props) {
@@ -325,9 +333,12 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
   },
   startPendingTimeoutStop() {
     let _pendingStop: DebouncedFunc<any> = null;
-    return () => {
+    return (stop) => {
       if (_pendingStop != null) {
         _pendingStop.cancel();
+      }
+      if (stop == true) {
+        return;
       }
       _pendingStop = debounce(() => {
         this.onListener('TRYING_STOP', '');
@@ -336,10 +347,19 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
       _pendingStop();
     }
   },
-  stop() {
+  stop(mode) {
+    if (mode == this.status.SILENT) {
+      if (this._client != null) {
+        this._client.end();
+        this._client = null;
+      }
+      return;
+    }
     this.onListener('STOP', "");
-    this._client.end();
-    this._client = null;
+    if (this._client != null) {
+      this._client.end();
+      this._client = null;
+    }
   }
 })
 

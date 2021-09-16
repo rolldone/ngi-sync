@@ -200,10 +200,17 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
     this._onChangeListener = func;
   },
   stop() {
-    this._server.close();
-    this._server = null;
-    this._ptyProcess.write('exit\r');
-    this._ptyProcess = null;
+    try{
+      this._server.close();
+      this._server = null;
+      this._ptyProcess.kill();
+    }catch(ex){
+      try {
+        this._ptyProcess.kill('SIGKILL');
+      } catch (e) {
+        // couldn't kill the process
+      }
+    }
   },
   generateSSHConfig() {
     let _direct_access: DirectAccessType = this._config.direct_access as any;
