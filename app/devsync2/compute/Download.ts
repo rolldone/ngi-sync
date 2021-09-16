@@ -309,6 +309,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
           host: currentConf.host,
           username: currentConf.username,
           password: currentConf.password,
+          passphrase: currentConf.password,
           privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
           paths: (() => {
             let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;

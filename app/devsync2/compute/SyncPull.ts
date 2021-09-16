@@ -8,6 +8,7 @@ export interface SftpOptions {
   host: string
   username: string
   password: string,
+  passphrase?: string
   privateKey: string,
   paths: Array<string>,
   base_path: string,
