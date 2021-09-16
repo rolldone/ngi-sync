@@ -45,7 +45,7 @@ export interface HttpEventInterface extends BaseModelInterface {
     (gitIgnore: Array<any>): void
   }
   removeSameString: { (fullPath: string, basePath: string): string }
-  _randomPort ?: number
+  _randomPort?: number
 }
 
 const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
@@ -109,7 +109,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
       })();
 
       let ignnorelist = [].concat(onlyRegexIgnores).concat(onlyFileStringIgnores).concat(resCHeckGItIgnores);
-      
+
       return ignnorelist;
     } catch (ex) {
       process.exit(0);
@@ -200,11 +200,11 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
     this._onChangeListener = func;
   },
   stop() {
-    try{
+    try {
       this._server.close();
       this._server = null;
       this._ptyProcess.kill();
-    }catch(ex){
+    } catch (ex) {
       try {
         this._ptyProcess.kill('SIGKILL');
       } catch (e) {
@@ -248,6 +248,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
     return ssh_confi;
   },
   iniPtyProcess: function (sshCommand, props = []) {
+    let isLoginFinish = false;
     var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
     let _ptyProcess = pty.spawn(shell, props, {
       name: 'xterm-color',
@@ -281,9 +282,16 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
         case data.includes('rsync error:'):
           _ptyProcess.write('exit' + '\r')
           break;
+        case data.includes(`${this._config.username}@`):
+          if (isLoginFinish == false) {
+            _ptyProcess.write(`cd ${this._config.remotePath} \r`);
+            _ptyProcess.write(`ngi-sync devsync_remote ${this._randomPort}` + "\r");
+            isLoginFinish = true;
+          }
+          break;
         case data.includes('Connection reset'):
         case data.includes('ngi-sync: command not found'):
-          console.log('ERROR ON REMOTE :: ',data);
+          console.log('ERROR ON REMOTE :: ', data);
           process.exit(0);
           break;
       }
@@ -300,8 +308,6 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
     });
 
     _ptyProcess.write(sshCommand + "\r");
-    _ptyProcess.write(`cd ${this._config.remotePath} \r`);
-    _ptyProcess.write(`ngi-sync devsync_remote ${this._randomPort}` + "\r");
 
     return _ptyProcess;
   },
