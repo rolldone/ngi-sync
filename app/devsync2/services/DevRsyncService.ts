@@ -14,9 +14,13 @@ import * as child_process from 'child_process';
 import rl, { ReadLine } from 'readline';
 const chalk = require('chalk');
 const observatory = require("observatory");
+import HttpEvent, { HttpEventInterface } from "../compute/HttpEvent";
+import Download, { DownloadInterface } from "../compute/Download";
+
 declare var masterData: MasterDataInterface
 
 export interface DevRsyncServiceInterface extends BaseServiceInterface {
+  returnDownload: { (cli: CliInterface, config: ConfigInterface): DownloadInterface }
   returnConfig: { (cli: CliInterface): ConfigInterface }
   returnSyncPull: { (cli: CliInterface, sshConfig: SftpOptions): SyncPullInterface }
   create?: (cli: CliInterface, extra_command?: string) => this
@@ -31,6 +35,10 @@ export interface DevRsyncServiceInterface extends BaseServiceInterface {
   _checkIsCygwin: Function
   _executeCommand?: { (extra_command: any): void }
   _readLine?: ReadLine
+  returnHttpEvent?: { (cli: CliInterface, config: ConfigInterface): HttpEventInterface }
+  _httpEvent?: HttpEventInterface
+  _task?: any
+  _download?: DownloadInterface
 }
 
 export const COMMAND_SHORT = {
@@ -51,14 +59,18 @@ export const COMMAND_TARGET = {
   FORCE_SINGLE_SYNC: COMMAND_SHORT.FORCE_SINGLE_SYNC + ' :: DevSync Single Syncronize \n  - You can download simple file or folder',
 }
 
-
-
 const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
+  returnDownload: function (cli, config) {
+    return Download.create(cli, config);
+  },
   returnConfig: function (cli) {
     return Config.create(cli);
   },
   returnSyncPull: function (cli, sshConfig) {
     return SyncPull.create(cli, sshConfig);
+  },
+  returnHttpEvent: function (cli, sshConfig) {
+    return HttpEvent.create(cli, sshConfig);
   },
   construct: async function (cli, extra_command) {
     this._cli = cli;
@@ -209,65 +221,84 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     }
 
     await currentConf.ready();
-
-    let syncPull = this.returnSyncPull(this._cli, {
-      // get ssh config
-      port: currentConf.port,
-      host: currentConf.host,
-      username: currentConf.username,
-      password: currentConf.password,
-      privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
-      paths: (() => {
-        let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;
-        for (var a = 0; a < arrayString.length; a++) {
-          arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
-          /**
-           * Remove if folder have file extention
-           * Not Use anymore just keep it the original
-           */
-          // var isSame = arrayString[a].substr(arrayString[a].lastIndexOf('.') + 1);
-          // if (isSame != arrayString[a]) {
-          //   arrayString[a] = arrayString[a].split("/").slice(0, -1).join("/");
-          // }
-        }
-        return arrayString;
-      })(),
-      base_path: currentConf.remotePath,
-      local_path: currentConf.localPath,
-      jumps: currentConf.jumps
+    this._task = {};
+    this._download = this.returnDownload(this._cli, this._currentConf);
+    let _pendingTimeoutStopDownload = this._download.startPendingTimeoutStop();
+    this._download.setOnListener((action, props) => {
+      switch (action) {
+        case 'REJECTED':
+          this._task['REJECTED'] = observatory.add("REJECTED :: ");
+          this._task['REJECTED'].fail(props);
+          this._task['REJECTED'] = null;
+          break;
+        case 'REJECTED_DOWNLOAD':
+          this._task['REJECTED_DOWNLOAD'] = observatory.add("Download Failed :: ");
+          this._task['REJECTED_DOWNLOAD'].fail(props);
+          this._task['REJECTED_DOWNLOAD'] = null;
+          break;
+        case 'ONGOING':
+          break;
+        case 'DOWNLOADED_DONE':
+          this._task['DOWNLOADED'].done();
+          this._task['DOWNLOADED'] = null;
+          break;
+        case 'DOWNLOADED':
+          if (this._task['DOWNLOADED'] == null) {
+            this._task['DOWNLOADED'] = observatory.add("DOWNLOADED :: ");
+          }
+          this._task['DOWNLOADED'].status(props);
+          break;
+        case 'TRYING_STOP':
+          if (this._task['STOP_DOWNLOAD'] == null) {
+            this._task['STOP_DOWNLOAD'] = observatory.add("TRYING STOP_DOWNLOAD");
+          }
+          break;
+        case 'STOP':
+          if (this._task['STOP_DOWNLOAD'] == null) {
+            this._task['STOP_DOWNLOAD'] = observatory.add("TRYING STOP_DOWNLOAD");
+          }
+          this._task['STOP_DOWNLOAD'].status("Stop")
+          this._task['STOP_DOWNLOAD'].done();
+          this._task['STOP_DOWNLOAD'] = null;
+          break;
+      }
     });
 
-    let historyStatus: {
-      [key: string]: any
-    } = {};
-
-    syncPull.setOnListener((res: any) => {
-      // console.log('props', res);
-      if (typeof res.return === 'string' || res.return instanceof String) {
-        var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + res.return);
-        taskWatchOnServer.status(res.status);
-        taskWatchOnServer.fail(res.status);
-        return;
+    this._httpEvent = this.returnHttpEvent(this._cli, this._currentConf);
+    this._httpEvent.setOnChangeListener(async (action, props) => {
+      await this._download.startSftp();
+      _pendingTimeoutStopDownload();
+      // console.log('action', action, props);
+      switch (action) {
+        case 'LISTEN_PORT':
+          this._task['LISTEN_PORT'] = observatory.add("Listen Reverse Port :: " + props);// observatory.add(this.eventToWord[event]);
+          this._task['LISTEN_PORT'].done();
+          break;
+        case 'ADD':
+          this._download.startWaitingDownloads(props);
+          break;
+        case 'CHANGE':
+          this._download.startWaitingDownloads(props);
+          break;
+        case 'UNLINK':
+          if (this._task['UNLINK'] == null) {
+            this._task['UNLINK'] = observatory.add("UNLINK :: " + props);
+          }
+          this._task['UNLINK'].status('UNLINK :: ' + props);
+          this._task['UNLINK'].done();
+          this._download.deleteFile(props);
+          break;
+        case 'UNLINK_DIR':
+          if (this._task['UNLINK_FOLDER'] == null) {
+            this._task['UNLINK_FOLDER'] = observatory.add("UNLINK_FOLDER :: " + props);
+          }
+          this._task['UNLINK_FOLDER'].status('UNLINK_FOLDER :: ' + props);
+          this._task['UNLINK_FOLDER'].done();
+          this._download.deleteFolder(props, 5);
+          break;
       }
-      if (res.return.folder == null) {
-        var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null ? 'No Such file of directory' : res.return.file.filename));
-        taskWatchOnServer.status(res.status);
-        taskWatchOnServer.fail(res.status);
-        return;
-      }
-      let thePath = upath.normalizeSafe(res.return.folder + '/' + res.return.file.filename);
-      if (historyStatus[thePath] == res.status) {
-        return;
-      }
-      historyStatus[thePath] = res.status;
-      var taskWatchOnServer = observatory.add('WATCH ON SERVER SFTP :' + JSON.stringify(res.return.folder == null ? 'No Such file of directory' : res.return.file.filename));
-      // taskWatchOnServer.status(res.status);
-      taskWatchOnServer.done();
-    });
+    })
 
-    syncPull.submitWatch();
-
-    let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
     this.uploader = new Uploader(currentConf, this._cli);
     this.uploader.setOnListener((action: string, props: any) => {
       switch (action) {
@@ -356,13 +387,29 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
 
     let remoteFuncKeypress = async (key: any, data: any) => {
       switch (data.sequence) {
+        case '\f':
+          console.clear();
+          return;
+        case '\r':
+          // _startWatchingWithTimeOut();
+          return;
         case '\x03':
           process.exit();
           return;
         case '\x12':
-          _startWatchingWithTimeOut(true);
-          syncPull.stopSubmitWatch();
-          syncPull = null;
+
+          /* Stop httpEvent */
+          this._httpEvent.stop();
+          this._httpEvent = null;
+          // _startWatchingWithTimeOut(true);
+          // syncPull.stopSubmitWatch();
+          // syncPull = null;
+
+          /* Stop download */
+          _pendingTimeoutStopDownload(true);
+          this._download.stop(this._download.status.SILENT);
+          this._download = null;
+
           /* Close readline */
           this._readLine.close();
           this._readLine = null;
@@ -381,7 +428,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           this.task.done();
 
           console.clear();
-          
+
           this.construct(this._cli);
 
           break;
@@ -396,12 +443,13 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     }) => {
       switch (props.action) {
         case 'ALL_EVENT':
-          _startWatchingWithTimeOut();
+          // _startWatchingWithTimeOut();
           break;
       }
     });
 
-    this.watcher.ready();
+    await this.watcher.ready();
+    // _startWatchingWithTimeOut();
 
     var reCallCurrentCOnf = () => {
       if (this.uploader == null) return;

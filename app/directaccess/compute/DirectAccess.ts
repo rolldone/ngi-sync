@@ -27,41 +27,52 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
   construct(config) {
     this._config = config;
     let _direct_access: DirectAccessType = this._config.direct_access as any;
-    // this._ssh_config = SSHConfig.parse(readFileSync(_direct_access.config_file).toString());
-    let _configFilePath = upath.normalizeSafe(os.homedir()+'/.ssh/config');
+    let _configFilePath = upath.normalizeSafe(os.homedir() + '/.ssh/config');
+
+    /* DONT LET ERROR! */
+    /* Manage the ssh_config from .ssh home dir */
     this._ssh_config = SSHConfig.parse(readFileSync(_configFilePath).toString());
+
+    /* Loop every ssh_config collection from .ssh home dir */
     for (var a = 0; a < _direct_access.ssh_configs.length; a++) {
       var sshSection = this._ssh_config.find({ Host: _direct_access.ssh_configs[a].Host })
+      /* Remove old current config */
       if (sshSection != null) {
         this._ssh_config.remove({ Host: _direct_access.ssh_configs[a].Host })
       }
     }
+
+    /* Insert the curent new config */
     for (var a = 0; a < _direct_access.ssh_configs.length; a++) {
       this._ssh_config.append(_direct_access.ssh_configs[a]);
     }
+
+    /* Write the ssh_config on sync-config store in to ssh_config on .ssh home dir  */
     writeFileSync(_configFilePath, SSHConfig.stringify(this._ssh_config));
   },
   submitDirectAccess: function (_select_ssh_command) {
-
-    let env =  { 
+    let env = {
       IS_PROCESS: "direct_access",
-      PASSWORD : this._config.password
-     };
-    /* env not working if going to external place like 
-       ssh */
-    if(_select_ssh_command.command.includes('ssh')){
+      PASSWORD: this._config.password
+    };
+
+    /* env not working if going to external place like ssh */
+    if (_select_ssh_command.command.includes('ssh')) {
       env = null;
     }
+
     var child = child_process.spawn(_select_ssh_command.command, [], {
-      env : env,
+      env: env,
       stdio: 'inherit',//['pipe', process.stdout, process.stderr]
       shell: true
       /* Open new window */
       // detached: true
     });
-    child.on('error', function(err) {
+
+    child.on('error', function (err) {
       console.log('Spawn error : ' + err);
     });
+
     child.on('exit', (e, code) => {
       this._onListener({
         action: "exit",

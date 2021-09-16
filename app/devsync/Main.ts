@@ -15,6 +15,7 @@ export interface MainControllerInterface extends BaseControllerInterface {
   returnCliService: { (): CliInterface }
   returnDevSyncService: { (cli?: CliInterface): DevSyncServiceInterface }
   _devSyncService?: DevSyncServiceInterface
+  shortCommand?: { (props: any): void }
 }
 
 const Main = BaseController.extend<MainControllerInterface>({
@@ -33,7 +34,11 @@ const Main = BaseController.extend<MainControllerInterface>({
       this.returnDevSyncService(cliService);
       return;
     }
-  }
+  },
+  shortCommand: function (props) {
+    let cliService = this.returnCliService();
+    this.returnDevSyncService(cliService);
+  },
 });
 
 export default Main;

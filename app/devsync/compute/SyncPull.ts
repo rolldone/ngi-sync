@@ -86,7 +86,8 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   },
   construct: function (cli, jsonConfig) {
     this._cli = cli;
-    this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
+    // this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
+    // this._tasks['sftp-watcher'].done("Started");
     this._setSshConfig(jsonConfig);
   },
   setOnListener: function (callback) {
@@ -107,6 +108,8 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       if (_pendingStopWatch != null) {
         _pendingStopWatch.cancel();
       } else {
+        this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
+        this._tasks['sftp-watcher'].done("Trying to start!");
         this.submitWatch();
       }
       _pendingStopWatch = _.debounce(() => {
@@ -179,7 +182,11 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
     event.on("close", (data: any) => {
       // console.log('close', data);ddd
       // observatory.add(this.eventToWord[event]);
+      // this._tasks['sftp-watcher'].done("Stopped");
+      this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
       this._tasks['sftp-watcher'].done("Stopped");
+      this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
+      this._tasks['sftp-watcher'].done("Push enter for start watch again.");
     });
     event.on("error", (data: any) => {
       console.log('error', data.toString())
@@ -189,9 +196,6 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       });
     });
     this._event = event as any;
-    masterData.setOnListener('call.start.waching.data', () => {
-
-    });
   },
   _downloadFile: function (props) {
     let keynya = props.folder + '/' + props.file;

@@ -13,7 +13,7 @@ declare var CustomError: { (name: string, message: string): any }
 export default class Uploader {
 	client: Client;
 
-	constructor(private config: ConfigInterface, private cli: CliInterface) {
+	constructor(public config: ConfigInterface, private cli: CliInterface) {
 	}
 	_pendingQueue: {
 		[key: string]: any
@@ -124,7 +124,7 @@ export default class Uploader {
 		[key: string]: any
 	} = {}
 	_exeHandlePush: Function = null;
-	private _handlePush() {
+	_handlePush() {
 		var debounceClose: any = null;
 		/* Create function possible close connection if upload done  */
 		var _closeIfPossible = (_client: Client, whatFile: string) => {
@@ -191,14 +191,14 @@ export default class Uploader {
 						if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
 							if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
 								this.onListener('REJECTED', {
-									return: 'File edited by system dont let uploaded : ' + upath.normalizeSafe(fileName)
+									return: 'File edited by system dont let uploaded.'  // upath.normalizeSafe(fileName)
 								})
 								delete this._pendingQueue[remote];
 								masterData.updateData('file_edit_from_server', {
 									[upath.normalizeSafe(fileName)]: false
 								});
 								reject({
-									message: 'File edited by system dont let uploaded :' + upath.normalizeSafe(fileName),
+									message: 'File edited by system dont let uploaded.',  // upath.normalizeSafe(fileName)
 									error: ""
 								});
 								return;
@@ -211,6 +211,12 @@ export default class Uploader {
 								this.onListener('REJECTED', {
 									return: err.message
 								});
+							}else{
+								/* This is use for prevent upload to remote. */
+            		/* Is use on watcher */
+								let fileUploadRecord = masterData.getData('FILE_UPLOAD_RECORD',{}) as any;
+								fileUploadRecord[fileName] = true;
+								masterData.saveData('FILE_UPLOAD_RECORD',fileUploadRecord);
 							}
 							let firstKey = Object.keys(this._pendingQueue)[entry.queue_no];
 							if (firstKey == null) {
