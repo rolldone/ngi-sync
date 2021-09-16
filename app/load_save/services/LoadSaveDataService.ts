@@ -25,7 +25,7 @@ export interface LoadSaveServiceInterface extends BaseServiceInterface {
   loadDataSave: { (): void }
   deleteDataPrompt: { (): void }
   deleteDataSave: { (): void }
-  _existConfig : {(path:string):boolean}
+  _existConfig: { (path: string): boolean }
 }
 
 declare var masterData: MasterDataInterface;
@@ -41,13 +41,13 @@ export default BaseService.extend<LoadSaveServiceInterface>({
   returnConfig: function (cli) {
     return Config.create(cli);
   },
-  _existConfig : function(path){
+  _existConfig: function (path) {
     return existsSync(path);
   },
   construct: function (cli, action) {
     this._config = this.returnConfig(cli);
     /* Display project folder base path */
-    if(this._existConfig(this._config._filename) == false){
+    if (this._existConfig(this._config._filename) == false) {
       process.exit();
     }
     let resolvePathFolder = upath.normalizeSafe(path.resolve());
@@ -124,7 +124,11 @@ export default BaseService.extend<LoadSaveServiceInterface>({
     let ress = readdirSync(_syncCollections);
     for (var a = 0; a < ress.length; a++) {
       let gg = upath.parse(ress[a]);
-      ress[a] = gg.name;
+      if (gg.ext == ".yaml") {
+        ress[a] = gg.name;
+      } else {
+        delete ress[a];
+      }
     }
     let questions: inquirer.QuestionCollection = [
       {
@@ -148,7 +152,11 @@ export default BaseService.extend<LoadSaveServiceInterface>({
     let ress = readdirSync(_syncCollections);
     for (var a = 0; a < ress.length; a++) {
       let gg = upath.parse(ress[a]);
-      ress[a] = gg.name;
+      if (gg.ext == ".yaml") {
+        ress[a] = gg.name;
+      } else {
+        delete ress[a];
+      }
     }
     ress.push("New file");
     let questions: inquirer.QuestionCollection = [
@@ -175,7 +183,11 @@ export default BaseService.extend<LoadSaveServiceInterface>({
     let ress = readdirSync(_syncCollections);
     for (var a = 0; a < ress.length; a++) {
       let gg = upath.parse(ress[a]);
-      ress[a] = gg.name;
+      if (gg.ext == ".yaml") {
+        ress[a] = gg.name;
+      } else {
+        delete ress[a];
+      }
     }
     ress.push("New file");
     let questions: inquirer.QuestionCollection = [
@@ -193,13 +205,17 @@ export default BaseService.extend<LoadSaveServiceInterface>({
   },
   autoSave: function () {
     try {
-      let bodyData: any = Object.assign({},this._config._originConfig);
+      let bodyData: any = Object.assign({}, this._config._originConfig);
       // delete bodyData._conf;
       // console.log('autSave',bodyData.saved_file_name);
-      if(bodyData.saved_file_name == null){
+      if (bodyData.saved_file_name == null) {
         bodyData.saved_file_name = 'last_open.yaml';
       }
       writeFileSync(this._baseAppPathFolder + '/.sync_collections/' + bodyData.saved_file_name, YAML.stringify(bodyData, null), 'utf8');
+      if (existsSync(".sync_ignore")) {
+        let syncIgnoreData = readFileSync(".sync_ignore").toString();
+        writeFileSync(this._baseAppPathFolder + '/.sync_collections/last_open.sync_ignore', syncIgnoreData, 'utf8');
+      }
     } catch (ex) {
       console.error('autoSave - ex ', ex);
     }
@@ -217,9 +233,14 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       bodyData = YAML.parse(bodyData.toString()) as any;
       bodyData.saved_file_name = whatFileName + '.yaml';
       writeFileSync(this._baseAppPathFolder + '/.sync_collections/' + bodyData.saved_file_name, YAML.stringify(bodyData, null), 'utf8');
+      /* Add sync_ignore can self by owner ngi-sync */
+      if (existsSync(".sync_ignore")) {
+        let syncIgnoreData = readFileSync(".sync_ignore").toString();
+        writeFileSync(this._baseAppPathFolder + '/.sync_collections/' + whatFileName + ".sync_ignore", syncIgnoreData, 'utf8');
+      }
       console.log(`${this._baseAppPathFolder + '/.sync_collections/' + bodyData.saved_file_name} is created!`);
       setTimeout(() => {
-        masterData.saveData('command.direct.retry', {});
+        // masterData.saveData('command.direct.retry', {});
       }, 3000);
     } catch (ex) {
       console.error('createNewSave - ex ', ex);
@@ -233,9 +254,14 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       let bodyData: any = readFileSync(this._baseAppPathFolder + '/.sync_collections/' + whatFileName + '.yaml');
       bodyData = YAML.parse(bodyData.toString()) as any;
       writeFileSync(this._config._filename, YAML.stringify(bodyData, null), 'utf8');
+      /* Add sync_ignore can self by owner ngi-sync */
+      if (existsSync(this._baseAppPathFolder + "/.sync_collections/" + whatFileName + ".sync_ignore")) {
+        let syncIgnoreData = readFileSync(this._baseAppPathFolder + "/.sync_collections/" + whatFileName + ".sync_ignore").toString();
+        writeFileSync(".sync_ignore", syncIgnoreData, 'utf8');
+      }
       console.log(`${this._baseAppPathFolder + '/.sync_collections/' + whatFileName + '.yaml'} is loaded!`);
       setTimeout(() => {
-        masterData.saveData('command.direct.retry', {});
+        // masterData.saveData('command.direct.retry', {});
       }, 3000);
     } catch (ex) {
       console.error('loadDataSave - ex', ex);
@@ -245,9 +271,13 @@ export default BaseService.extend<LoadSaveServiceInterface>({
     try {
       let { target_delete } = this._completeData;
       unlinkSync(this._baseAppPathFolder + '/.sync_collections/' + target_delete + '.yaml');
+      /* Delete sync_ignore can self by owner ngi-sync */
+      if (existsSync(this._baseAppPathFolder + "/.sync_collections/" + target_delete + ".sync_ignore")) {
+        unlinkSync(this._baseAppPathFolder + '/.sync_collections/' + target_delete + ".sync_ignore");
+      }
       console.log(`${this._baseAppPathFolder + '/.sync_collections/' + target_delete + '.yaml'} is deleted!`);
       setTimeout(() => {
-        masterData.saveData('command.direct.retry', {});
+        // masterData.saveData('command.direct.retry', {});
       }, 3000);
     } catch (ex) {
       console.error('deleteDataSave - ex ', ex);

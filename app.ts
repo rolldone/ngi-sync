@@ -5,6 +5,7 @@ import BaseStart, { BaseStartInterface } from './base/BaseStart';
 import bootstrap from './bootstrap';
 import { MasterDataInterface } from './bootstrap/StartMasterData';
 import { Cli } from './routes/v1';
+import os from 'os';
 
 declare var masterData: MasterDataInterface;
 
@@ -13,8 +14,8 @@ interface AppInterface extends BaseStartInterface {
 }
 
 /* Its working when enter to child_process with stedio inherit */
-process.on('SIGINT', (props:any,props2:any) => { 
-  if(process.env.IS_PROCESS == "open_console"){
+process.on('SIGINT', (props: any, props2: any) => {
+  if (process.env.IS_PROCESS == "open_console") {
     process.exit();
     return;
   }
@@ -32,6 +33,10 @@ BaseStart({
       callback(null);
     }],
   run: function () {
+    /* Force if on linux mac or else */
+    if (os.platform() != "win32") {
+      process.env.IS_PROCESS = "open_console";
+    }
     /* Server is ready! */
     /* You can create some programatic code here */
     let segment1: minimist.ParsedArgs = minimist.default(process.argv.slice(2), {});
@@ -53,6 +58,11 @@ BaseStart({
           return masterData.saveData('command.devsync2.short_command', segment1._[1]);
         }
         masterData.saveData('command.devsync2.index', null);
+        return;
+      case 'devsync_remote':
+        /* Force user can delete */
+        // process.env.IS_PROCESS = "open_console";
+        masterData.saveData('command.devsync_remote.index', segment1._[1]);
         return;
       case 'forcersync':
         masterData.saveData('command.forcersync.index', {});
@@ -78,7 +88,7 @@ BaseStart({
           return masterData.saveData('command.direct.short_command', segment1._[1]);
         }
         masterData.saveData('command.direct.index', null);
-        return;        
+        return;
     }
   }
 } as AppInterface);

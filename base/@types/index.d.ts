@@ -20,6 +20,7 @@ interface BaseProtoInterface<T extends BaseProtoInterface<T>> {
   _replaceAt ?: {(input : string, search : string, replace : string, start : number, end : number) : string}
   _getStatInfo ?: {(permission:number,passTypeData?:string):boolean|string}
   _waitingTimeout ?: {(timeoutNumber):Promise}
+  _removeDuplicate ?: { (x: string, theChar: string): string }
 }
 
 interface BaseControllerInterface extends BaseProtoInterface<BaseControllerInterface> {
@@ -61,7 +62,6 @@ interface BaseQueueInterface extends BaseProtoInterface<BaseQueueInterface> {
 interface BaseServiceInterface extends BaseProtoInterface<BaseServiceInterface> {
   returnValidator?: { (props: object, filter: object): ValidatorInterface }
   returnMoment?: { (): Function }
-  _removeDuplicate ?: { (x: string, theChar: string): string }
 }
 
 interface BaseRouteInterface extends BaseProtoInterface<BaseRouteInterface> {

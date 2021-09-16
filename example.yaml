@@ -1,4 +1,5 @@
 ---
+reset_cache: true
 project_name: Workspaces Digital Ocean
 username: root
 privateKey: C:/Users/test/.ssh/id_rsa_no_password

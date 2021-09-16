@@ -51,5 +51,22 @@ export default UberProto.extend<BaseProtoInterface<any>>({
         resolve();
       }, timeoutNumber);
     })
+  },
+  _removeDuplicate(x, theChar) {
+    let tt: Array<any> = [...x];
+    var old = "";
+    var newS = "";
+    for (var a = 0; a < tt.length; a++) {
+      old = tt[a - 1] || '';
+      if (tt[a] == theChar) {
+        newS = tt[a] + "";
+      } else {
+        newS = null;
+      }
+      if (old == newS) {
+        tt.splice(a, 1);
+      }
+    }
+    return tt.join("");
   }
 });

@@ -102,6 +102,8 @@ export default class Watcher {
 			}
 			return newResGItIngore;
 		})();
+
+		/* Define extra watch if get ! on git ignore */
 		let _extraWatch = (() => {
 			let newExtraWatch: {
 				[key: string]: Array<string>
@@ -114,7 +116,8 @@ export default class Watcher {
 			}
 			return newExtraWatch;
 		})();
-		/* Check ignore rule again for group ignore */
+
+		/* Get ignore rule again for group ignore special for extraWatch */
 		for (var key in _extraWatch) {
 			for (var a = 0; a < originIgnore.length; a++) {
 				if (originIgnore[a][Object.keys(originIgnore[a])[0]] != '!') {
@@ -174,6 +177,11 @@ export default class Watcher {
 		}
 
 		/* generate .sync_temp */
+		if(this.config.reset_cache == true){
+			if (existsSync(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder)) == true) {
+				this.deleteFolderRecursive(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder));
+			}
+		}
 		if (existsSync(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder)) == false) {
 			mkdirSync(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder), {
 				mode: 0o777
@@ -366,11 +374,22 @@ export default class Watcher {
 			} else {
 				path = args[0];
 			}
+
+			switch(method){
+				case 'all':
+					return;
+			}
+			
+			let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD',{}) as any;
+			if(fileDownoadRecord[upath.normalizeSafe(path)] == true){
+				delete fileDownoadRecord[upath.normalizeSafe(path)];
+				masterData.saveData('FILE_DOWNLOAD_RECORD',fileDownoadRecord);
+				return;
+			}
+
 			switch (method) {
 				case 'unlink':
 				case 'unlinkDir':
-				case 'all':
-					break;
 				default:
 					/* This process get much eat ram if check many file suddenly, so try looking alternative or create parallel app maybe */
 
