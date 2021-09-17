@@ -16,7 +16,6 @@ export class Uploader extends DevSyncUploader{
 		var _closeIfPossible = (_client: Client, whatFile: string) => {
 			let _remainingOrder = Object.keys(this._pendingUpload).length;
 			if (debounceClose != null) {
-				// console.log('UPLOAD :: waiting for close');
 				debounceClose.cancel();
 			}
 			debounceClose = debounce(() => {
@@ -28,7 +27,6 @@ export class Uploader extends DevSyncUploader{
 					this.onListener('UPLOADED', {
 						return: 'Last Upload: ' + whatFile// 'Sync is done!'
 					})
-					// gc();
 				}
 			}, 3000 /* 10000 */);
 			debounceClose();
@@ -56,8 +54,6 @@ export class Uploader extends DevSyncUploader{
 				}
 				size_limit = size_limit * 1000000;
 				if (stats.size > size_limit) {
-					// console.log('size_limit', size_limit);
-					// console.log('stats', stats);
 					this.onListener('WARNING', {
 						return: 'File size more than ' + this.config.size_limit + 'MB : ' + upath.normalizeSafe(fileName)
 					})
@@ -104,7 +100,6 @@ export class Uploader extends DevSyncUploader{
 								// });
 							}
 							this._exeHandlePush(oo);
-							// console.log('remote - done ',remote)
 							resolve(remote);
 						});
 					}
