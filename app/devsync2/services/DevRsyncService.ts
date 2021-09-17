@@ -287,6 +287,10 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       _pendingTimeoutStopDownload();
       // console.log('action', action, props);
       switch (action) {
+        case 'CLIENT_REQUEST':
+          this._task['CLIENT_REQUEST'] = observatory.add("Remote success trying request");// observatory.add(this.eventToWord[event]);
+          this._task['CLIENT_REQUEST'].done();
+          break;
         case 'LISTEN_PORT':
           this._task['LISTEN_PORT'] = observatory.add("Listen Reverse Port :: " + props);// observatory.add(this.eventToWord[event]);
           this._task['LISTEN_PORT'].done();
@@ -298,19 +302,11 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           this._download.startWaitingDownloads(props);
           break;
         case 'UNLINK':
-          if (this._task['UNLINK'] == null) {
-            this._task['UNLINK'] = observatory.add("UNLINK :: " + props);
-          }
-          this._task['UNLINK'].status('UNLINK :: ' + props);
-          this._task['UNLINK'].done();
+          /* Dont use observatory for delete file */
           this._download.deleteFile(props);
           break;
         case 'UNLINK_DIR':
-          if (this._task['UNLINK_FOLDER'] == null) {
-            this._task['UNLINK_FOLDER'] = observatory.add("UNLINK_FOLDER :: " + props);
-          }
-          this._task['UNLINK_FOLDER'].status('UNLINK_FOLDER :: ' + props);
-          this._task['UNLINK_FOLDER'].done();
+          /* Dont use observatory for delete folder */
           this._download.deleteFolder(props, 5);
           break;
       }
