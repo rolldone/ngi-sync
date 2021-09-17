@@ -4,25 +4,20 @@ import Config, { ConfigInterface } from "../compute/Config";
 import { CliInterface } from "./CliService";
 import inquirer = require("inquirer");
 import Watcher from "../compute/Watcher";
-import * as upath from 'upath';
-import { readFileSync, watch } from "fs";
 import { Uploader } from "../compute/Uploader";
-import SyncPull, { SftpOptions, SyncPullInterface } from "../compute/SyncPull";
 import path = require("path");
-const notifier = require('node-notifier');
 import * as child_process from 'child_process';
 import rl, { ReadLine } from 'readline';
-const chalk = require('chalk');
-const observatory = require("observatory");
 import HttpEvent, { HttpEventInterface } from "../compute/HttpEvent";
 import Download, { DownloadInterface } from "../compute/Download";
+const observatory = require("observatory");
+const notifier = require('node-notifier');
 
 declare var masterData: MasterDataInterface
 
 export interface DevRsyncServiceInterface extends BaseServiceInterface {
   returnDownload: { (cli: CliInterface, config: ConfigInterface): DownloadInterface }
   returnConfig: { (cli: CliInterface): ConfigInterface }
-  returnSyncPull: { (cli: CliInterface, sshConfig: SftpOptions): SyncPullInterface }
   create?: (cli: CliInterface, extra_command?: string) => this
   construct: { (cli: CliInterface, extra_command?: string): void }
   _cli?: CliInterface
@@ -66,21 +61,22 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
   returnConfig: function (cli) {
     return Config.create(cli);
   },
-  returnSyncPull: function (cli, sshConfig) {
-    return SyncPull.create(cli, sshConfig);
-  },
   returnHttpEvent: function (cli, sshConfig) {
     return HttpEvent.create(cli, sshConfig);
   },
   construct: async function (cli, extra_command) {
-    this._cli = cli;
+    /* Check is cygwin or not */
     await this._checkIsCygwin();
+    /*  */
+    this._cli = cli;
     this.task = observatory.add("Initializing...");
+    /* Define config */
     this._currentConf = this.returnConfig(cli);
-    console.log('extra_command', extra_command);
+    /* Call extra command if want to call direct menu inside devsync2 */
     if (extra_command != null) {
       return this._executeCommand(extra_command);
     }
+    /* Define question devsync2 menu */
     let questions: inquirer.QuestionCollection = [
       {
         type: "list",
@@ -96,21 +92,30 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         ]
       }
     ];
+    /* Call the promp action */
     this._promptAction(questions);
   },
+  /**
+   * Devsync2 collections menu with lifecycle data request 
+   * include other module rsync module
+   * @param {*} extra_command
+   */
   _executeCommand: function (extra_command) {
     switch (extra_command) {
       case COMMAND_SHORT.FORCE_PUSH_SYNC:
+        /* Call rsync push data */
         masterData.saveData('command.forcersync.index', {
           callback: (err: boolean) => {
             if (err == true) {
               return process.exit(1);
             };
+            /* Call rsync pull data */
             masterData.saveData('command.forcersync.pull', {
               callback: (err: boolean) => {
                 if (err == true) {
                   return process.exit(1);
                 };
+                /* Run the devsync2 */
                 this._devSyncSafeSyncronise();
               }
             });
@@ -118,17 +123,20 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         });
         break;
       case COMMAND_SHORT.SOFT_PUSH_SYNC:
+        /* Call rsync push data */
         masterData.saveData('command.forcersync.index', {
           mode: 'soft',
           callback: (err: boolean) => {
             if (err == true) {
               return process.exit(1);
             };
+            /* Call rsync pull data */
             masterData.saveData('command.forcersync.pull', {
               callback: (err: boolean) => {
                 if (err == true) {
                   return process.exit(1);
                 };
+                /* Run the devsync2 */
                 this._devSyncSafeSyncronise();
               }
             });
@@ -136,37 +144,45 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         });
         break;
       case COMMAND_SHORT.SAFE_PULL_SYNC:
+        /* Call rsync pull data */
         masterData.saveData('command.forcersync.pull', {
           callback: (err: boolean) => {
             if (err == true) {
               return process.exit(1);
             };
+            /* Run the devsync2 */
             this._devSyncSafeSyncronise();
           }
         });
         break;
       case COMMAND_SHORT.SAFE_SYNC_NON_FORCE:
+        /* Call rsync pull data */
         masterData.saveData('command.forcersync.pull', {
           callback: (err: boolean) => {
             if (err == true) {
               return process.exit(1);
             };
             this._currentConf.safe_mode = true;
+            /* Run the devsync2 */
             this._devSyncSafeSyncronise();
           }
         });
         break;
       case COMMAND_SHORT.FORCE_SINGLE_SYNC:
+        /* Call manual rsync single sync. This module can send data per folder inside project */
         masterData.saveData('command.forcersync.single_sync', {
           action: 'single_sync_nested_prompt'
         });
         break;
       default:
+        /* Default menu every day used */
+        /* Call rsync pull data */
         masterData.saveData('command.forcersync.pull', {
           callback: (err: boolean) => {
             if (err == true) {
               return process.exit(1);
             };
+            /* Run the devsync2 */
             this._devSyncSafeSyncronise();
           }
         });
@@ -180,8 +196,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           resolve()
           return;
         }
-        // console.log(`stdout: ${stdout}`);
-        // console.error(`stderr: ${stderr}`);
         console.log('==========================================================================================================');
         console.log(' YOU ARE IN CYGWIN');
         console.log(' Make sure you have add noacl on /etc/fstab, because rsync problem with permission if no have defined!');
@@ -194,8 +208,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     });
   },
   _promptAction: function (questions) {
-    let cli = this._cli;
-    let currentConf = this._currentConf;
     inquirer.prompt(questions)['then']((passAnswer: any) => {
       if (passAnswer.target == COMMAND_TARGET.FORCE_PUSH_SYNC) {
         this._executeCommand(COMMAND_SHORT.FORCE_PUSH_SYNC);
@@ -213,17 +225,23 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     });
   },
   _devSyncSafeSyncronise: async function () {
-    // console.log('currentConf',currentConf);
     let currentConf: ConfigInterface = this._currentConf;
+
+    /* THIS IS ON DEVELOPMENT */
+    /* This is used for local pc */
     switch (currentConf.mode) {
       case 'local':
         return masterData.saveData('command.devsync_local.index', {});
     }
 
+    /* Waiting some process */
     await currentConf.ready();
+    /*  */
     this._task = {};
     this._download = this.returnDownload(this._cli, this._currentConf);
+    /* Create timeout stop download */
     let _pendingTimeoutStopDownload = this._download.startPendingTimeoutStop();
+    /*  */
     this._download.setOnListener((action, props) => {
       switch (action) {
         case 'REJECTED':
@@ -263,7 +281,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           break;
       }
     });
-
     this._httpEvent = this.returnHttpEvent(this._cli, this._currentConf);
     this._httpEvent.setOnChangeListener(async (action, props) => {
       await this._download.startSftp();
@@ -298,7 +315,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           break;
       }
     })
-
     this.uploader = new Uploader(currentConf, this._cli);
     this.uploader.setOnListener((action: string, props: any) => {
       switch (action) {
@@ -377,14 +393,13 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           break;
       }
     });
-
     /* Define readline nodejs for listen CTRL + R */
     this._readLine = rl.createInterface({
       input: process.stdin,
       // output : process.stdout,
       terminal: true
     });
-
+    /* Register new keypress */
     let remoteFuncKeypress = async (key: any, data: any) => {
       switch (data.sequence) {
         case '\f':
@@ -397,46 +412,32 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           process.exit();
           return;
         case '\x12':
-
           /* Stop httpEvent */
           this._httpEvent.stop();
           this._httpEvent = null;
-          // _startWatchingWithTimeOut(true);
-          // syncPull.stopSubmitWatch();
-          // syncPull = null;
-
           /* Stop download */
           _pendingTimeoutStopDownload(true);
           this._download.stop(this._download.status.SILENT);
           this._download = null;
-
           /* Close readline */
           this._readLine.close();
           this._readLine = null;
-
           /* Restart the syncronize */
           this.uploader.onListener('RESTART', {});
-          // this.uploader.client.close();
           this.uploader = null;
-
+          /* Waiting process watcher and uploader closed */
           await this.watcher.close();
           this.watcher = null;
-
-          // this._currentConf = null;
-
+          /*  */
           process.stdin.off('keypress', remoteFuncKeypress);
           this.task.done();
-
           console.clear();
-
           this.construct(this._cli);
-
           break;
       }
     }
-
     process.stdin.on('keypress', remoteFuncKeypress);
-
+    /*  */
     this.watcher = new Watcher(this.uploader, currentConf, this._cli);
     this.watcher.setOnListener((props: {
       action: string
@@ -447,9 +448,8 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           break;
       }
     });
-
+    /* Waiting some process */
     await this.watcher.ready();
-    // _startWatchingWithTimeOut();
 
     var reCallCurrentCOnf = () => {
       if (this.uploader == null) return;
@@ -463,8 +463,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         }
         if (this.uploader == null) return;
         // All done, stop indicator and show workspace
-        // this.cli.stopProgress();
-        // console.log('2x');
         this.task.done(res).details(this._currentConf.host);
         this._cli.workspace();
       });

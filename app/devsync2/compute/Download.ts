@@ -1,17 +1,15 @@
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import sftpClient from 'ssh2-sftp-client';
-import { existsSync, mkdirSync, readFileSync, rm, rmdir, rmdirSync, rmSync, stat, statSync, unlinkSync } from "fs";
-import { removeSync } from 'fs-extra';
+import { mkdirSync, readFileSync, rmdirSync, unlinkSync } from "fs";
 import { debounce, DebouncedFunc } from "lodash";
 import { CliInterface } from "../services/CliService";
 import { ConfigInterface } from "./Config";
 import { SftpOptions } from "./SyncPull";
 import upath from 'upath';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
-import { join as pathJoin, dirname } from "path";
+import { join as pathJoin } from "path";
 
 declare var masterData: MasterDataInterface;
-declare var CustomError: { (name: string, message: string): any }
 
 export interface DownloadInterface extends BaseModelInterface {
   status: downloadStatus
@@ -46,7 +44,7 @@ export interface DownloadInterface extends BaseModelInterface {
   }
   getLocalPath: { (remotePath: string): string }
   stop: { (is_silent?: number): void }
-  startPendingTimeoutStop: { (): { (stop?:boolean): void } }
+  startPendingTimeoutStop: { (): { (stop?: boolean): void } }
   deleteFile: { (path: any): void }
   deleteFolder: { (path: any, oportunity: number): void }
 }

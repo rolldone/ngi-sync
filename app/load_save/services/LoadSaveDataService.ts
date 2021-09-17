@@ -3,7 +3,6 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFile
 import inquirer = require("inquirer");
 import path from "path";
 import upath from 'upath';
-var objectScan = require('object-scan');
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { CliInterface } from "./CliService";
 import Config, { ConfigInterface } from "../compute/Config";
@@ -59,7 +58,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
     if (action == "auto_save") {
       return this.autoSave();
     }
-    // let resData = objectScan(['*'], { joined: true })(test);    
+
     let questions: inquirer.QuestionCollection = [
       {
         type: "list",
@@ -113,8 +112,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       if (resData.target_delete != null) {
         this.deleteDataSave();
       }
-      // console.log('vadfv', this._config);
-      // masterData.saveData('command.direct.retry', {});
+
     } catch (ex) {
       console.log('err -> ', ex);
     }
@@ -207,7 +205,6 @@ export default BaseService.extend<LoadSaveServiceInterface>({
     try {
       let bodyData: any = Object.assign({}, this._config._originConfig);
       // delete bodyData._conf;
-      // console.log('autSave',bodyData.saved_file_name);
       if (bodyData.saved_file_name == null) {
         bodyData.saved_file_name = 'last_open.yaml';
       }
@@ -239,9 +236,6 @@ export default BaseService.extend<LoadSaveServiceInterface>({
         writeFileSync(this._baseAppPathFolder + '/.sync_collections/' + whatFileName + ".sync_ignore", syncIgnoreData, 'utf8');
       }
       console.log(`${this._baseAppPathFolder + '/.sync_collections/' + bodyData.saved_file_name} is created!`);
-      setTimeout(() => {
-        // masterData.saveData('command.direct.retry', {});
-      }, 3000);
     } catch (ex) {
       console.error('createNewSave - ex ', ex);
     }
@@ -260,9 +254,6 @@ export default BaseService.extend<LoadSaveServiceInterface>({
         writeFileSync(".sync_ignore", syncIgnoreData, 'utf8');
       }
       console.log(`${this._baseAppPathFolder + '/.sync_collections/' + whatFileName + '.yaml'} is loaded!`);
-      setTimeout(() => {
-        // masterData.saveData('command.direct.retry', {});
-      }, 3000);
     } catch (ex) {
       console.error('loadDataSave - ex', ex);
     }
@@ -276,9 +267,6 @@ export default BaseService.extend<LoadSaveServiceInterface>({
         unlinkSync(this._baseAppPathFolder + '/.sync_collections/' + target_delete + ".sync_ignore");
       }
       console.log(`${this._baseAppPathFolder + '/.sync_collections/' + target_delete + '.yaml'} is deleted!`);
-      setTimeout(() => {
-        // masterData.saveData('command.direct.retry', {});
-      }, 3000);
     } catch (ex) {
       console.error('deleteDataSave - ex ', ex);
     }

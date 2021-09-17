@@ -9,7 +9,6 @@ export interface DevRsyncServiceInterface extends BaseServiceInterface {
   returnParseData: { (port: number | string): ParseDataInterface }
   construct: { (port: string): void }
   task?: AnyRecord
-  _devSyncSafeSyncronise: { (): void }
   _task?: any
   returnWatcher: { (props: any): WatcherInterface }
   watcher?: WatcherInterface
@@ -29,13 +28,8 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     let parseData = await this._parseData.getConfig();
     this.watcher = this.returnWatcher(JSON.parse(parseData));
     this.watcher.setOnChangeListener((action, path) => {
-      console.log('action :: ', action);
-      console.log('path :: ', path);
       this._parseData.sendData(action, path);
     })
-  },
-  _devSyncSafeSyncronise: async function () {
-    // console.log('currentConf',currentConf);
   }
 });
 
