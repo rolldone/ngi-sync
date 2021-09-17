@@ -24,7 +24,6 @@ const Main = BaseController.extend<MainControllerInterface>({
     }
     // If have no define name menu. Just display as default menu
     this.returnOpenRecentService(props);
-    // this.returnDevSyncService(cliService,props);
   },
   retry : function(){
     this.index("")

@@ -109,7 +109,6 @@ export default BaseService.extend<OpenRecentServiceInterface>({
       }
       process.chdir(this._displayData[resData.target]);
       /* Go to command direct with retry */
-      // masterData.saveData('command.direct.retry', {});
       masterData.saveData('command.console.direct',[]);
     } catch (ex) {
       console.log('err -> ', ex);
