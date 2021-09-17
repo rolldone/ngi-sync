@@ -4,12 +4,8 @@ ngi-sync is to help sync code to the server continuously
 More info check [wiki](https://github.com/rolldone/ngi-sync/wiki)
 
 ### Tasks
-- [x] Add feature clone directory on local only
-- [x] Add feature send command to both ssh and local.
-- [x] Add feature sftp pull syncronize.
-- [x] Add feature sftp push and watch file by action.
-- [x] Support ssh jump for multiple server.
-- [x] Add feature instant open ssh new terminal
+- [x] Add feature file sync one way and two way.
+- [x] Add feature rsync pull and push data.
 - [x] Add feature update config with own config on tool to ~/.ssh/config 
 
 ### Sample config
