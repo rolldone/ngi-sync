@@ -4,7 +4,6 @@ import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import * as chokidar from "chokidar"
 import { ConfigInterface } from "./Config";
 import upath from 'upath';
-const workerpool = require('workerpool');
 
 export interface WatcherInterface extends BaseModelInterface {
 	create?: (props: {
@@ -77,7 +76,9 @@ const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 			}
 		}
 
-		console.log('theFinalExtraWatch', theFinalExtraWatchs);
+		console.log('theFinalExtraWatch :: ');
+		console.log(theFinalExtraWatchs);
+
 		/* Extra watch, Get filtered out on sync_ignore */
 		for (var key in theFinalExtraWatchs) {
 			let _currentWatch: any = chokidar.watch(key, {
