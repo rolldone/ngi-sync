@@ -1,6 +1,6 @@
 import * as chokidar from "chokidar"
 const chalk = require('chalk');
-import { FSWatcher, readFileSync, copyFile, exists, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync, unlink } from "fs";
+import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync, unlink } from "fs";
 import Uploader from "./Uploader";
 import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
@@ -17,7 +17,7 @@ const pool = workerpool.pool(__dirname + '/TestCache.js');
 
 export default class Watcher {
 	tempFolder = '.sync_temp/';
-	_unwatch ?: Array<any>
+	_unwatch?: Array<any>
 	files: any;
 	_onListener: Function;
 	_getTimeoutSftp: { (overrideTimeout?: number): number };
@@ -177,7 +177,7 @@ export default class Watcher {
 		}
 
 		/* generate .sync_temp */
-		if(this.config.reset_cache == true){
+		if (this.config.reset_cache == true) {
 			if (existsSync(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder)) == true) {
 				this.deleteFolderRecursive(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder));
 			}
@@ -267,7 +267,7 @@ export default class Watcher {
 
 	async close(): Promise<void> {
 		this.uploader.client.close();
-		for(var a=0;a<this._unwatch.length;a++){
+		for (var a = 0; a < this._unwatch.length; a++) {
 			await this._unwatch[a].close();
 		}
 	}
@@ -375,15 +375,15 @@ export default class Watcher {
 				path = args[0];
 			}
 
-			switch(method){
+			switch (method) {
 				case 'all':
 					return;
 			}
-			
-			let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD',{}) as any;
-			if(fileDownoadRecord[upath.normalizeSafe(path)] == true){
+
+			let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
+			if (fileDownoadRecord[upath.normalizeSafe(path)] == true) {
 				delete fileDownoadRecord[upath.normalizeSafe(path)];
-				masterData.saveData('FILE_DOWNLOAD_RECORD',fileDownoadRecord);
+				masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
 				return;
 			}
 
@@ -471,7 +471,7 @@ export default class Watcher {
 		}
 	};
 
-	private _sameAddPath : string = ""
+	private _sameAddPath: string = ""
 	private add = (path: string) => {
 		if (this.config.trigger_permission.add == false) {
 			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('ADD ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
@@ -479,10 +479,10 @@ export default class Watcher {
 			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
 			return;
 		}
-		if(this._sameAddPath == path){
-			console.log('Ups get 2x add ',path);
+		if (this._sameAddPath == path) {
+			console.log('Ups get 2x add ', path);
 			this._sameAddPath = null;
-		}else{
+		} else {
 			this._sameAddPath = path;
 		}
 		this.uploader.uploadFile(path, this._getTimeoutSftp()).then(remote => {
@@ -502,7 +502,7 @@ export default class Watcher {
 		});
 	};
 
-	private _sameChangePath : string = ""
+	private _sameChangePath: string = ""
 	private change = (path: string) => {
 		if (this.config.trigger_permission.change == false) {
 			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('CHANGE ERR :: ' + path.replace(this.config.localPath, "") + "");
@@ -510,10 +510,10 @@ export default class Watcher {
 			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
 			return;
 		}
-		if(this._sameChangePath == path){
-			console.log('Ups get 2x change ',path);
+		if (this._sameChangePath == path) {
+			console.log('Ups get 2x change ', path);
 			this._sameChangePath = null;
-		}else{
+		} else {
 			this._sameChangePath = path;
 		}
 		this.uploader.uploadFile(path, this._getTimeoutSftp()).then(remote => {
@@ -534,7 +534,7 @@ export default class Watcher {
 		});
 	};
 
-	private _sameUnlinkPath : string = ""
+	private _sameUnlinkPath: string = ""
 	private unlink = (path: string) => {
 		if (this.config.trigger_permission.unlink == false) {
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
@@ -542,10 +542,10 @@ export default class Watcher {
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
 			return;
 		}
-		if(this._sameUnlinkPath == path){
-			console.log('Ups get 2x unlink',path);
+		if (this._sameUnlinkPath == path) {
+			console.log('Ups get 2x unlink', path);
 			this._sameUnlinkPath = null;
-		}else{
+		} else {
 			this._sameUnlinkPath = path;
 		}
 		this.uploader.unlinkFile(path, this._getTimeoutSftp(50)).then(remote => {
