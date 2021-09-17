@@ -3,13 +3,11 @@ import http, { Server as HttpServer } from 'http';
 import { AddressInfo } from "net";
 const querystring = require('querystring');
 var url = require('url');
-import connection, { Client } from 'ssh2';
-import net, { Server as NetServer } from 'net';
+import { Client } from 'ssh2';
 import SSHConfig, { SSHConfigInterface } from "@root/tool/ssh-config";
 import upath from 'upath';
 import { IPty } from 'node-pty';
 var pty = require('node-pty');
-import rl, { ReadLine } from 'readline';
 import { CliInterface } from "../services/CliService";
 var size = require('window-size');
 import os from 'os';
@@ -17,6 +15,7 @@ import { ConfigInterface } from "./Config";
 import { readFileSync, writeFileSync } from "fs";
 import parseGitIgnore from '@root/tool/parse-gitignore'
 import ignore from 'ignore'
+import { uniq } from "lodash";
 
 export type DirectAccessType = {
   ssh_configs: Array<any>
@@ -25,7 +24,6 @@ export type DirectAccessType = {
 }
 
 export interface HttpEventInterface extends BaseModelInterface {
-  _net?: NetServer
   _server?: HttpServer
   _cli?: CliInterface
   _config?: ConfigInterface
@@ -56,7 +54,6 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
     try {
       let originIgnore: Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
       let gitIgnore = Object.assign([], originIgnore);
-      let _ignore = ignore().add(gitIgnore);
       let defaultIgnores: Array<string | RegExp> = ['sync-config.yaml', '.sync_ignore'];
       let onlyPathStringIgnores: Array<string> = [];
       let onlyFileStringIgnores: Array<string> = [];
@@ -68,61 +65,67 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           onlyPathStringIgnores.push(this._config.ignores[a] as string);
         }
       }
-      let tt = ((pass: Array<string>): Array<string> => {
-        let newpath = [];
-        for (var a = 0; a < pass.length; a++) {
-          /* Check path is really directory */
-          let thePath = this._config.remotePath + '/' + pass[a];
-          if (pass[a][Object.keys(pass[a]).length - 1] == '/') {
-            newpath.push(upath.normalizeSafe(this._replaceAt(thePath, '/', '', thePath.length - 1, thePath.length)));
-          } else {
-            onlyFileStringIgnores.push(upath.normalizeSafe(thePath));
-          }
+
+      for (var a = 0; a < onlyPathStringIgnores.length; a++) {
+        /* Check path is really directory */
+        let thePath = this._config.remotePath + '/' + onlyPathStringIgnores[a];
+        if (onlyPathStringIgnores[a][Object.keys(onlyPathStringIgnores[a]).length - 1] == '/') {} else {
+          onlyFileStringIgnores.push(upath.normalizeSafe(thePath));
         }
-        return newpath;
-      })(onlyPathStringIgnores || []);
+      }
 
       gitIgnore = [
         ...gitIgnore,
         ...defaultIgnores
       ]
+      
+      for(var a=0;a<gitIgnore.length;a++){
+        gitIgnore[a] = gitIgnore[a].replace(" ","");
+      }
 
-      let resCHeckGItIgnores = (() => {
-        let newResGItIngore = [];
-        for (var a = 0; a < gitIgnore.length; a++) {
-          // console.log(gitIgnore[a][Object.keys(gitIgnore[a])[0]]);
-          if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
+      let newResGItIngore = [];
+      for (var a = 0; a < gitIgnore.length; a++) {
+        if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
 
+        } else {
+          if (gitIgnore[a] instanceof RegExp) {
+            newResGItIngore.push(gitIgnore[a]);
+          } else if (gitIgnore[a][Object.keys(gitIgnore[a]).length - 1] == '/') {
+            gitIgnore[a] = this._config.remotePath + '/' + gitIgnore[a];
+            newResGItIngore.push(upath.normalizeSafe(this._replaceAt(gitIgnore[a], '/', '', gitIgnore[a].length - 1, gitIgnore[a].length)));
           } else {
-            if (gitIgnore[a] instanceof RegExp) {
-              newResGItIngore.push(gitIgnore[a]);
-            } else if (gitIgnore[a][Object.keys(gitIgnore[a]).length - 1] == '/') {
-              gitIgnore[a] = this._config.remotePath + '/' + gitIgnore[a];
-              newResGItIngore.push(upath.normalizeSafe(this._replaceAt(gitIgnore[a], '/', '', gitIgnore[a].length - 1, gitIgnore[a].length)));
-            } else {
-              gitIgnore[a] = this._config.remotePath + '/' + gitIgnore[a];
-              newResGItIngore.push(upath.normalizeSafe(gitIgnore[a]));
-            }
+            gitIgnore[a] = this._config.remotePath + '/' + gitIgnore[a];
+            newResGItIngore.push(upath.normalizeSafe(gitIgnore[a]));
           }
         }
-        return newResGItIngore;
-      })();
+      }
 
-      let ignnorelist = [].concat(onlyRegexIgnores).concat(onlyFileStringIgnores).concat(resCHeckGItIgnores);
+      gitIgnore = null;
+      originIgnore = null;
+      defaultIgnores = null;
+      onlyPathStringIgnores = null;
+
+      let ignnorelist = [].concat(onlyRegexIgnores).concat(onlyFileStringIgnores).concat(newResGItIngore);
+
+      onlyRegexIgnores= null;
+      onlyFileStringIgnores = null;
+      newResGItIngore = null;
+
+      ignnorelist = uniq(ignnorelist);
 
       return ignnorelist;
     } catch (ex) {
       process.exit(0);
     }
   },
-  _getExtraWatchs: function (gitIgnore) {
+  _getExtraWatchs: function () {
     try {
+
       let originIgnore: Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
       let gitIgnore = Object.assign([], originIgnore);
 
       let newResGItIngore = [];
       for (var a = 0; a < gitIgnore.length; a++) {
-        // console.log(gitIgnore[a][Object.keys(gitIgnore[a])[0]]);
         if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
 
         } else {
@@ -144,7 +147,6 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
         } = {};
         for (var a = 0; a < gitIgnore.length; a++) {
           if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
-            // newExtraWatch[upath.normalizeSafe(base+'/'+this._replaceAt(gitIgnore[a],'!','',0,1))];
             newExtraWatch[this._replaceAt(gitIgnore[a], '!', '', 0, 1)] = [];
           }
         }
@@ -161,6 +163,11 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           }
         }
       }
+
+      originIgnore = null;
+      gitIgnore = null;
+      newResGItIngore = null;
+
       return _extraWatch;
     } catch (ex) {
       console.log('_getExtraWatch - ex ', ex);
@@ -245,6 +252,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
 
     /* Write the ssh_config on sync-config store in to ssh_config on .ssh home dir  */
     writeFileSync(_configFilePath, SSHConfig.stringify(this._ssh_config));
+
     return ssh_confi;
   },
   iniPtyProcess: function (sshCommand, props = []) {
