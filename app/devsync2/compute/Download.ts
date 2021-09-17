@@ -1,6 +1,6 @@
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import sftpClient from 'ssh2-sftp-client';
-import { mkdirSync, readFileSync, rmdirSync, unlinkSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, rmdirSync, statSync, unlinkSync } from "fs";
 import { debounce, DebouncedFunc } from "lodash";
 import { CliInterface } from "../services/CliService";
 import { ConfigInterface } from "./Config";
@@ -207,6 +207,9 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
   deleteFile: function (path) {
     /* Transalte to local path */
     let remote = this.getLocalPath(path);
+    if (existsSync(remote) == false) {
+      return;
+    }
     if (this._folderQueue[remote] != null) {
       return;
     }
@@ -223,6 +226,9 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
   deleteFolder: function (originPath, oportunity) {
     /* Transalte to local path */
     let local_path = this.getLocalPath(originPath);
+    if (existsSync(local_path) == false) {
+      return;
+    }
     if (this._folderQueue[local_path] != null) {
       return;
     }
