@@ -47,6 +47,7 @@ export interface DownloadInterface extends BaseModelInterface {
   startPendingTimeoutStop: { (): { (stop?: boolean): void } }
   deleteFile: { (path: any): void }
   deleteFolder: { (path: any, oportunity: number): void }
+  _pendingTimeoutStop?: { (stop?: boolean): void }
 }
 
 export const STATUS_UPLOAD = {
@@ -115,6 +116,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
       /* Mengikuti kelipatan concurent */
       let _debouncePendingOut = first_time_out == null ? (100 * (entry.queue_no == 0 ? 1 : entry.queue_no + 1)) : first_time_out;
       this._pendingUpload[entry.path] = debounce((entry: any) => {
+        this._pendingTimeoutStop();
         var remote = entry.path;
         var resolve = entry.resolve;
         var reject = entry.reject;
@@ -338,7 +340,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
   },
   startPendingTimeoutStop() {
     let _pendingStop: DebouncedFunc<any> = null;
-    return (stop) => {
+    var _stop = (stop: boolean) => {
       if (_pendingStop != null) {
         _pendingStop.cancel();
       }
@@ -348,9 +350,11 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
       _pendingStop = debounce(() => {
         this.onListener('TRYING_STOP', '');
         this.stop();
-      }, 10000);
+      }, 300000);
       _pendingStop();
     }
+    this._pendingTimeoutStop = _stop;
+    return _stop;
   },
   stop(mode) {
     if (mode == this.status.SILENT) {
