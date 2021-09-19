@@ -21,6 +21,7 @@ export interface WatcherInterface extends BaseModelInterface {
 	removeSameString: { (fullPath: string, basePath: string): string }
 	_config?: ConfigInterface
 	all: { (event: string, path: string): void }
+	addDir: { (path: string): void }
 	add: { (path: string): void }
 	change: { (path: string): void }
 	unlink: { (path: string): void }
@@ -144,6 +145,9 @@ const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 
 	all(event: string, path: string) {
 		// console.log('path -> ', path);
+	},
+	addDir(path) {
+		this._onChangeListener('ADD', path);
 	},
 	add(path) {
 		this._onChangeListener('ADD', path);
