@@ -4,3 +4,4 @@ node_modules/
 id_rsa_no_password*
 sync-config.yaml
 dist_2/
+.sync_temp/

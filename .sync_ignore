@@ -1,5 +1,6 @@
 .sync_ignore 
 sync-config.yaml
-/app/*
-!/app/command/
 .git
+node_modules
+dist/*
+!dist/test/
