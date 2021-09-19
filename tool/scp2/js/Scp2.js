@@ -166,7 +166,6 @@ Client.prototype.download = function(src, dest, callback) {
 Client.prototype.exec = function(command,callback) {
   var self = this;
   var remote = _.defaults(this.remote, this._options);
-  
   remote.passphrase = remote.password;
   remote.jumps = remote.jumps || [];
   if(remote.jumps.length > 0){
@@ -192,7 +191,8 @@ Client.prototype.exec = function(command,callback) {
     self.emit('connect');
   });
   ssh.on('ready', function() {
-    ssh.exec('cd '+remote.path+' && '+command,callback);
+    let gg = 'cd '+remote.path+' && '+command;
+    ssh.exec(gg,callback);
   });
   ssh.on('error', function(err) {
     console.log('SCP2 :: err ');
