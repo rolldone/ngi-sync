@@ -1,5 +1,4 @@
 var NameRouter = require('named-routes');
-import express, { Router } from 'express';
 import BaseProto from './BaseProto';
 
 export default BaseProto.extend<BaseRouteInterface>({
@@ -10,7 +9,7 @@ export default BaseProto.extend<BaseRouteInterface>({
     this.app = app;
     this.nrp = global.nrp;
     /* Child route inside .use */
-    this.childRouter = express.Router();
+    this.childRouter = null;
     this.router.extendExpress(this.childRouter);
     this.onready();
   },
