@@ -5,7 +5,6 @@ import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
 import _, { debounce, DebouncedFunc } from 'lodash';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
-const gc = require('expose-gc/function');
 
 declare var masterData: MasterDataInterface;
 declare var CustomError: { (name: string, message: string): any }
@@ -137,7 +136,6 @@ export default class Uploader {
 					this.onListener('UPLOADED', {
 						return: 'Last Upload: ' + whatFile// 'Sync is done!'
 					})
-					// gc();
 				}
 			}, 3000 /* 10000 */);
 			debounceClose();
