@@ -12,11 +12,6 @@ const task : Array<any> = [
   StartMasterData,
   StartConfig,
   StartRecordOpenFolder
-  // StartRedisPubSub,
-  // StartMinIO,
-  // StartExpress,
-  // StartRedisClient
-  /* Other bootstrap ? */
 ];
 
 export default function(asyncDone : Function){
