@@ -1,6 +1,6 @@
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import sftpClient from 'ssh2-sftp-client';
-import { existsSync, mkdirSync, readFileSync, rmdirSync, statSync, unlinkSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, rmdirSync, statSync, unlink, unlinkSync } from "fs";
 import { debounce, DebouncedFunc } from "lodash";
 import { CliInterface } from "../services/CliService";
 import { ConfigInterface } from "./Config";
@@ -11,7 +11,12 @@ import { join as pathJoin } from "path";
 
 declare var masterData: MasterDataInterface;
 
+const DOWNLOAD_ACTION = {
+  DELETE_IS_FOLDER: 1
+}
+
 export interface DownloadInterface extends BaseModelInterface {
+  tempFolder: string
   status: downloadStatus
   _client?: sftpClient
   _sftpOptions?: SftpOptions
@@ -48,6 +53,8 @@ export interface DownloadInterface extends BaseModelInterface {
   deleteFile: { (path: any): void }
   deleteFolder: { (path: any, oportunity: number): void }
   _pendingTimeoutStop?: { (stop?: boolean): void }
+  _deleteCacheFile?: { (path: string, isFolder?: number): void }
+  _removeSameString: { (fullPath: string, basePath: string): string }
 }
 
 export const STATUS_UPLOAD = {
@@ -61,6 +68,7 @@ type downloadStatus = {
 }
 
 const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
+  tempFolder: '.sync_temp/',
   status: {
     SILENT: 1
   },
@@ -206,24 +214,51 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
     }
   },
   _folderQueue: {},
+  _removeSameString(fullPath, basePath) {
+    return fullPath.replace(basePath, '');
+  },
+  _deleteCacheFile(local_path: string, is_folder) {
+    try {
+      let relativePathFile = this._removeSameString(upath.normalizeSafe(local_path), upath.normalizeSafe(this._config.localPath));
+      let destinationFile = upath.normalizeSafe(this._config.localPath + '/' + this.tempFolder + '/' + relativePathFile);
+      if (is_folder == DOWNLOAD_ACTION.DELETE_IS_FOLDER) {
+        return rmdirSync(destinationFile);
+      }
+      unlinkSync(destinationFile);
+    } catch (ex) {
+      return false;
+    }
+  },
   deleteFile: function (path) {
     /* Transalte to local path */
-    let remote = this.getLocalPath(path);
-    if (existsSync(remote) == false) {
+    let local_path = this.getLocalPath(path);
+    if (existsSync(local_path) == false) {
       return;
     }
-    if (this._folderQueue[remote] != null) {
+    if (this._folderQueue[local_path] != null) {
       return;
     }
-    this._folderQueue[remote] = debounce((props: any) => {
+
+    /* This is use for prevent upload to local_path. */
+    /* Is use on watcher */
+    let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
+    fileDownoadRecord[local_path] = true;
+    masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
+
+    /* Delete cache file if exist */
+    this._deleteCacheFile(local_path);
+
+    /*  */
+    this._folderQueue[local_path] = debounce((props: any) => {
       try {
         unlinkSync(pathJoin('', props));
+
         delete this._folderQueue[props];
       } catch (ex: any) {
         this.onListener('REJECTED', ex.message)
       }
     }, 1000);
-    this._folderQueue[remote](remote);
+    this._folderQueue[local_path](local_path);
   },
   deleteFolder: function (originPath, oportunity) {
     /* Transalte to local path */
@@ -234,6 +269,16 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
     if (this._folderQueue[local_path] != null) {
       return;
     }
+
+    /* This is use for prevent upload to local_path. */
+    /* Is use on watcher */
+    let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
+    fileDownoadRecord[local_path] = true;
+    masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
+
+    /* Delete cache file if exist */
+    this._deleteCacheFile(local_path, DOWNLOAD_ACTION.DELETE_IS_FOLDER);
+
     this._folderQueue[local_path] = debounce((local_path: string, originPath: string, oportunity: number) => {
       /* For folder, Delete the queue first */
       delete this._folderQueue[local_path];
@@ -262,6 +307,12 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
         if (this._orders == null) {
           this._orders = {};
         }
+
+        /* This is use for prevent upload to remote. */
+        /* Is use on watcher */
+        let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
+        fileDownoadRecord[local_path] = true;
+        masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
 
         /* This is use for prevent download from remote. */
         let fileuploaedRecord = masterData.getData('FILE_UPLOAD_RECORD', {}) as any;

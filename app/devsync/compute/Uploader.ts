@@ -30,7 +30,8 @@ export default class Uploader {
 			password: this.config.password,
 			// agentForward: true,
 			privateKey: this.config.privateKey ? readFileSync(this.config.privateKey).toString() : undefined,
-			jumps: this.config.jumps
+			jumps: this.config.jumps,
+			path : this.config.remotePath
 			// debug: true
 		});
 
@@ -95,21 +96,15 @@ export default class Uploader {
 		return new Promise<string>((resolve, reject) => {
 			setTimeout(() => {
 				let remote = this.getRemotePath(folderPath);
-				this.client.sftp((err, sftp) => {
+				this.client.exec("rm -R "+remote,(err: any) => {
 					if (err) {
-						reject('SFTP cannot be created');
+						reject('Folder could not be deleted');
+						// this.unlinkFolder(folderPath, timeout, parsResolve);
 					} else {
-						sftp.rmdir(remote, (err: any) => {
-							if (err) {
-								// reject('Folder could not be deleted');
-								this.unlinkFolder(folderPath, timeout, parsResolve);
-							} else {
-								if (parsResolve != null) {
-									return parsResolve(remote);
-								}
-								resolve(remote);
-							}
-						});
+						if (parsResolve != null) {
+							return parsResolve(remote);
+						}
+						resolve(remote);
 					}
 				});
 			}, timeout || 2000);
