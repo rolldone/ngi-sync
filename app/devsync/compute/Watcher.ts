@@ -15,17 +15,39 @@ const workerpool = require('workerpool');
 const pool = workerpool.pool(__dirname + '/TestCache.js');
 
 const WATCHER_ACTION = {
-	DELETE_FOLDER : 1
+	DELETE_FOLDER: 1
 }
 
 export default class Watcher {
+	clear() {
+		this._contain_path = {};
+	}
+	pendingClearData(): Function {
+		let _pendingClearData: any = null;
+		return () => {
+			if (_pendingClearData != null) {
+				return _pendingClearData.cancel();
+			}
+			if (_pendingClearData != null) {
+				_pendingClearData.cancel();
+			}
+			_pendingClearData = debounce(() => {
+				this.clear();
+				_pendingClearData = null;
+			}, 100000);
+			_pendingClearData();
+		}
+	}
+	_contain_path?: {
+		[key: string]: string
+	} = {};
 	tempFolder = '.sync_temp/';
 	_unwatch?: Array<any>
 	files: any;
 	_onListener: Function;
 	_getTimeoutSftp: { (overrideTimeout?: number): number };
 	_setTimeoutSftp() {
-		const fixTimeout = 50;
+		const fixTimeout = 10;
 		let timeout = fixTimeout;
 		let _pendingResetTimeout: DebouncedFunc<any> = null;
 		return (overrideTimeout?: number) => {
@@ -495,6 +517,10 @@ export default class Watcher {
 
 	private _sameUnlinkPath: string = ""
 	private unlink = (path: string) => {
+		/* Trap if folder parent for this file get delete first, block it! */
+		if (this._contain_path[upath.dirname(path)] != null) {
+			return;
+		}
 		if (this.config.trigger_permission.unlink == false) {
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot unlink data sync on server");
@@ -518,6 +544,11 @@ export default class Watcher {
 			this.tasks['unlink'] = observatory.add("UNLINK :: DONE ");
 			this.tasks['unlink'].done(upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 		}).catch((err) => {
+			/* If first filter getting lost */
+			/* Trap again on this place */
+			if (this._contain_path[upath.dirname(path)] != null) {
+				return;
+			}
 			this.deleteCacheFile(path);
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details(`Error deleting file ${err} or maybe just deleted from target.`);
@@ -526,17 +557,18 @@ export default class Watcher {
 	};
 
 	private unlinkDir = (path: string) => {
+		this._contain_path[upath.normalizeSafe(path)] = upath.normalizeSafe(path);
 		if (this.config.trigger_permission.unlink_folder == false) {
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot unlink directory data sync on server");
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
 			return;
 		}
-		this.uploader.unlinkFolder(path, this._getTimeoutSftp(50)).then(remote => {
+		this.uploader.unlinkFolder(path, this._getTimeoutSftp(10)).then(remote => {
 			this.deleteCacheFile(path, WATCHER_ACTION.DELETE_FOLDER);
 			if (this.tasks['unlinkDir'] != null) {
 				this.tasks['unlinkDir'].done(upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
-				this.getRemoveSelfTask['unlinkDir']
+				this.getRemoveSelfTask['unlinkDir']();
 				return;
 			}
 			this.getRemoveSelfTask['unlinkDir'] = this.removeSelfTask('unlinkDir');

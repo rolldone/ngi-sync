@@ -400,12 +400,14 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     process.stdin.on('keypress', remoteFuncKeypress);
 
     this.watcher = new Watcher(this.uploader, currentConf, this._cli);
+    let _pendingWatcherClearData = this.watcher.pendingClearData();
     this.watcher.setOnListener((props: {
       action: string
     }) => {
       switch (props.action) {
         case 'ALL_EVENT':
           _startWatchingWithTimeOut();
+          _pendingWatcherClearData();
           break;
       }
     });
