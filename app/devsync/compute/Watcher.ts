@@ -1,11 +1,10 @@
 import * as chokidar from "chokidar"
 const chalk = require('chalk');
-import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync, unlink } from "fs";
+import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync, unlink, rmdir } from "fs";
 import Uploader from "./Uploader";
 import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
 const observatory = require("observatory");
-const streamEqual = require('stream-equal');
 import * as upath from 'upath';
 import parseGitIgnore from '@root/tool/parse-gitignore'
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
@@ -14,6 +13,10 @@ import { debounce, DebouncedFunc } from "lodash";
 declare let masterData: MasterDataInterface;
 const workerpool = require('workerpool');
 const pool = workerpool.pool(__dirname + '/TestCache.js');
+
+const WATCHER_ACTION = {
+	DELETE_FOLDER : 1
+}
 
 export default class Watcher {
 	tempFolder = '.sync_temp/';
@@ -278,7 +281,6 @@ export default class Watcher {
 
 	setCacheFile(path: string) {
 		try {
-			let upathParse = upath.parse(path);
 			let relativePathFile = this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath));
 			let destinationFile = upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder + '/' + relativePathFile);
 			if (existsSync(destinationFile) == false) {
@@ -289,46 +291,18 @@ export default class Watcher {
 			}
 			copyFile(path, destinationFile, (res) => { });
 		} catch (ex) {
-			console.log('ex - setCacheFile', ex);
+			console.log('setCacheFile - ex :: ', ex);
 		}
 	}
 
-	async deleteCacheFile(path: string) {
+	async deleteCacheFile(path: string, action?: number) {
 		try {
-			let upathParse = upath.parse(path);
 			let relativePathFile = this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath));
 			let destinationFile = upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder + '/' + relativePathFile);
-			// if (existsSync(destinationFile) == false) {
-			// 	mkdirSync(upath.dirname(destinationFile), {
-			// 		recursive: true,
-			// 		mode: '0777'
-			// 	});
-			// }
-			unlink(destinationFile, (err) => {
-				// console.log('errr', err);
-			});
-		} catch (ex) {
-			return false;
-			// console.log('getCacheFile ',ex)
-		}
-	}
-
-	async getCacheFile(path: string) {
-		try {
-			let upathParse = upath.parse(path);
-			let relativePathFile = this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath));
-			let destinationFile = upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder + '/' + relativePathFile);
-			if (existsSync(destinationFile) == false) {
-				return false;
+			if (action == WATCHER_ACTION.DELETE_FOLDER) {
+				return rmdir(destinationFile, (err) => { });
 			}
-			let readStream1 = createReadStream(path);
-			let readStream2 = createReadStream(destinationFile);
-			let equal = await streamEqual(readStream1, readStream2);
-			readStream1.close();
-			readStream2.close();
-			readStream2.destroy();
-			readStream1.destroy();
-			return equal;
+			unlink(destinationFile, (err) => { });
 		} catch (ex) {
 			return false;
 			// console.log('getCacheFile ',ex)
@@ -392,7 +366,6 @@ export default class Watcher {
 				case 'unlinkDir':
 				default:
 					/* This process get much eat ram if check many file suddenly, so try looking alternative or create parallel app maybe */
-
 					pool.proxy().then((worker: any) => {
 						return worker.testCache({
 							path: path,
@@ -402,9 +375,12 @@ export default class Watcher {
 						})
 					})
 						.then(function (self: any, args: any, res: any) {
-							// console.log('res',res);
-							if (res == true) {
-								return;
+							/* For unlink and unlinkDir its always false */
+							/* because there is no compare with deleted file */
+							if (method == "unlink" || method == "unlinkDir") { } else {
+								if (res == true) {
+									return;
+								}
 							}
 							let tt: {
 								[key: string]: any
@@ -420,25 +396,8 @@ export default class Watcher {
 							// terminate all workers when done
 							this._getPendingTerminate();
 						});
-
-					// this.getCacheFile(path).then((res: any) => {
-					// 	if (res == true) {
-					// 		return;
-					// 	}
-					// 	let tt: {
-					// 		[key: string]: any
-					// 	} = this;
-					// 	// If not, continue as ususal
-					// 	tt[method](...args);
-					// })
 					return;
 			}
-			let tt: {
-				[key: string]: any
-			} = this;
-			// If not, continue as ususal
-			tt[method](...args);
-
 		}
 	}
 	private getRemoveSelfTask: {
@@ -480,7 +439,7 @@ export default class Watcher {
 			return;
 		}
 		if (this._sameAddPath == path) {
-			console.log('Ups get 2x add ', path);
+			console.log('Ups get 2x add :: ', path);
 			this._sameAddPath = null;
 		} else {
 			this._sameAddPath = path;
@@ -511,7 +470,7 @@ export default class Watcher {
 			return;
 		}
 		if (this._sameChangePath == path) {
-			console.log('Ups get 2x change ', path);
+			console.log('Ups get 2x change :: ', path);
 			this._sameChangePath = null;
 		} else {
 			this._sameChangePath = path;
@@ -560,7 +519,6 @@ export default class Watcher {
 			this.tasks['unlink'].done(upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 		}).catch((err) => {
 			this.deleteCacheFile(path);
-			// this.tasks['err'].fail(path.replace(this.config.localPath,"")+"").details(`Error deleting file ${err} or maybe just deleted from target.`);
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details(`Error deleting file ${err} or maybe just deleted from target.`);
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
@@ -575,6 +533,7 @@ export default class Watcher {
 			return;
 		}
 		this.uploader.unlinkFolder(path, this._getTimeoutSftp(50)).then(remote => {
+			this.deleteCacheFile(path, WATCHER_ACTION.DELETE_FOLDER);
 			if (this.tasks['unlinkDir'] != null) {
 				this.tasks['unlinkDir'].done(upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 				this.getRemoveSelfTask['unlinkDir']
@@ -584,10 +543,10 @@ export default class Watcher {
 			this.tasks['unlinkDir'] = observatory.add("UNLINKDIR :: DONE ");
 			this.tasks['unlinkDir'].done(upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 		}).catch((err) => {
+			this.deleteCacheFile(path, WATCHER_ACTION.DELETE_FOLDER);
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details(`Error deleting folder ${err}`);
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails')
-			// this.tasks['err'].fail(path.replace(this.config.localPath,"")+"").details(`Error deleting folder ${err}`);
 		});
 	};
 }
