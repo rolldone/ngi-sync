@@ -296,10 +296,10 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           this._task['LISTEN_PORT'].done();
           break;
         case 'ADD':
-          this._download.startWaitingDownloads(props);
+          this._download.startWaitingDownloads(props).then((data)=>{}).catch(err=>{});
           break;
         case 'CHANGE':
-          this._download.startWaitingDownloads(props);
+          this._download.startWaitingDownloads(props).then((data)=>{}).catch(err=>{});
           break;
         case 'UNLINK':
           /* Dont use observatory for delete file */
