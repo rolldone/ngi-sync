@@ -72,7 +72,6 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
   status: {
     SILENT: 1
   },
-  /* Set to be 1 because ssh2-sftp-client is have concurent include */
   _concurent: 3,
   returnSftpConfig(props) {
     return this._sftpOptions = props;
