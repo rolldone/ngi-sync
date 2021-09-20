@@ -73,7 +73,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
     SILENT: 1
   },
   /* Set to be 1 because ssh2-sftp-client is have concurent include */
-  _concurent: 1,
+  _concurent: 3,
   returnSftpConfig(props) {
     return this._sftpOptions = props;
   },
@@ -285,10 +285,11 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
       try {
         rmdirSync(pathJoin('', local_path));
       } catch (ex: any) {
-        this.onListener('REJECTED', ex.message)
         setTimeout(() => {
           if (oportunity > 0) {
             this.deleteFolder(originPath, oportunity -= 1);
+          }else{
+            this.onListener('REJECTED', ex.message)
           }
         }, 1000);
       }
@@ -323,6 +324,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
         }
 
         if (Object.keys(this._orders).length < this._concurent) {
+          // console.log(this._index);
           /* If concurent ready run it */
           this._exeHandlePush({
             path: path,
@@ -383,6 +385,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
           console.log('SFTP CLIENT CONNECTION :: ', err);
           process.exit(0)
         })
+        this._index = 0;
         this._exeHandlePush = this._handlePush();
       }
     } catch (ex) {
