@@ -23,6 +23,7 @@ const Main = BaseController.extend<MainControllerInterface>({
       this.returnDevRsyncService(cliService);
       return;
     }
+    this.returnDevRsyncService(cliService);
   },
   shortCommand: function (props) {
     let cliService = this.returnCliService();

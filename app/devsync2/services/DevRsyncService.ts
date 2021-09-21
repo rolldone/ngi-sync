@@ -171,7 +171,8 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       case COMMAND_SHORT.FORCE_SINGLE_SYNC:
         /* Call manual rsync single sync. This module can send data per folder inside project */
         masterData.saveData('command.forcersync.single_sync', {
-          action: 'single_sync_nested_prompt'
+          action: 'single_sync_nested_prompt',
+          from : 'command.devsync2.index'
         });
         break;
       default:
