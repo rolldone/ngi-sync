@@ -252,19 +252,29 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         case 'REJECTED_DOWNLOAD':
           this._task['REJECTED_DOWNLOAD'] = observatory.add("Download Failed :: ");
           this._task['REJECTED_DOWNLOAD'].fail(props);
-          this._task['REJECTED_DOWNLOAD'] = null;
           break;
         case 'ONGOING':
           break;
+        case 'DELETED_FOLDER':
+          this._task['DELETED_FOLDER'] = observatory.add("DELETED_FOLDER :: ");
+          this._task['DELETED_FOLDER'].done(props);
+          break;
+        case 'DELETED':
+          this._task['DELETED'] = observatory.add("DELETED :: ");
+          this._task['DELETED'].done(props);
+          break;
         case 'DOWNLOADED_DONE':
+          // this._task['DOWNLOADED'].done();
+          // this._task['DOWNLOADED'] = null;
+          this._task['DOWNLOADED'] = observatory.add("FINISH :: ");
           this._task['DOWNLOADED'].done();
-          this._task['DOWNLOADED'] = null;
           break;
         case 'DOWNLOADED':
-          if (this._task['DOWNLOADED'] == null) {
-            this._task['DOWNLOADED'] = observatory.add("DOWNLOADED :: ");
-          }
-          this._task['DOWNLOADED'].status(props);
+          // if (this._task['DOWNLOADED'] == null) {
+          //   this._task['DOWNLOADED'] = observatory.add("DOWNLOADED :: ");
+          // }
+          this._task['DOWNLOADED'] = observatory.add("DOWNLOADED :: ");
+          this._task['DOWNLOADED'].done(props);
           break;
         case 'TRYING_STOP':
           if (this._task['STOP_DOWNLOAD'] == null) {
