@@ -1,5 +1,5 @@
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
-import sftpClient from 'ssh2-sftp-client';
+import sftpClient, { sftp } from '@root/tool/ssh2-sftp-client';
 import { existsSync, mkdirSync, readFileSync, rmdirSync, statSync, unlink, unlinkSync } from "fs";
 import { debounce, DebouncedFunc } from "lodash";
 import { CliInterface } from "../services/CliService";
@@ -8,6 +8,7 @@ import { SftpOptions } from "./SyncPull";
 import upath from 'upath';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { join as pathJoin } from "path";
+import { SFTPWrapper } from "ssh2";
 
 declare var masterData: MasterDataInterface;
 
@@ -15,10 +16,18 @@ const DOWNLOAD_ACTION = {
   DELETE_IS_FOLDER: 1
 }
 
+/* Use this if want to debugging */
+/* process.on('warning', (warning) => {
+  console.warn(warning.name);    // Print the warning name
+  console.warn(warning.message); // Print the warning message
+  console.warn(warning.stack);   // Print the stack trace
+  process.exit();
+}); */
+
 export interface DownloadInterface extends BaseModelInterface {
   tempFolder: string
   status: downloadStatus
-  _client?: sftpClient
+  _client?: sftp
   _sftpOptions?: SftpOptions
   returnSftpConfig: { (props: SftpOptions): SftpOptions }
   returnClient: {
@@ -55,6 +64,7 @@ export interface DownloadInterface extends BaseModelInterface {
   _pendingTimeoutStop?: { (stop?: boolean): void }
   _deleteCacheFile?: { (path: string, isFolder?: number): void }
   _removeSameString: { (fullPath: string, basePath: string): string }
+  _ssh2SftpWrapper?: SFTPWrapper
 }
 
 export const STATUS_UPLOAD = {
@@ -76,9 +86,13 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
   returnSftpConfig(props) {
     return this._sftpOptions = props;
   },
+
   returnClient: async function (props) {
     this._client = new sftpClient();
-    await this._client.connect(props);
+    await this._client.connect({
+      ...props
+    });
+    this._ssh2SftpWrapper = await this._client.getSftpChannel();
     return this._client;
   },
   construct(cli, config) {
@@ -121,7 +135,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
         this._pendingUpload[entry.path].cancel();
       }
       /* Mengikuti kelipatan concurent */
-      let _debouncePendingOut = first_time_out == null ? (100 * (entry.queue_no == 0 ? 1 : entry.queue_no + 1)) : first_time_out;
+      let _debouncePendingOut = 100;//first_time_out == null ? (100 * (entry.queue_no == 0 ? 1 : entry.queue_no + 1)) : first_time_out;
       this._pendingUpload[entry.path] = debounce((entry: any) => {
         this._pendingTimeoutStop();
         var remote = entry.path;
@@ -139,75 +153,88 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
           delete this._pendingUpload[entry.path];
           delete this._orders[entry.queue_no];
         }
-        this._client.stat(remote).then((data) => {
+        this._ssh2SftpWrapper.stat(remote, (err, data) => {
           deleteQueue();
-          let size_limit = this._config.size_limit;
-          if (size_limit == null) {
-            size_limit = 5;
-          }
-          size_limit = size_limit * 1000000;
-          if (data.size > size_limit) {
-            // console.log('size_limit', size_limit);
-            // console.log('stats', stats);
-            this.onListener('WARNING', {
-              return: 'File size more than ' + this._config.size_limit + 'MB : ' + upath.normalizeSafe(fileName)
-            })
+          if (err) {
+            this.onListener('REJECTED_DOWNLOAD', err.message);
             reject({
-              message: 'File size over than limit.',  // upath.normalizeSafe(fileName)
+              message: err.message,  // upath.normalizeSafe(fileName)
               error: ""
             });
-            return;
-          }
-          /* Dont let file edited by server upload to server again! */
-          let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
-          if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
-            if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
-              this.onListener('REJECTED', {
-                return: 'File edited by system dont let uploaded.'  // upath.normalizeSafe(fileName)
+          } else {
+            let size_limit = this._config.size_limit;
+            if (size_limit == null) {
+              size_limit = 5;
+            }
+            size_limit = size_limit * 1000000;
+            if (data.size > size_limit) {
+              // console.log('size_limit', size_limit);
+              // console.log('stats', stats);
+              this.onListener('WARNING', {
+                return: 'File size more than ' + this._config.size_limit + 'MB : ' + upath.normalizeSafe(fileName)
               })
-              delete this._pendingQueue[remote];
-              masterData.updateData('file_edit_from_server', {
-                [upath.normalizeSafe(fileName)]: false
-              });
               reject({
-                message: 'File edited by system dont let uploaded.',  // upath.normalizeSafe(fileName)
+                message: 'File size over than limit.',  // upath.normalizeSafe(fileName)
                 error: ""
               });
               return;
             }
-          }
-          // Download the file
-          this._client.fastGet(remote, fileName).then((data) => {
-            this.onListener('DOWNLOADED', upath.normalizeSafe(fileName));
-
-            /* This is use for prevent upload to remote. */
-            /* Is use on watcher */
-            let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
-            fileDownoadRecord[fileName] = true;
-            masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
-
-            let firstKey = Object.keys(this._pendingQueue)[entry.queue_no];
-            if (firstKey == null) {
-              firstKey = Object.keys(this._pendingQueue)[0];
-              if (firstKey == null) {
-                _closeIfPossible(this._client, upath.normalizeSafe(fileName));
-                resolve(remote);
+            /* Dont let file edited by server upload to server again! */
+            let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
+            if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
+              if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
+                this.onListener('REJECTED', {
+                  return: 'File edited by system dont let uploaded.'  // upath.normalizeSafe(fileName)
+                })
+                delete this._pendingQueue[remote];
+                masterData.updateData('file_edit_from_server', {
+                  [upath.normalizeSafe(fileName)]: false
+                });
+                reject({
+                  message: 'File edited by system dont let uploaded.',  // upath.normalizeSafe(fileName)
+                  error: ""
+                });
                 return;
               }
             }
-            let oo = Object.assign({}, this._pendingQueue[firstKey]);
-            delete this._pendingQueue[firstKey];
-            if (firstKey != null && oo.path == null) { }
-            this._exeHandlePush(oo);
-            resolve(remote);
-          }).catch((err) => {
-            this.onListener('REJECTED_DOWNLOAD', err.message);
-          })
-        }).catch((err) => {
-          deleteQueue();
-          /* Debug here */
-        })
 
+            // Download the file
+            this._ssh2SftpWrapper.fastGet(remote, fileName, {
+              concurrency: 1
+            }, (err) => {
+              if (err) {
+                this.onListener('REJECTED_DOWNLOAD', err.message);
+                reject({
+                  message: err.message,  // upath.normalizeSafe(fileName)
+                  error: ""
+                })
+                return;
+              }
+              this.onListener('DOWNLOADED', upath.normalizeSafe(fileName));
+
+              /* This is use for prevent upload to remote. */
+              /* Is use on watcher */
+              let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
+              fileDownoadRecord[fileName] = true;
+              masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
+
+              let firstKey = Object.keys(this._pendingQueue)[entry.queue_no];
+              if (firstKey == null) {
+                firstKey = Object.keys(this._pendingQueue)[0];
+                if (firstKey == null) {
+                  _closeIfPossible(this._client, upath.normalizeSafe(fileName));
+                  resolve(remote);
+                  return;
+                }
+              }
+              let oo = Object.assign({}, this._pendingQueue[firstKey]);
+              delete this._pendingQueue[firstKey];
+              if (firstKey != null && oo.path == null) { }
+              resolve(remote);
+              this._exeHandlePush(oo);
+            })
+          }
+        })
       }, _debouncePendingOut);
       this._pendingUpload[entry.path](entry);
     }
@@ -253,6 +280,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
         unlinkSync(pathJoin('', props));
 
         delete this._folderQueue[props];
+        this.onListener('DELETED', props)
       } catch (ex: any) {
         this.onListener('REJECTED', ex.message)
       }
@@ -283,11 +311,12 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
       delete this._folderQueue[local_path];
       try {
         rmdirSync(pathJoin('', local_path));
+        this.onListener('DELETED_FOLDER', local_path)
       } catch (ex: any) {
         setTimeout(() => {
           if (oportunity > 0) {
             this.deleteFolder(originPath, oportunity -= 1);
-          }else{
+          } else {
             this.onListener('REJECTED', ex.message)
           }
         }, 1000);
@@ -298,6 +327,9 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
   startWaitingDownloads(path) {
     return new Promise((resolve, reject) => {
       try {
+        if (this._index == null) {
+          this._index = 0;
+        }
         /* Transalte to local path */
         let local_path = this.getLocalPath(path);
         if (this._index == this._concurent) {
@@ -384,7 +416,6 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
           console.log('SFTP CLIENT CONNECTION :: ', err);
           process.exit(0)
         })
-        this._index = 0;
         this._exeHandlePush = this._handlePush();
       }
     } catch (ex) {
@@ -412,6 +443,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
   stop(mode) {
     if (mode == this.status.SILENT) {
       if (this._client != null) {
+        this._index = 0;
         this._client.end();
         this._client = null;
       }
