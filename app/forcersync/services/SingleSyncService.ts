@@ -16,7 +16,7 @@ export enum PROMPT_CHOICE {
   DOWNLOAD = 'Download',
   UPLOAD = 'Upload',
   BROWSE_OTHER = "Browse other",
-  EXIT = "Exit"
+  EXIT = "Back Previous / Exit"
 }
 export interface SingleSyncServiceInterface extends DevRsyncPushServiceInterface {
   returnSingleSync: { (cli: CliInterface, config: RsyncOptions): SingleSyncInterface }
@@ -63,10 +63,12 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
         type: "list",
         name: "single_sync_list",
         message: "Which folder :",
-        when: function (va1: any) {
-          if(va1.option == "Exit"){
-            process.exit(0);
-            return
+        when: (va1: any) => {
+          if (va1.option == PROMPT_CHOICE.EXIT) {
+            if (this._props.action == "single_sync_nested_prompt") {
+              return false;
+            }
+            return false;
           }
           return true;
         },
@@ -84,7 +86,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
           if (va1.single_sync_list == "Browse other") {
             return true;
           }
-          if(va1.single_sync_list == "Exit"){
+          if (va1.single_sync_list == "Exit") {
             process.exit(0);
             return;
           }
@@ -100,6 +102,14 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
     let props = this._props;
     inquirer.prompt(questions)['then']((passAnswer: any) => {
       // console.log('passAnswer',passAnswer);
+      if (passAnswer.option == PROMPT_CHOICE.EXIT) {
+        if (this._props.action == "single_sync_nested_prompt") {
+          masterData.saveData(this._props.from, {});
+          return;
+        }
+        process.exit(0);
+        return
+      }
       if (passAnswer.browse_file != null) {
         let fixPath = upath.normalizeSafe(passAnswer.browse_file);
         fixPath = fixPath.replace(this._config.localPath, '');
@@ -123,8 +133,10 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
         single_sync: currentConf.single_sync || [],
         mode: props.mode || 'hard'
       });
-      _singleSync.setOnListener(function (props: any) {
-
+      _singleSync.setOnListener((props: any) => {
+        if (props.action == "exit") {
+          this._promptAction(questions);
+        }
       })
       _singleSync.submitPushSelective(passAnswer);
 

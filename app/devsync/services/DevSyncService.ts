@@ -146,7 +146,8 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         break;
       case COMMAND_SHORT.FORCE_SINGLE_SYNC:
         masterData.saveData('command.forcersync.single_sync', {
-          action: 'single_sync_nested_prompt'
+          action: 'single_sync_nested_prompt',
+          from : 'command.devsync.index'
         });
         break;
       default:
