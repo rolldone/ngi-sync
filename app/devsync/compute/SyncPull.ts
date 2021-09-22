@@ -3,10 +3,9 @@ import { CliInterface } from "../services/CliService";
 import SftpWatcher from '@root/tool/sftp-watcher';
 import { Client } from 'scp2';
 import _ from 'lodash';
-import { mkdir, mkdirSync, unlinkSync, readFile, stat } from "fs";
-import { join as pathJoin, dirname } from "path";
+import { mkdirSync, unlinkSync, stat } from "fs";
+import { join as pathJoin } from "path";
 import * as upath from "upath";
-import * as path from 'path';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import EventEmitter from "events";
 import { trigger_permission } from "@root/app/init/compute/Config";
@@ -129,7 +128,6 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       base_path: this._sshConfig.base_path
     });
     event.on("upload", (data: any) => {
-      // console.log('data.file.attr',data);
       /* If more than 1MB dont let download it */
       let fromFilePath = data.folder;
       let keyFile = this._removeSameString(fromFilePath + '/' + data.file.filename, data.base_path);
@@ -137,18 +135,12 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         return;
       }
       if (data.file.attrs.size > 2097152) {
-        // masterData.updateData('file_edit_from_server', {
-        //   [this._sshConfig.local_path + this._removeSameString(fromFilePath, data.base_path)]: true,
-        // });
-
         this._onListener({
           status: 'error',
           return: data.folder + ' cannot downloaded. More than 2MB'
         });
-        // console.log('aaaaaaaaa',this._removeSameString(fromFilePath+'/'+data.file.filename, data.base_path));
         this._rememberError[keyFile] = data;
       } else {
-        // console.log('upload', data)
         delete this._rememberError[keyFile];
         this._onListener({
           status: 'stdout',
@@ -164,25 +156,15 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       }
     });
     event.on("delete", (data: any) => {
-      // console.log('delete', data)
       this._onListener({
         status: 'stdout',
         return: data
       });
-      /* Disable get event deleted from server */
-      // this._deleteFile({
-      //   folder: data.folder,
-      //   base_path: data.base_path,
-      //   file: data.file.filename
-      // })
     });
     event.on("heartbeat", (data: any) => {
       console.log(data.toString())
     });
     event.on("close", (data: any) => {
-      // console.log('close', data);ddd
-      // observatory.add(this.eventToWord[event]);
-      // this._tasks['sftp-watcher'].done("Stopped");
       this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
       this._tasks['sftp-watcher'].done("Stopped");
       this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
@@ -199,7 +181,6 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   },
   _downloadFile: function (props) {
     let keynya = props.folder + '/' + props.file;
-    // console.log('keynya',keynya);
     if (this._folderQueue[keynya] != null) {
       return;
     }
@@ -247,16 +228,9 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
         if (err) {
           return downloadNow();
         }
-        //  console.log('Server Size ',props.mtime);
-        //  console.log('Local size ',data.size);
-        //  console.log('bool',props.mtime > parseInt(data.mtimeMs.toString().substring(0,props.mtime.toString().length)));
-        //  console.log('aaaaaaaaa',parseInt(data.mtimeMs.toString().substring(0,props.mtime.toString().length)));
-        // if (props.size != data.size) {
         if (props.mtime > parseInt(data.mtimeMs.toString().substring(0, props.mtime.toString().length))) {
-          // if(data.size > )
           downloadNow();
         } else {
-          // console.log('Sama');
           delete this._folderQueue[keynya];
         }
       })
@@ -265,28 +239,6 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   },
   _removeSameString: function (fullPath, basePath) {
     return fullPath.replace(basePath, '');
-  },
-  _deleteFile: function (props) {
-    let keynya = props.base_path + '/' + props.file;
-    if (this._folderQueue[keynya] != null) {
-      return;
-      this._folderQueue[keynya].cancel();
-    }
-    this._folderQueue[keynya] = _.debounce((props: any) => {
-      try {
-        let fromFilePath = props.folder + '/' + props.file;
-        let theLocalPath: string = this._sshConfig.local_path + this._removeSameString(fromFilePath, props.base_path);
-        /* Planning belum dibuat :
-           Harus buat fungsi pasang is has deleted collection data untuk stop prevent
-           setelah dapet event dari chokidar
-         */
-        unlinkSync(pathJoin('', theLocalPath));
-        delete this._folderQueue[keynya];
-      } catch (ex) {
-        console.log('_deleteFile -> ', ex);
-      }
-    }, 1000 * Object.keys(this._folderQueue).length);
-    this._folderQueue[keynya](props);
   }
 })
 
