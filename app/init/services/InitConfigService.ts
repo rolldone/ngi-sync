@@ -58,7 +58,7 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
       console.log('---------------------------------------------------')
     }
     if (existsSync('.sync_ignore') == false) {
-      writeFileSync('.sync_ignore', '.sync_ignore \nsync-config.yaml \nsync-config.yml \n.sync_temp', 'utf8');
+      writeFileSync('.sync_ignore', '.sync_ignore \nsync-config.yaml \nsync-config.yml \n.sync_temp \nnode_modules \n**/node_modules \nvendor \n**/vendor', 'utf8');
     }
   },
   construct: function (cli: CliInterface) {
