@@ -9,6 +9,7 @@ import upath from 'upath';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { join as pathJoin } from "path";
 import { SFTPWrapper } from "ssh2";
+import { removeSync } from "fs-extra";
 
 declare var masterData: MasterDataInterface;
 
@@ -248,7 +249,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
       let relativePathFile = this._removeSameString(upath.normalizeSafe(local_path), upath.normalizeSafe(this._config.localPath));
       let destinationFile = upath.normalizeSafe(this._config.localPath + '/' + this.tempFolder + '/' + relativePathFile);
       if (is_folder == DOWNLOAD_ACTION.DELETE_IS_FOLDER) {
-        return rmdirSync(destinationFile);
+        return removeSync(destinationFile);
       }
       unlinkSync(destinationFile);
     } catch (ex) {
@@ -310,7 +311,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
       /* For folder, Delete the queue first */
       delete this._folderQueue[local_path];
       try {
-        rmdirSync(pathJoin('', local_path));
+        removeSync(pathJoin('', local_path));
         this.onListener('DELETED_FOLDER', local_path)
       } catch (ex: any) {
         setTimeout(() => {
