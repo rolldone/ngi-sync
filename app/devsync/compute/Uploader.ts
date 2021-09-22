@@ -30,7 +30,7 @@ export default class Uploader {
 			// agentForward: true,
 			privateKey: this.config.privateKey ? readFileSync(this.config.privateKey).toString() : undefined,
 			jumps: this.config.jumps,
-			path : this.config.remotePath
+			path: this.config.remotePath
 			// debug: true
 		});
 
@@ -46,7 +46,7 @@ export default class Uploader {
 		});
 
 		let pendingClose: any = null;
-		this.client.on('close', (err:any) => {
+		this.client.on('close', (err: any) => {
 			// if (pendingClose != null) {
 			// 	pendingClose.cancel();
 			// }
@@ -68,46 +68,6 @@ export default class Uploader {
 		let normalLocalPath = upath.normalizeSafe(this.config.localPath);
 		let remotePath = normalPath.replace(normalLocalPath, this.config.remotePath);
 		return upath.normalizeSafe(remotePath);
-	}
-
-	unlinkFile(fileName: string, timeout?: number): Promise<string> {
-		return new Promise<string>((resolve, reject) => {
-			setTimeout(() => {
-				let remote = this.getRemotePath(fileName);
-				this.client.sftp((err, sftp) => {
-					if (err) {
-						reject('SFTP cannot be created');
-					} else {
-						sftp.unlink(remote, (err: any) => {
-							if (err) {
-								reject('File could not be deleted');
-							} else {
-								resolve(remote);
-							}
-						});
-					}
-				});
-			}, timeout || 50)
-		});
-	}
-
-	unlinkFolder(folderPath: string, timeout?: number, parsResolve?: Function): Promise<string> {
-		return new Promise<string>((resolve, reject) => {
-			setTimeout(() => {
-				let remote = this.getRemotePath(folderPath);
-				this.client.exec("rm -R "+remote,(err: any) => {
-					if (err) {
-						reject('Folder could not be deleted');
-						// this.unlinkFolder(folderPath, timeout, parsResolve);
-					} else {
-						if (parsResolve != null) {
-							return parsResolve(remote);
-						}
-						resolve(remote);
-					}
-				});
-			}, timeout || 2000);
-		});
 	}
 	_index: number = 0
 	_concurent: number = 8
@@ -151,89 +111,124 @@ export default class Uploader {
 			/* Mengikuti kelipatan concurent */
 			let _debouncePendingOut = first_time_out == null ? (100 * (entry.queue_no == 0 ? 1 : entry.queue_no + 1)) : first_time_out;
 			this._pendingUpload[entry.path] = _.debounce((entry: any) => {
+				let deleteQueueFunc = () => {
+					this._pendingUpload[entry.path] = null;
+					delete this._pendingUpload[entry.path];
+					delete this._orders[entry.queue_no];
+				}
+				let next = () => {
+					let firstKey = Object.keys(this._pendingQueue)[entry.queue_no];
+					if (firstKey == null) {
+						firstKey = Object.keys(this._pendingQueue)[0];
+						if (firstKey == null) {
+							_closeIfPossible(this.client, upath.normalizeSafe(fileName));
+							return;
+						}
+					}
+					let oo = Object.assign({}, this._pendingQueue[firstKey]);
+					delete this._pendingQueue[firstKey];
+					if (firstKey != null && oo.path == null) { }
+					this._exeHandlePush(oo);
+				};
 				var remote = entry.path;
 				var resolve = entry.resolve;
 				var reject = entry.reject;
 				var fileName = entry.fileName;
-				/* Check the size of file first */
-				let stats = statSync(upath.normalizeSafe(fileName));
-				let size_limit = this.config.size_limit;
-				if (size_limit == null) {
-					size_limit = 5;
-				}
-				size_limit = size_limit * 1000000;
-				if (stats.size > size_limit) {
-					// console.log('size_limit', size_limit);
-					// console.log('stats', stats);
-					this.onListener('WARNING', {
-						return: 'File size more than ' + this.config.size_limit + 'MB : ' + upath.normalizeSafe(fileName)
-					})
-				}
-				this.client.mkdir(upath.dirname(remote), { mode: this.config.pathMode }, err => {
-					this._pendingUpload[entry.path] = null;
-					delete this._pendingUpload[entry.path];
-					delete this._orders[entry.queue_no];
-					if (err) {
-						// reject({
-						// 	message: `Could not create ${upath.dirname(remote)}`,
-						// 	error: err
-						// });
-					} else {
-						/* Dont let file edited by server upload to server again! */
-						let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
-						if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
-							if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
-								this.onListener('REJECTED', {
-									return: 'File edited by system dont let uploaded.'  // upath.normalizeSafe(fileName)
-								})
-								delete this._pendingQueue[remote];
-								masterData.updateData('file_edit_from_server', {
-									[upath.normalizeSafe(fileName)]: false
-								});
-								reject({
-									message: 'File edited by system dont let uploaded.',  // upath.normalizeSafe(fileName)
-									error: ""
-								});
-								return;
-							}
+				var action = entry.action;
+
+				switch (action) {
+					case 'add_change':
+						/* Check the size of file first */
+						let stats = statSync(upath.normalizeSafe(fileName));
+						let size_limit = this.config.size_limit;
+						if (size_limit == null) {
+							size_limit = 5;
 						}
-						// Uplad the file
-						this.client.upload(fileName, remote, (err: any) => {
+						size_limit = size_limit * 1000000;
+						if (stats.size > size_limit) {
+							// console.log('size_limit', size_limit);
+							// console.log('stats', stats);
+							this.onListener('WARNING', {
+								return: 'File size more than ' + this.config.size_limit + 'MB : ' + upath.normalizeSafe(fileName)
+							})
+						}
+						this.client.mkdir(upath.dirname(remote), { mode: this.config.pathMode }, err => {
+							deleteQueueFunc();
 							if (err) {
-								// console.log('this.client.upload -> ',err);
-								this.onListener('REJECTED', {
-									return: err.message
+								reject({
+									message: `Could not create ${upath.dirname(remote)}`,
+									error: err
 								});
-							}else{
-								/* This is use for prevent upload to remote. */
-            		/* Is use on watcher */
-								let fileUploadRecord = masterData.getData('FILE_UPLOAD_RECORD',{}) as any;
-								fileUploadRecord[fileName] = true;
-								masterData.saveData('FILE_UPLOAD_RECORD',fileUploadRecord);
-							}
-							let firstKey = Object.keys(this._pendingQueue)[entry.queue_no];
-							if (firstKey == null) {
-								firstKey = Object.keys(this._pendingQueue)[0];
-								if (firstKey == null) {
-									_closeIfPossible(this.client, upath.normalizeSafe(fileName));
-									resolve(remote);
-									return;
+							} else {
+								/* Dont let file edited by server upload to server again! */
+								let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
+								if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
+									if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
+										this.onListener('REJECTED', {
+											return: 'File edited by system dont let uploaded.'  // upath.normalizeSafe(fileName)
+										})
+										delete this._pendingQueue[remote];
+										masterData.updateData('file_edit_from_server', {
+											[upath.normalizeSafe(fileName)]: false
+										});
+										reject({
+											message: 'File edited by system dont let uploaded.',  // upath.normalizeSafe(fileName)
+											error: ""
+										});
+										next();
+										return;
+									}
 								}
+								// Uplad the file
+								this.client.upload(fileName, remote, (err: any) => {
+									if (err) {
+										this.onListener('REJECTED', {
+											return: err.message
+										});
+									} else {
+										/* This is use for prevent upload to remote. */
+										/* Is use on watcher */
+										let fileUploadRecord = masterData.getData('FILE_UPLOAD_RECORD', {}) as any;
+										fileUploadRecord[fileName] = true;
+										masterData.saveData('FILE_UPLOAD_RECORD', fileUploadRecord);
+									}
+									// console.log('remote - done ',remote)
+									resolve(remote);
+									next();
+								});
 							}
-							let oo = Object.assign({}, this._pendingQueue[firstKey]);
-							delete this._pendingQueue[firstKey];
-							if (firstKey != null && oo.path == null) {
-								// reject({
-								// 	message: `Could not upload ${remote}`,
-								// 	error: 'null'
-								// });
-							}
-							this._exeHandlePush(oo);
-							// console.log('remote - done ',remote)
-							resolve(remote);
 						});
-					}
-				});
+						break;
+					case 'delete_file':
+						this.client.sftp((err: any, sftp) => {
+							deleteQueueFunc();
+							if (err) {
+								reject(err.message);
+								next();
+							} else {
+								sftp.unlink(remote, (err: any) => {
+									if (err) {
+										reject(err.message);
+									} else {
+										resolve(remote);
+									}
+									next();
+								});
+							}
+						});
+						break;
+					case 'delete_folder':
+						this.client.exec("rm -R " + remote, (err: any) => {
+							deleteQueueFunc();
+							if (err) {
+								reject(err.message);
+							} else {
+								resolve(remote);
+							}
+							next();
+						});
+						break;
+				}
 			}, _debouncePendingOut);
 			this._pendingUpload[entry.path](entry);
 		}
@@ -257,7 +252,8 @@ export default class Uploader {
 					queue_no: this._index,
 					resolve: resolve,
 					reject: reject,
-					fileName: fileName
+					fileName: fileName,
+					action: 'add_change'
 				}, 100 * (this._index == 0 ? 1 : this._index + 1));
 			} else {
 				/* If get limit concurent put in to pending queue */
@@ -267,7 +263,88 @@ export default class Uploader {
 						queue_no: this._index,
 						resolve: resolve,
 						reject: reject,
-						fileName: fileName
+						fileName: fileName,
+						action: 'add_change'
+					};
+				}
+			}
+			this._index += 1;
+		});
+	}
+
+	unlinkFile(fileName: string, timeout?: number): Promise<string> {
+		return new Promise<string>((resolve, reject) => {
+			let remote = this.getRemotePath(fileName);
+
+			if (this._index == this._concurent) {
+				this._index = 0;
+			}
+
+			if (this._orders == null) {
+				this._orders = {};
+			}
+
+			if (Object.keys(this._orders).length < this._concurent) {
+				/* If concurent ready run it */
+				this._exeHandlePush({
+					path: remote,
+					queue_no: this._index,
+					resolve: resolve,
+					reject: reject,
+					fileName: fileName,
+					action: 'delete_file'
+				}, 100 * (this._index == 0 ? 1 : this._index + 1));
+
+			} else {
+
+				/* If get limit concurent put in to pending queue */
+				if (this._pendingQueue[remote] == null) {
+					this._pendingQueue[remote] = {
+						path: remote,
+						queue_no: this._index,
+						resolve: resolve,
+						reject: reject,
+						fileName: fileName,
+						action: 'delete_file'
+					};
+				}
+			}
+			this._index += 1;
+		});
+	}
+
+	unlinkFolder(folderPath: string, timeout?: number, parsResolve?: Function): Promise<string> {
+		return new Promise<string>((resolve, reject) => {
+			let remote = this.getRemotePath(folderPath);
+
+			if (this._index == this._concurent) {
+				this._index = 0;
+			}
+
+			if (this._orders == null) {
+				this._orders = {};
+			}
+
+			if (Object.keys(this._orders).length < this._concurent) {
+				/* If concurent ready run it */
+				this._exeHandlePush({
+					path: remote,
+					queue_no: this._index,
+					resolve: resolve,
+					reject: reject,
+					fileName: folderPath,
+					action: 'delete_folder'
+				}, 100 * (this._index == 0 ? 1 : this._index + 1));
+			} else {
+				/* If get limit concurent put in to pending queue */
+				if (this._pendingQueue[remote] == null) {
+					this._pendingQueue[remote] = {
+						path: remote,
+						queue_no: this._index,
+						resolve: resolve,
+						reject: reject,
+						fileName: folderPath,
+						action: 'delete_folder'
 					};
 				}
 			}

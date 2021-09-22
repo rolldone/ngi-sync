@@ -142,7 +142,7 @@ var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileO
 }
 
 export default function (config) {
-	let self = this;
+	let self = {};
 	self._config = config;
 	self._deleteRemainingRecord = deletedRemainingRecord();
 	var event = new EventEmitter();
