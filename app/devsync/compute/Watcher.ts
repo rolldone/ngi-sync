@@ -13,6 +13,7 @@ import { debounce, DebouncedFunc } from "lodash";
 declare let masterData: MasterDataInterface;
 const workerpool = require('workerpool');
 const pool = workerpool.pool(__dirname + '/TestCache.js');
+import fs, { removeSync } from 'fs-extra';
 
 const WATCHER_ACTION = {
 	DELETE_FOLDER: 1
@@ -230,27 +231,27 @@ export default class Watcher {
 					this.getRemoveSelfTask['all']();
 					break;
 				case 'add':
-					if (this.tasks['add'] != null) {
-						this.tasks['add'].done(path.replace(this.config.localPath, "") + "");
-						this.getRemoveSelfTask['add']();
-						return;
-					}
-					this.getRemoveSelfTask['add'] = this.removeSelfTask('add');
+					// if (this.tasks['add'] != null) {
+					// 	this.tasks['add'].done(path.replace(this.config.localPath, "") + "");
+					// 	this.getRemoveSelfTask['add']();
+					// 	return;
+					// }
+					// this.getRemoveSelfTask['add'] = this.removeSelfTask('add');
 					this.tasks['add'] = observatory.add(message);
 					this.tasks['add'].done(path.replace(this.config.localPath, "") + "");
-					this.getRemoveSelfTask['add']();
+					// this.getRemoveSelfTask['add']();
 
 					break;
 				case 'change':
-					if (this.tasks['change'] != null) {
-						this.tasks['change'].done(path.replace(this.config.localPath, "") + "");
-						this.getRemoveSelfTask['change']();
-						return;
-					}
-					this.getRemoveSelfTask['change'] = this.removeSelfTask('change');
+					// if (this.tasks['change'] != null) {
+					// 	this.tasks['change'].done(path.replace(this.config.localPath, "") + "");
+					// 	this.getRemoveSelfTask['change']();
+					// 	return;
+					// }
+					// this.getRemoveSelfTask['change'] = this.removeSelfTask('change');
 					this.tasks['change'] = observatory.add(message);
 					this.tasks['change'].done(path.replace(this.config.localPath, "") + "");
-					this.getRemoveSelfTask['change']();
+					// this.getRemoveSelfTask['change']();
 					break;
 			}
 		});
@@ -322,12 +323,13 @@ export default class Watcher {
 			let relativePathFile = this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath));
 			let destinationFile = upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder + '/' + relativePathFile);
 			if (action == WATCHER_ACTION.DELETE_FOLDER) {
-				return rmdir(destinationFile, (err) => { });
+				return removeSync(destinationFile);
 			}
-			unlink(destinationFile, (err) => { });
+			unlinkSync(destinationFile);
 		} catch (ex) {
+			this.tasks['Delete Cache Err'] = observatory.add("Delete Cache ERR :: ");
+			this.tasks['Delete Cache Err'].fail(ex.message);
 			return false;
-			// console.log('getCacheFile ',ex)
 		}
 	}
 
@@ -409,15 +411,13 @@ export default class Watcher {
 							} = self;
 							// If not, continue as ususal
 							tt[method](...args);
+							self._getPendingTerminate();
 						}.bind(null, this, args))
 						.catch((err: any) => {
 							console.error(err);
 							this._getPendingTerminate();
 						})
-						.then(() => {
-							// terminate all workers when done
-							this._getPendingTerminate();
-						});
+
 					return;
 			}
 		}
@@ -535,14 +535,8 @@ export default class Watcher {
 		}
 		this.uploader.unlinkFile(path, this._getTimeoutSftp(50)).then(remote => {
 			this.deleteCacheFile(path);
-			if (this.tasks['unlink'] != null) {
-				this.tasks['unlink'].done(upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
-				this.getRemoveSelfTask['unlink']();
-				return;
-			}
-			this.getRemoveSelfTask['unlink'] = this.removeSelfTask('unlink');
 			this.tasks['unlink'] = observatory.add("UNLINK :: DONE ");
-			this.tasks['unlink'].done(upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
+			this.tasks['unlink'].done(remote);
 		}).catch((err) => {
 			/* If first filter getting lost */
 			/* Trap again on this place */
@@ -564,16 +558,10 @@ export default class Watcher {
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
 			return;
 		}
-		this.uploader.unlinkFolder(path, this._getTimeoutSftp(10)).then(remote => {
+		this.uploader.unlinkFolder(path, this._getTimeoutSftp(100)).then(remote => {
 			this.deleteCacheFile(path, WATCHER_ACTION.DELETE_FOLDER);
-			if (this.tasks['unlinkDir'] != null) {
-				this.tasks['unlinkDir'].done(upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
-				this.getRemoveSelfTask['unlinkDir']();
-				return;
-			}
-			this.getRemoveSelfTask['unlinkDir'] = this.removeSelfTask('unlinkDir');
 			this.tasks['unlinkDir'] = observatory.add("UNLINKDIR :: DONE ");
-			this.tasks['unlinkDir'].done(upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
+			this.tasks['unlinkDir'].done(remote);
 		}).catch((err) => {
 			this.deleteCacheFile(path, WATCHER_ACTION.DELETE_FOLDER);
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
