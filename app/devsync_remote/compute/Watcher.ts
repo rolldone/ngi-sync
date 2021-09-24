@@ -56,18 +56,34 @@ const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 			let key = upath.normalizeSafe(downloads[a]);
 			newDownloads[key] = [];
 		}
+
 		
-		for (var key in complateExtraWatchs) {
-			for (var key2 in newDownloads) {
-				if (key2.includes(key)) {
-					delete newDownloads[key2];
-					break;
+		if(Object.keys(newDownloads).length > 0){
+			for (var key in complateExtraWatchs) {
+				/* Set condition if extra watch include on download */
+				let isFoundOnDownload = false;
+				for (var key2 in newDownloads) {
+					if (key2.includes(key)) {
+						isFoundOnDownload = true;
+						delete newDownloads[key2];
+						break;
+					}
+					if (key.includes(key2)) {
+						isFoundOnDownload = true;
+						delete newDownloads[key2];
+						break;
+					}
 				}
-				if (key.includes(key2)) {
-					delete newDownloads[key2];
-					break;
+				/* If get false delete extra watch because */
+				/* not include on download */
+				if(isFoundOnDownload == false){
+					delete complateExtraWatchs[key];
 				}
 			}
+		}else{
+			/* If there is no extrawatch include on download */
+			/* Reset it! */
+			complateExtraWatchs = {};
 		}
 
 		let theFinalExtraWatchs = Object.assign(newDownloads, complateExtraWatchs);
