@@ -296,7 +296,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     this._httpEvent.setOnChangeListener(async (action, props) => {
       await this._download.startSftp();
       _pendingTimeoutStopDownload();
-      // console.log('action', action, props);
+      /* console.log('action', action, props); */
       switch (action) {
         case 'CLIENT_REQUEST':
           this._task['CLIENT_REQUEST'] = observatory.add("Remote success trying request");// observatory.add(this.eventToWord[event]);
