@@ -213,7 +213,6 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
 
   },
   _handleDelete: function (entry) {
-    // console.log('aaaaaaaaaaa',entry);
     this._orderDeletes[entry.queue_no] = entry;
     if (this._pendingUpload[entry.path] != null) {
       return;
@@ -416,7 +415,6 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
       // for(var a=0;a<gitIgnores.length;a++){
       //   if(gitIgnores[a][0] == '!'){
       //     let thePath = this._replaceAt(gitIgnores[a],'!','',0,1);
-      //     console.log('uaaaaaaaaaaaaaa',upath.normalizeSafe(_local_path+'/'+thePath));
       //     // this._files[thePath] = {
       //     //   path : thePath,
       //     //   fullPath : upath.normalizeSafe(_local_path+'/'+thePath),
