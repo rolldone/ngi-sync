@@ -47,6 +47,8 @@ const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 			let newkey = upath.normalizeSafe(config.remotePath + '/' + key);
 			complateExtraWatchs[newkey] = extra_watchs[key];
 		}
+		console.log('extraWatch from sync_ignore :: ');
+		console.log(complateExtraWatchs);
 		let newDownloads: {
 			[key: string]: Array<string>
 		} = {};
@@ -77,7 +79,7 @@ const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 			}
 		}
 
-		console.log('theFinalExtraWatch :: ');
+		console.log('theFinalExtraWatch merge download :: ');
 		console.log(theFinalExtraWatchs);
 
 		/* Extra watch, Get filtered out on sync_ignore */
