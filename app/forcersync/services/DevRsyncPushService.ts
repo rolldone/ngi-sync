@@ -46,6 +46,9 @@ const DevRsyncPushService = BaseService.extend<DevRsyncPushServiceInterface>({
     this._syncPush.setOnListener((props: any) => {
       if (callback != null) {
         callback(props.return.e == 1 ? true : false);
+        if(props.return.e == 1){
+          this._syncPush = null;
+        }
       }
     });
     this._syncPush.submitPush();

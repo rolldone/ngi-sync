@@ -46,6 +46,9 @@ const DevRsyncPullService = DevRsyncPushService.extend<DevRsyncPullServiceInterf
     this._syncPull.setOnListener((props: any) => {
       if (callback != null) {
         callback(props.return.e == 1 ? true : false);
+        if(props.return.e == 1){
+          this._syncPull = null;
+        }
       }
     });
     this._syncPull.submitPush();
