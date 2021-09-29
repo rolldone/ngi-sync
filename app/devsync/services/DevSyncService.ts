@@ -82,6 +82,18 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           COMMAND_TARGET.FORCE_PUSH_SYNC,
           COMMAND_TARGET.FORCE_SINGLE_SYNC
         ]
+      },
+      {
+        type: "confirm",
+        name: "default_devsync",
+        message: "Are you want to pull data from remote target first?",
+        default: false,
+        when: (answers: any) => {
+          if (answers.target == COMMAND_TARGET.SAFE_SYNC) {
+            return true;
+          }
+          return false;
+        }
       }
     ];
     this._promptAction(questions);
@@ -147,7 +159,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       case COMMAND_SHORT.FORCE_SINGLE_SYNC:
         masterData.saveData('command.forcersync.single_sync', {
           action: 'single_sync_nested_prompt',
-          from : 'command.devsync.index'
+          from: 'command.devsync.index'
         });
         break;
       default:
@@ -197,6 +209,10 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       } else if (passAnswer.target == COMMAND_TARGET.FORCE_SINGLE_SYNC) {
         this._executeCommand(COMMAND_SHORT.FORCE_SINGLE_SYNC);
       } else {
+        if (passAnswer.default_devsync == false) {
+          this._devSyncSafeSyncronise();
+          return;
+        }
         this._executeCommand(null);
       }
     });

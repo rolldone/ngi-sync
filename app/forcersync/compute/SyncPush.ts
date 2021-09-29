@@ -40,6 +40,19 @@ export interface SyncPushInterface extends BaseModelInterface {
   _clossStackValidation?: { (): { (path: string, passBasePath: string): boolean } }
   iniPtyProcess?: { (shell: string, props?: Array<string>): IPty }
   initReadLine?: { (): ReadLine }
+  _convertPathStringToTreePath?: { (pathString: Array<string>): Array<string> }
+  _recursiveRsync?: {
+    (extraWatchs: Array<{
+      path: string
+      ignores: Array<string>
+    }>, index?: number): void
+  }
+  _generatePathMap?: {
+    (): Array<{
+      path: string
+      ignores: Array<string>
+    }>
+  }
 }
 
 export interface RsyncOptions {
@@ -57,6 +70,7 @@ export interface RsyncOptions {
   path_mode?: string
   mode?: string
   single_sync: Array<string>
+  downloads: Array<string>
 }
 
 /** 
@@ -78,7 +92,26 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
   setOnListener: function (func) {
     this._onListener = func;
   },
+  _convertPathStringToTreePath: function (pathString) {
+    let arrayTreePathString: Array<any> = [];
+    for (var a = 0; a < pathString.length; a++) {
+      let passItem = pathString[a];
+      let passArray: Array<string> = passItem.split('/');
+      passArray = passArray.filter(n => n != "");
+      for (var b = 1; b < passArray.length; b++) {
+        let pathPiece: Array<string> = [];
+        for (var c = 0; c <= b; c++) {
+          pathPiece.push(passArray[c]);
+        }
+        arrayTreePathString.push(pathPiece);
+      }
+    }
 
+    for (var a = 0; a < arrayTreePathString.length; a++) {
+      arrayTreePathString[a] = arrayTreePathString[a].join("/");
+    }
+    return arrayTreePathString;
+  },
   initReadLine: function () {
     let _i = rl.createInterface({
       input: process.stdin,
@@ -313,6 +346,107 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       ]
     }
   },
+  _generatePathMap: function () {
+    let _filterPatternRules = this._filterPatternRule();
+    let extraWatch: Array<{
+      path: string
+      ignores: Array<string>
+    }> = [];
+
+    extraWatch.push({
+      path: "/",
+      ignores: _filterPatternRules.ignores
+    });
+
+    for (var a = 0; a < _filterPatternRules.pass.length; a++) {
+      let newIgnores = [];
+      for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
+        if (_filterPatternRules.ignores[b].includes(_filterPatternRules.pass[a])) {
+          newIgnores.push(_filterPatternRules.ignores[b]);
+        }
+      }
+      extraWatch.push({
+        path: _filterPatternRules.pass[a],
+        ignores: newIgnores
+      });
+    }
+    return extraWatch;
+  },
+  _recursiveRsync: function (extraWatchs, index = 0) {
+    try {
+      let config = this._config;
+      let _local_path = config.local_path;
+
+      if (extraWatchs[index] != null) {
+        _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + extraWatchs[index].path));
+        let _remote_path = upath.normalizeSafe(config.base_path + '/' + extraWatchs[index].path);
+        console.log('Rsync Upload :: ');
+        console.log(upath.normalizeSafe('./' + _local_path + '/'), ' >> ', _remote_path);
+
+        // if (extraWatchs[index + 1] != null) {
+        //   this._recursiveRsync(extraWatchs, index + 1);
+        // } else {
+        //   this._onListener({
+        //     action: "exit",
+        //     return: {}
+        //   })
+        // }
+        // return;
+        var rsync = Rsync.build({
+          /* Support multiple source too */
+          source: upath.normalizeSafe('./' + _local_path + '/'),
+          // source : upath.normalize(_local_path+'/'),
+          destination: config.username + '@' + config.host + ':' + _remote_path + '/',
+          /* Include First */
+          include: [],
+          /* Exclude after include */
+          exclude: extraWatchs[index].ignores,
+          // flags : '-vt',
+          flags: '-avzL',
+          shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
+        });
+
+        console.log('rsync command -> ', rsync.command());
+
+        var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+        var ptyProcess = this.iniPtyProcess(shell, []);
+        ptyProcess.write(rsync.command() + '\r');
+        ptyProcess.on('exit', (exitCode: any, signal: any) => {
+          if (extraWatchs[index + 1] != null) {
+            this._recursiveRsync(extraWatchs, index + 1);
+          } else {
+            this._onListener({
+              action: "exit",
+              return: {
+                exitCode, signal
+              }
+            })
+          }
+        });
+        // ptyProcess.write('pwd\n')
+        var _readLine = this.initReadLine();
+        var theCallback = (key: any, data: any) => {
+          // console.log(data);
+          if (data.sequence == "\u0003") {
+            ptyProcess.write('\u0003');
+            _readLine = this.initReadLine();
+            process.stdin.off('keypress', theCallback);
+            recursive();
+            return;
+          }
+          ptyProcess.write(data.sequence);
+        }
+
+        var recursive = () => {
+          process.stdin.on('keypress', theCallback);
+        }
+
+        recursive();
+      }
+    } catch (ex) {
+      console.log('_recursiveRsync - ex ', ex);
+    }
+  },
   submitPush: async function () {
     try {
       /* Loading the password */
@@ -321,6 +455,14 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       // console.log('_listningTemplate',_listningTemplate);
       // return;
       let _filterPatternRules = this._filterPatternRule();
+
+      let extraWatch: Array<{
+        path: string
+        ignores: Array<string>
+      }> = this._generatePathMap();
+
+      this._recursiveRsync(extraWatch, 0);
+      return;
       // console.log('_filterPatternRules',_filterPatternRules);
       let config = this._config;
       let _local_path = config.local_path;
@@ -359,6 +501,8 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       //   // await _checkCommand();
       // }
       // console.log('_listningTemplate',_listningTemplate);
+      console.log('this.convertPathStringToTreePath(_filterPatternRules.pass)');
+      console.log(this._convertPathStringToTreePath(_filterPatternRules.pass));
       var rsync = Rsync.build({
         /* Support multiple source too */
         source: upath.normalizeSafe('./' + _local_path + '/'),
@@ -379,6 +523,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       var ptyProcess = this.iniPtyProcess(shell, []);
       ptyProcess.write(rsync.command() + '\r');
       ptyProcess.on('exit', (exitCode: any, signal: any) => {
+        process.exit(1);
         this._onListener({
           action: "exit",
           return: {

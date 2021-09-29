@@ -40,7 +40,8 @@ const DevRsyncPushService = BaseService.extend<DevRsyncPushServiceInterface>({
       path_mode: currentConf.pathMode,
       jumps: currentConf.jumps,
       single_sync : currentConf.single_sync || [],
-      mode: props.mode || 'hard'
+      mode: props.mode || 'hard',
+      downloads: currentConf.downloads
     });
     this._syncPush.setOnListener((props: any) => {
       if (callback != null) {
