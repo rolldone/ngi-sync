@@ -78,7 +78,7 @@ export default class Watcher {
 		originIgnore.push(this.tempFolder);
 		let gitIgnore = Object.assign([], originIgnore);
 		let _ignore = ignore().add(gitIgnore);
-		let defaultIgnores: Array<string | RegExp> = ['sync-config.yaml', '.sync_ignore'];
+		let defaultIgnores: Array<string | RegExp> = ['sync-config.yaml', '.sync_ignore','.sync_collections'];
 		let onlyPathStringIgnores: Array<string> = [];
 		let onlyFileStringIgnores: Array<string> = [];
 		let onlyRegexIgnores: Array<RegExp> = [];
@@ -326,7 +326,7 @@ export default class Watcher {
 				return removeSync(destinationFile);
 			}
 			unlinkSync(destinationFile);
-		} catch (ex) {
+		} catch (ex : any) {
 			this.tasks['Delete Cache Err'] = observatory.add("Delete Cache ERR :: ");
 			this.tasks['Delete Cache Err'].fail(ex.message);
 			return false;
