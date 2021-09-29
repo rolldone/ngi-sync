@@ -411,7 +411,29 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
         var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
         var ptyProcess = this.iniPtyProcess(shell, []);
         ptyProcess.write(rsync.command() + '\r');
+        
+        // ptyProcess.write('pwd\n')
+        // var _readLine = this.initReadLine();
+        // var theCallback = (key: any, data: any) => {
+        //   // console.log(data);
+        //   if (data.sequence == "\u0003") {
+        //     ptyProcess.write('\u0003');
+        //     _readLine = this.initReadLine();
+        //     process.stdin.off('keypress', theCallback);
+        //     recursive();
+        //     return;
+        //   }
+        //   ptyProcess.write(data.sequence);
+        // }
+
+        // var recursive = () => {
+        //   process.stdin.on('keypress', theCallback);
+        // }
+
         ptyProcess.on('exit', (exitCode: any, signal: any) => {
+          // process.stdin.off('keypress', theCallback);
+          ptyProcess.kill();
+          ptyProcess = null;
           if (extraWatchs[index + 1] != null) {
             this._recursiveRsync(extraWatchs, index + 1);
           } else {
@@ -421,27 +443,11 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
                 exitCode, signal
               }
             })
+            
           }
         });
-        // ptyProcess.write('pwd\n')
-        var _readLine = this.initReadLine();
-        var theCallback = (key: any, data: any) => {
-          // console.log(data);
-          if (data.sequence == "\u0003") {
-            ptyProcess.write('\u0003');
-            _readLine = this.initReadLine();
-            process.stdin.off('keypress', theCallback);
-            recursive();
-            return;
-          }
-          ptyProcess.write(data.sequence);
-        }
 
-        var recursive = () => {
-          process.stdin.on('keypress', theCallback);
-        }
-
-        recursive();
+        // recursive();
       }
     } catch (ex) {
       console.log('_recursiveRsync - ex ', ex);
