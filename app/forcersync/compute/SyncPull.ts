@@ -53,7 +53,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
           /* Exclude after include */
           exclude: extraWatchs[index].ignores,
           // flags : '-vt',
-          flags: 'avzL',
+          flags: '-avzL',
           set: '--size-only --checksum',
           // set : '--no-perms --no-owner --no-group',
           // set : '--chmod=D777,F777',
