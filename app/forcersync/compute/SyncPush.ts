@@ -365,6 +365,12 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           newIgnores.push(_filterPatternRules.ignores[b]);
         }
       }
+      /* Include double star pattern rule too */
+      for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
+        if (_filterPatternRules.ignores[b].includes("**")) {
+          newIgnores.push(_filterPatternRules.ignores[b]);
+        }
+      }
       extraWatch.push({
         path: _filterPatternRules.pass[a],
         ignores: newIgnores
