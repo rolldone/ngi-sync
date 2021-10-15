@@ -407,6 +407,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           include: [],
           /* Exclude after include */
           exclude: extraWatchs[index].ignores,
+          set : "--no-perms --no-owner --no-group",
           // flags : '-vt',
           flags: '-avzL',
           shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
