@@ -235,7 +235,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       password: currentConf.password,
       privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
       paths: (() => {
-        let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;
+        let arrayString: Array<string> = currentConf.devsync.downloads == null ? [] : currentConf.devsync.downloads;
         for (var a = 0; a < arrayString.length; a++) {
           arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
           /**
@@ -252,7 +252,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       base_path: currentConf.remotePath,
       local_path: currentConf.localPath,
       jumps: currentConf.jumps,
-      trigger_permission: currentConf.trigger_permission
+      trigger_permission: currentConf.devsync.trigger_permission
     });
 
     let historyStatus: {
