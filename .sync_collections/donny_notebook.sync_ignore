@@ -3,3 +3,6 @@ sync-config.yaml
 .git
 node_modules
 dist/*
+!dist/test/
+dist_2/*
+!dist_2/app.d.ts
