@@ -131,7 +131,8 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
         path_mode: currentConf.pathMode,
         jumps: currentConf.jumps,
         single_sync: currentConf.single_sync || [],
-        mode: props.mode || 'hard'
+        mode: props.mode || 'hard',
+        downloads: currentConf.downloads
       });
       _singleSync.setOnListener((props: any) => {
         if (props.action == "exit") {
