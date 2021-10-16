@@ -40,11 +40,15 @@ const DevRsyncPullService = DevRsyncPushService.extend<DevRsyncPullServiceInterf
       path_mode: currentConf.pathMode,
       jumps: currentConf.jumps,
       single_sync: currentConf.single_sync || [],
-      mode: props.mode || 'hard'
+      mode: props.mode || 'hard',
+      downloads: currentConf.downloads
     });
     this._syncPull.setOnListener((props: any) => {
       if (callback != null) {
         callback(props.return.e == 1 ? true : false);
+        if(props.return.e == 1){
+          this._syncPull = null;
+        }
       }
     });
     this._syncPull.submitPush();
