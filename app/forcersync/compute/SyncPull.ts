@@ -2,8 +2,9 @@ import SyncPush, { SyncPushInterface } from "./SyncPush";
 import Rsync from "@root/tool/rsync";
 import * as upath from "upath";
 import * as child_process from 'child_process';
-import path from "path";
+import path, { dirname } from "path";
 import os from 'os';
+const chalk = require('chalk');
 
 export interface SynPullInterface extends SyncPushInterface { }
 
@@ -24,17 +25,27 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
   _filterPatternRule: function () {
     return this._super();
   },
-  _recursiveRsync: function (extraWatchs, index = 0) {
+  _recursiveRsync: function (extraWatchs, index = 0, isFile = false) {
     try {
       let config = this._config;
       let _local_path = config.local_path;
-
+      let _is_file = false;
       if (extraWatchs[index] != null) {
         // Convert absolute path to relative
-        _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + extraWatchs[index].path));
-        let _remote_path = upath.normalizeSafe(config.base_path+'/'+extraWatchs[index].path);
-        console.log('Rsync Download :: ');
-        console.log(upath.normalizeSafe('./' + _local_path + '/'), ' << ',_remote_path);
+        let _remote_path = upath.normalizeSafe(config.base_path + '/' + extraWatchs[index].path);
+        if (isFile == true) {
+          /* Remove file path to be dirname only */
+          _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + dirname(extraWatchs[index].path)));
+          if (_local_path == "") {
+            _local_path = "./";
+          }
+        } else {
+          _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + extraWatchs[index].path));
+          _local_path = _local_path + '/';
+          _remote_path = _remote_path + '/';
+        }
+
+        console.log(chalk.green('Rsync Download | '), _local_path, ' << ', _remote_path);
         // if (extraWatchs[index + 1] != null) {
         //   this._recursiveRsync(extraWatchs, index + 1);
         // } else {
@@ -45,9 +56,9 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         // }
         var rsync = Rsync.build({
           /* Support multiple source too */
-          source: config.username + '@' + config.host + ':' + _remote_path + '/',
+          source: config.username + '@' + config.host + ':' + _remote_path,
           // source : upath.normalize(_local_path+'/'),
-          destination: upath.normalizeSafe('./' + _local_path + '/'),
+          destination: upath.normalizeSafe('./' + _local_path),
           /* Include First */
           include: [],
           /* Exclude after include */
@@ -62,12 +73,21 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         });
 
 
-        console.log('rsync command -> ', rsync.command());
+        console.log(chalk.green("Rsync Download | "), 'rsync command -> ', rsync.command());
 
         var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
         var ptyProcess = this.iniPtyProcess(shell, []);
         ptyProcess.write(rsync.command() + '\r');
-       
+        let firstString = null;
+        ptyProcess.on('data', (data: any) => {
+          let _text = this._stripAnsi(data.toString());
+          if (_text != "") {
+            console.log(chalk.green("Rsync Download | "), _text);
+          }
+          if (data.includes('failed: Not a directory')) {
+            _is_file = true;
+          }
+        });
 
         // ptyProcess.write('pwd\n')
         // var _readLine = this.initReadLine();
@@ -88,7 +108,11 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
           ptyProcess.kill();
           ptyProcess = null;
           if (extraWatchs[index + 1] != null) {
-            this._recursiveRsync(extraWatchs, index + 1);
+            if (_is_file == true) {
+              this._recursiveRsync(extraWatchs, index, _is_file);
+            } else {
+              this._recursiveRsync(extraWatchs, index + 1);
+            }
           } else {
             this._onListener({
               action: "exit",
@@ -120,7 +144,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         path: string
         ignores: Array<string>
       }> = this._generatePathMap();
-      
+
       this._recursiveRsync(extraWatch, 0);
       return;
 
