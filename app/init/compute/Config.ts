@@ -36,8 +36,8 @@ export interface ConfigInterface extends BaseModelInterface {
   localPath?: string;
   remotePath?: string;
   privateKey?: string;
-  ignores?: Array<string | RegExp>;
-  downloads?: Array<string>
+  // ignores?: Array<string | RegExp>;
+  // downloads?: Array<string>
   pathMode?: string
   cli?: CliInterface
   _loadConfig?: { (): void }
@@ -45,11 +45,28 @@ export interface ConfigInterface extends BaseModelInterface {
   backup?: object
   safe_mode?: Boolean | null
   direct_access?: Array<any>
-  single_sync?: Array<string>
-  trigger_permission?: trigger_permission
+  // single_sync?: Array<string>
+  // trigger_permission?: trigger_permission
   size_limit?: number
   saved_file_name?: string
   _hasPassphrase?: { (ssh_path: string): Promise<boolean> }
+  devsync?: {
+    ignores: Array<string | RegExp>
+    downloads: Array<string>
+    single_sync: Array<string>
+    script: {
+      local: {
+        on_start?: string
+        on_ready?: string
+        on_stop?: string
+      }
+      remote: {
+        on_ready?: string
+        on_stop?: string
+      }
+    }
+    trigger_permission: trigger_permission
+  }
 }
 
 declare var masterData: MasterDataInterface;
@@ -223,7 +240,7 @@ const Config = BaseModel.extend<ConfigInterface>({
         [key: string]: any
       } = this;
       ["reset_cache", "saved_file_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
-        "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission"].forEach(prop => {
+        "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission", "devsync"].forEach(prop => {
           if (prop == 'localPath') {
             if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
               self[prop] = upath.normalizeSafe(path.resolve(self._config[prop] || self[prop]));

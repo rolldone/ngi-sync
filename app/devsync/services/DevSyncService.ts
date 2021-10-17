@@ -12,6 +12,7 @@ import path = require("path");
 const notifier = require('node-notifier');
 import * as child_process from 'child_process';
 import rl, { ReadLine } from 'readline';
+import { executeLocalCommand, stripAnsi } from "@root/tool/Helpers";
 const chalk = require('chalk');
 const observatory = require("observatory");
 
@@ -224,7 +225,11 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       case 'local':
         return masterData.saveData('command.devsync_local.index', {});
     }
-
+    if (this._currentConf.devsync.script.local.on_start != "" && this._currentConf.devsync.script.local.on_start != null) {
+      executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_start, (data) => {
+        console.log(chalk.green('Local | '), stripAnsi(data));
+      });
+    }
     await currentConf.ready();
     this._task = {};
     let syncPull = this.returnSyncPull(this._cli, {
@@ -235,7 +240,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       password: currentConf.password,
       privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
       paths: (() => {
-        let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;
+        let arrayString: Array<string> = currentConf.devsync.downloads == null ? [] : currentConf.devsync.downloads;
         for (var a = 0; a < arrayString.length; a++) {
           arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
           /**
@@ -252,7 +257,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       base_path: currentConf.remotePath,
       local_path: currentConf.localPath,
       jumps: currentConf.jumps,
-      trigger_permission: currentConf.trigger_permission
+      trigger_permission: currentConf.devsync.trigger_permission
     });
 
     let historyStatus: {
@@ -383,33 +388,56 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           _startWatchingWithTimeOut();
           return;
         case '\x03':
+          console.log(chalk.green('Remote | '), 'Stop the devsync..');
+          if (this._currentConf.devsync.script.local.on_stop != "" && this._currentConf.devsync.script.local.on_stop != null) {
+            executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_stop, (data) => {
+              console.log(chalk.green('Local | '), stripAnsi(data));
+            });
+          }
+          if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+              process.exit();
+            });
+          }
           process.exit();
           return;
         case '\x12':
-          _startWatchingWithTimeOut(true);
-          syncPull.stopSubmitWatch();
-          syncPull = null;
-          /* Close readline */
-          this._readLine.close();
-          this._readLine = null;
+          let stop = async () => {
+            _startWatchingWithTimeOut(true);
+            syncPull.stopSubmitWatch();
+            syncPull = null;
+            /* Close readline */
+            this._readLine.close();
+            this._readLine = null;
 
-          /* Restart the syncronize */
-          this.uploader.onListener('RESTART', {});
-          // this.uploader.client.close();
-          this.uploader = null;
+            /* Restart the syncronize */
+            this.uploader.onListener('RESTART', {});
+            // this.uploader.client.close();
+            this.uploader = null;
 
-          await this.watcher.close();
-          this.watcher = null;
+            await this.watcher.close();
+            this.watcher = null;
 
-          // this._currentConf = null;
+            // this._currentConf = null;
 
-          process.stdin.off('keypress', remoteFuncKeypress);
-          this.task.done();
+            process.stdin.off('keypress', remoteFuncKeypress);
+            this.task.done();
 
-          console.clear();
+            console.clear();
+          }
 
           this.construct(this._cli);
-
+          if (this._currentConf.devsync.script.local.on_stop != "" && this._currentConf.devsync.script.local.on_stop != null) {
+            executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_stop, (data) => {
+              console.log(chalk.green('Local | '), stripAnsi(data));
+            });
+          }
+          if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+              stop();
+            });
+          }
+          await stop();
           break;
       }
     }
@@ -448,6 +476,17 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         // console.log('2x');
         this.task.done(res).details(this._currentConf.host);
         this._cli.workspace();
+        if (this._currentConf.devsync.script.local.on_start != "" && this._currentConf.devsync.script.local.on_start != null) {
+          executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_start, (data) => {
+            console.log(chalk.green('Local | '), stripAnsi(data));
+          });
+        }
+        if (this._currentConf.devsync.script.remote.on_ready != "" && this._currentConf.devsync.script.remote.on_ready != null) {
+          return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, () => {
+            console.log(chalk.green('Remote | '), 'Ready to use :)')
+          });
+        }
+        console.log(chalk.green('Remote | '), 'Ready to use :)')
       });
     }
     reCallCurrentCOnf();
