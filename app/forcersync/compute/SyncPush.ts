@@ -11,7 +11,7 @@ const micromatch = require('micromatch');
 import { readdirSync, readFileSync, statSync } from "fs";
 import path, { dirname } from "path";
 const isCygwin = require('is-cygwin');
-import ansiRegex from 'ansi-regex';
+import { stripAnsi } from '@root/tool/Helpers';
 
 import { IPty } from 'node-pty';
 var os = require('os');
@@ -83,11 +83,7 @@ export interface RsyncOptions {
  */
 const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
   _stripAnsi: (string) => {
-    if (typeof string !== 'string') {
-      throw new TypeError(`Expected a \`string\`, got \`${typeof string}\``);
-    }
-
-    return string.replace(ansiRegex(), '');
+    return stripAnsi(string);
   },
   returnConfig: function (cli) {
     return Config.create(cli);

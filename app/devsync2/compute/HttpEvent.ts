@@ -58,11 +58,11 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
       let onlyPathStringIgnores: Array<string> = [];
       let onlyFileStringIgnores: Array<string> = [];
       let onlyRegexIgnores: Array<RegExp> = [];
-      for (var a = 0; a < this._config.ignores.length; a++) {
-        if (this._config.ignores[a] instanceof RegExp) {
-          onlyRegexIgnores.push(this._config.ignores[a] as RegExp);
+      for (var a = 0; a < this._config.devsync.ignores.length; a++) {
+        if (this._config.devsync.ignores[a] instanceof RegExp) {
+          onlyRegexIgnores.push(this._config.devsync.ignores[a] as RegExp);
         } else {
-          onlyPathStringIgnores.push(this._config.ignores[a] as string);
+          onlyPathStringIgnores.push(this._config.devsync.ignores[a] as string);
         }
       }
 

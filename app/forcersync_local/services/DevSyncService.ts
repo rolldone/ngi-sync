@@ -36,7 +36,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       let syncPull = this.returnSyncPull(this._cli, {
         paths: (() => {
           let arrayString: Array<string> = [
-            ...(currentConf.downloads == null ? [] : currentConf.downloads)
+            ...(currentConf.devsync.downloads == null ? [] : currentConf.devsync.downloads)
           ]
           for (var a = 0; a < arrayString.length; a++) {
             arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
@@ -53,7 +53,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         })(),
         base_path: currentConf.remotePath,
         local_path: currentConf.localPath,
-        trigger_permission : currentConf.trigger_permission
+        trigger_permission : currentConf.devsync.trigger_permission
       });
       
       syncPull.setOnListener((res: any) => {
@@ -76,7 +76,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         paths : [],
         ignores: (() => {
           let arrayString: Array<string> = [
-            ...(currentConf.downloads == null ? [] : currentConf.downloads)
+            ...(currentConf.devsync.downloads == null ? [] : currentConf.devsync.downloads)
           ]
           for (var a = 0; a < arrayString.length; a++) {
             arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
@@ -93,7 +93,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         })(),
         base_path: currentConf.remotePath,
         local_path: currentConf.localPath,
-        trigger_permission : currentConf.trigger_permission
+        trigger_permission : currentConf.devsync.trigger_permission
       })
 
       syncPush.setOnListener((res: any) => {

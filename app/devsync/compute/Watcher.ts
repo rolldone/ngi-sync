@@ -82,11 +82,11 @@ export default class Watcher {
 		let onlyPathStringIgnores: Array<string> = [];
 		let onlyFileStringIgnores: Array<string> = [];
 		let onlyRegexIgnores: Array<RegExp> = [];
-		for (var a = 0; a < this.config.ignores.length; a++) {
-			if (this.config.ignores[a] instanceof RegExp) {
-				onlyRegexIgnores.push(this.config.ignores[a] as RegExp);
+		for (var a = 0; a < this.config.devsync.ignores.length; a++) {
+			if (this.config.devsync.ignores[a] instanceof RegExp) {
+				onlyRegexIgnores.push(this.config.devsync.ignores[a] as RegExp);
 			} else {
-				onlyPathStringIgnores.push(this.config.ignores[a] as string);
+				onlyPathStringIgnores.push(this.config.devsync.ignores[a] as string);
 			}
 		}
 		let tt = ((pass: Array<string>): Array<string> => {
@@ -454,7 +454,7 @@ export default class Watcher {
 
 	private _sameAddPath: string = ""
 	private add = (path: string) => {
-		if (this.config.trigger_permission.add == false) {
+		if (this.config.devsync.trigger_permission.add == false) {
 			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('ADD ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot add data sync on server");
 			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
@@ -485,7 +485,7 @@ export default class Watcher {
 
 	private _sameChangePath: string = ""
 	private change = (path: string) => {
-		if (this.config.trigger_permission.change == false) {
+		if (this.config.devsync.trigger_permission.change == false) {
 			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('CHANGE ERR :: ' + path.replace(this.config.localPath, "") + "");
 			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot update data sync on server");
 			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
@@ -521,7 +521,7 @@ export default class Watcher {
 		if (this._contain_path[upath.dirname(path)] != null) {
 			return;
 		}
-		if (this.config.trigger_permission.unlink == false) {
+		if (this.config.devsync.trigger_permission.unlink == false) {
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot unlink data sync on server");
 			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
@@ -552,7 +552,7 @@ export default class Watcher {
 
 	private unlinkDir = (path: string) => {
 		this._contain_path[upath.normalizeSafe(path)] = upath.normalizeSafe(path);
-		if (this.config.trigger_permission.unlink_folder == false) {
+		if (this.config.devsync.trigger_permission.unlink_folder == false) {
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot unlink directory data sync on server");
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');

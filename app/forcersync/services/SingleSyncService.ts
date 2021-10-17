@@ -73,7 +73,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
           return true;
         },
         choices: [
-          ..._config.single_sync,
+          ..._config.devsync.single_sync,
           PROMPT_CHOICE.BROWSE_OTHER,
           PROMPT_CHOICE.EXIT
         ]
@@ -125,14 +125,14 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
         privateKeyPath: currentConf.privateKey,
         privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
         paths: [],
-        ignores: currentConf.ignores,
+        ignores: currentConf.devsync.ignores,
         base_path: currentConf.remotePath,
         local_path: currentConf.localPath,
         path_mode: currentConf.pathMode,
         jumps: currentConf.jumps,
-        single_sync: currentConf.single_sync || [],
+        single_sync: currentConf.devsync.single_sync || [],
         mode: props.mode || 'hard',
-        downloads: currentConf.downloads
+        downloads: currentConf.devsync.downloads
       });
       _singleSync.setOnListener((props: any) => {
         if (props.action == "exit") {

@@ -407,7 +407,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
           passphrase: currentConf.password,
           privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
           paths: (() => {
-            let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;
+            let arrayString: Array<string> = currentConf.devsync.downloads == null ? [] : currentConf.devsync.downloads;
             for (var a = 0; a < arrayString.length; a++) {
               arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
             }

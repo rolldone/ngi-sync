@@ -10,8 +10,11 @@ import * as child_process from 'child_process';
 import rl, { ReadLine } from 'readline';
 import HttpEvent, { HttpEventInterface } from "../compute/HttpEvent";
 import Download, { DownloadInterface } from "../compute/Download";
+import { executeLocalCommand, stripAnsi } from "@root/tool/Helpers";
 const observatory = require("observatory");
 const notifier = require('node-notifier');
+const chalk = require('chalk');
+const pty = require('node-pty');
 
 declare var masterData: MasterDataInterface
 
@@ -55,6 +58,7 @@ export const COMMAND_TARGET = {
 }
 
 const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
+
   returnDownload: function (cli, config) {
     return Download.create(cli, config);
   },
@@ -251,6 +255,12 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         return masterData.saveData('command.devsync_local.index', {});
     }
 
+    if (this._currentConf.devsync.script.local.on_start != "" && this._currentConf.devsync.script.local.on_start != null) {
+      executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_start, (data) => {
+        console.log(chalk.green('Local | '), stripAnsi(data));
+      });
+    }
+
     /* Waiting some process */
     await currentConf.ready();
     /*  */
@@ -341,6 +351,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     this.uploader = new Uploader(currentConf, this._cli);
     this.uploader.setOnListener((action: string, props: any) => {
       switch (action) {
+
         case 'RESTART':
           notifier.notify(
             {
@@ -432,30 +443,54 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           // _startWatchingWithTimeOut();
           return;
         case '\x03':
+          console.log(chalk.green('Remote | '), 'Stop the devsync..');
+          if (this._currentConf.devsync.script.local.on_stop != "" && this._currentConf.devsync.script.local.on_stop != null) {
+            executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_stop, (data) => {
+              console.log(chalk.green('Local | '), stripAnsi(data));
+            });
+          }
+          if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+              process.exit();
+            });
+          }
           process.exit();
           return;
         case '\x12':
-          /* Stop httpEvent */
-          this._httpEvent.stop();
-          this._httpEvent = null;
-          /* Stop download */
-          _pendingTimeoutStopDownload(true);
-          this._download.stop(this._download.status.SILENT);
-          this._download = null;
-          /* Close readline */
-          this._readLine.close();
-          this._readLine = null;
-          /* Restart the syncronize */
-          this.uploader.onListener('RESTART', {});
-          this.uploader = null;
-          /* Waiting process watcher and uploader closed */
-          await this.watcher.close();
-          this.watcher = null;
-          /*  */
-          process.stdin.off('keypress', remoteFuncKeypress);
-          this.task.done();
-          console.clear();
-          this.construct(this._cli);
+          let stop = async () => {
+            /* Stop httpEvent */
+            this._httpEvent.stop();
+            this._httpEvent = null;
+            /* Stop download */
+            _pendingTimeoutStopDownload(true);
+            this._download.stop(this._download.status.SILENT);
+            this._download = null;
+            /* Close readline */
+            this._readLine.close();
+            this._readLine = null;
+            /* Restart the syncronize */
+            this.uploader.onListener('RESTART', {});
+            this.uploader = null;
+            /* Waiting process watcher and uploader closed */
+            await this.watcher.close();
+            this.watcher = null;
+            /*  */
+            process.stdin.off('keypress', remoteFuncKeypress);
+            this.task.done();
+            console.clear();
+            this.construct(this._cli);
+          }
+          if (this._currentConf.devsync.script.local.on_stop != "" && this._currentConf.devsync.script.local.on_stop != null) {
+            executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_stop, (data) => {
+              console.log(chalk.green('Local | '), stripAnsi(data));
+            });
+          }
+          if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+              stop();
+            });
+          }
+          await stop();
           break;
       }
     }
@@ -481,6 +516,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       this.uploader.connect((err: any, res: any) => {
         if (err) {
           console.log('err', err);
+          process.exit(1);
           return setTimeout(() => {
             reCallCurrentCOnf();
           }, 1000);
@@ -489,6 +525,17 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         // All done, stop indicator and show workspace
         this.task.done(res).details(this._currentConf.host);
         this._cli.workspace();
+        if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
+          executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_ready, (data) => {
+            console.log(chalk.green('Local | '), stripAnsi(data));
+          });
+        }
+        if (this._currentConf.devsync.script.remote.on_ready != "" && this._currentConf.devsync.script.remote.on_ready != null) {
+          return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, () => {
+            console.log(chalk.green('Remote | '), 'Ready to use :)')
+          });
+        }
+        console.log(chalk.green('Remote | '), 'Ready to use :)')
       });
     }
     reCallCurrentCOnf();
