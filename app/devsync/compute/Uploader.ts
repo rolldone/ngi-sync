@@ -5,6 +5,8 @@ import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
 import _, { debounce, DebouncedFunc } from 'lodash';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+import { stripAnsi } from "@root/tool/Helpers";
+const chalk = require('chalk');
 
 declare var masterData: MasterDataInterface;
 declare var CustomError: { (name: string, message: string): any }
@@ -78,6 +80,22 @@ export default class Uploader {
 		[key: string]: any
 	} = {}
 	_exeHandlePush: Function = null;
+	_executeCommand(whatCommand: string, callback?: Function) {
+		this.client.exec("cd " + this.config.remotePath + " && " + whatCommand, (err: any, stream: any) => {
+			if (err) throw err;
+			stream.on('close', (code, signal) => {
+				// console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+				if (callback == null) return;
+				callback();
+			}).on('data', (data) => {
+				console.log(chalk.green("Remote | "), stripAnsi(data.toString()))
+				// console.log('STDOUT: ' + data);
+			}).stderr.on('data', (data) => {
+				console.log(chalk.red("Remote | "), stripAnsi(data.toString()))
+				// console.log('STDERR: ' + data);
+			});
+		});
+	}
 	_handlePush() {
 		var debounceClose: any = null;
 		/* Create function possible close connection if upload done  */
