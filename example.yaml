@@ -19,10 +19,8 @@ devsync:
     - artywiz_hotfix/.github
   script:
     local:
-      on_start: |
-        npm run build && ngi-sync direct create_folder
       on_ready: |
-        docker-compose up
+        npm run build && ngi-sync direct create_folder
       on_stop: |
         docker-compose down
     remote:
