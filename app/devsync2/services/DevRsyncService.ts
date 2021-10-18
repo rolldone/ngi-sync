@@ -255,12 +255,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         return masterData.saveData('command.devsync_local.index', {});
     }
 
-    if (this._currentConf.devsync.script.local.on_start != "" && this._currentConf.devsync.script.local.on_start != null) {
-      executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_start, (data) => {
-        console.log(chalk.green('Local | '), stripAnsi(data));
-      });
-    }
-
     /* Waiting some process */
     await currentConf.ready();
     /*  */

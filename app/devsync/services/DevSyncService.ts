@@ -225,11 +225,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       case 'local':
         return masterData.saveData('command.devsync_local.index', {});
     }
-    if (this._currentConf.devsync.script.local.on_start != "" && this._currentConf.devsync.script.local.on_start != null) {
-      executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_start, (data) => {
-        console.log(chalk.green('Local | '), stripAnsi(data));
-      });
-    }
+    
     await currentConf.ready();
     this._task = {};
     let syncPull = this.returnSyncPull(this._cli, {
@@ -476,8 +472,8 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         // console.log('2x');
         this.task.done(res).details(this._currentConf.host);
         this._cli.workspace();
-        if (this._currentConf.devsync.script.local.on_start != "" && this._currentConf.devsync.script.local.on_start != null) {
-          executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_start, (data) => {
+        if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
+          executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_ready, (data) => {
             console.log(chalk.green('Local | '), stripAnsi(data));
           });
         }
