@@ -225,7 +225,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       case 'local':
         return masterData.saveData('command.devsync_local.index', {});
     }
-    
+
     await currentConf.ready();
     this._task = {};
     let syncPull = this.returnSyncPull(this._cli, {
@@ -386,7 +386,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         case '\x03':
           console.log(chalk.green('Remote | '), 'Stop the devsync..');
           if (this._currentConf.devsync.script.local.on_stop != "" && this._currentConf.devsync.script.local.on_stop != null) {
-            executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_stop, (data) => {
+            executeLocalCommand('devsync', this._currentConf, this._currentConf.devsync.script.local.on_stop, (data) => {
               console.log(chalk.green('Local | '), stripAnsi(data));
             });
           }
@@ -424,7 +424,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
           this.construct(this._cli);
           if (this._currentConf.devsync.script.local.on_stop != "" && this._currentConf.devsync.script.local.on_stop != null) {
-            executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_stop, (data) => {
+            executeLocalCommand('devsync', this._currentConf, this._currentConf.devsync.script.local.on_stop, (data) => {
               console.log(chalk.green('Local | '), stripAnsi(data));
             });
           }
@@ -473,7 +473,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         this.task.done(res).details(this._currentConf.host);
         this._cli.workspace();
         if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
-          executeLocalCommand(this._currentConf, this._currentConf.devsync.script.local.on_ready, (data) => {
+          executeLocalCommand('devsync', this._currentConf, this._currentConf.devsync.script.local.on_ready, (data) => {
             console.log(chalk.green('Local | '), stripAnsi(data));
           });
         }
