@@ -22,23 +22,42 @@ export const stripAnsi = (tt: string) => {
   return tt.replace(ansiRegex(), '');
 }
 
-export const executeLocalCommand = (config: ConfigInterface, command: string, callback: Function) => {
+const executeData: {
+  [key: string]: any
+} = {}
+const executeDataDone: {
+  [key: string]: boolean
+} = {};
+export const executeLocalCommand = (key: string, config: ConfigInterface, command: string, callback: Function) => {
+  let isDone = false;
   var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
-  let _ptyProcess = pty.spawn(shell, [], {
-    name: 'xterm-color',
-    cwd: process.env.HOME,
-    env: {
-      /* Fill from parent process.env */
-      ...process.env,
-    },
-    handleFlowControl: false
-  });
-  _ptyProcess.on('data', (data: string) => {
-    callback(data);
-    /* Disable pty stdout print */
-    // process.stdout.write(data);
-  });
-  _ptyProcess.write("cd "+config.localPath+" && "+command+ '\r');
+  if (executeData[key] == null) {
+    executeDataDone[key] = false;
+    executeData[key] = pty.spawn(shell, [], {
+      name: 'xterm-color',
+      cwd: process.env.HOME,
+      env: {
+        /* Fill from parent process.env */
+        ...process.env,
+      },
+      handleFlowControl: false
+    });
+    executeData[key].on('data', (data: string) => {
+      if (executeDataDone[key] == true) {
+        executeData[key] = null;
+      } else {
+        callback(data);
+      }
+      /* Disable pty stdout print */
+      // process.stdout.write(data);
+    });
+  }
+  if (command == "exit") {
+    executeData[key].write('\u0003');
+    executeDataDone[key] = true;
+  } else {
+    executeData[key].write("cd " + config.localPath + " && " + command + '\r');
+  }
 }
 
 const Helpers = {
