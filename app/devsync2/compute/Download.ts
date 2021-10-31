@@ -419,7 +419,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
         }))
         this._client.on('error', (err) => {
           console.log('SFTP CLIENT CONNECTION :: ', err);
-          process.exit(0)
+          // process.exit(0)
         })
         this._exeHandlePush = this._handlePush();
       }
