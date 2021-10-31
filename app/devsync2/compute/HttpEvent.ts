@@ -27,6 +27,7 @@ export interface HttpEventInterface extends BaseModelInterface {
   _server?: HttpServer
   _cli?: CliInterface
   _config?: ConfigInterface
+  start: { (): void }
   stop: { (): void }
   create?: (cli: CliInterface, config: ConfigInterface) => this
   startReversePort: { (shell: string, props: Array<string>): void }
@@ -69,7 +70,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
       for (var a = 0; a < onlyPathStringIgnores.length; a++) {
         /* Check path is really directory */
         let thePath = this._config.remotePath + '/' + onlyPathStringIgnores[a];
-        if (onlyPathStringIgnores[a][Object.keys(onlyPathStringIgnores[a]).length - 1] == '/') {} else {
+        if (onlyPathStringIgnores[a][Object.keys(onlyPathStringIgnores[a]).length - 1] == '/') { } else {
           onlyFileStringIgnores.push(upath.normalizeSafe(thePath));
         }
       }
@@ -78,9 +79,9 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
         ...gitIgnore,
         ...defaultIgnores
       ]
-      
-      for(var a=0;a<gitIgnore.length;a++){
-        gitIgnore[a] = gitIgnore[a].replace(" ","");
+
+      for (var a = 0; a < gitIgnore.length; a++) {
+        gitIgnore[a] = gitIgnore[a].replace(" ", "");
       }
 
       let newResGItIngore = [];
@@ -107,7 +108,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
 
       let ignnorelist = [].concat(onlyRegexIgnores).concat(onlyFileStringIgnores).concat(newResGItIngore);
 
-      onlyRegexIgnores= null;
+      onlyRegexIgnores = null;
       onlyFileStringIgnores = null;
       newResGItIngore = null;
 
@@ -195,16 +196,19 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
       const query = querystring.parse(parsed.query);
       this._onChangeListener(query.action, query.path);
       res.end();
-    }).listen(0, () => {
+    });
+  },
+  setOnChangeListener(func) {
+    this._onChangeListener = func;
+  },
+  start() {
+    this._server.listen(0, () => {
       const { port, address } = this._server.address() as AddressInfo
       this._onChangeListener('LISTEN_PORT', port + "");
       let ssh_config = this.generateSSHConfig();
       this._randomPort = port;
       this.startReversePort(`ssh -R localhost:${port}:127.0.0.1:${port} ${ssh_config.Host}`, []);
     });
-  },
-  setOnChangeListener(func) {
-    this._onChangeListener = func;
   },
   stop() {
     try {
@@ -300,13 +304,13 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
         case data.includes('Connection reset'):
         case data.includes('ngi-sync: command not found'):
           console.log('ERROR ON REMOTE :: ', data);
-          process.exit(0);
+          // process.exit(0);
           break;
       }
     });
 
     _ptyProcess.on('exit', function (exitCode: any, signal: any) {
-      console.log(`exiting with  ${signal}`)
+      // console.log(`exiting with  ${signal}`)
       //  process.exit();
     });
 
