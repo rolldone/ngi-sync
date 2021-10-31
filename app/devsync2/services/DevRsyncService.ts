@@ -441,17 +441,26 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         case '\x03':
           this._is_stop = true;
           console.log(chalk.green('Remote | '), 'Stop the devsync..');
+          var closeRemote = () => {
+            if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+              this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+                process.exit();
+              });
+              return true;
+            }
+            return false;
+          }
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
-            executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
-              console.log(chalk.green('Local | '), stripAnsi(data));
+            return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
+              // console.log(chalk.green('Local | '), stripAnsi(data));
+              if (closeRemote() == false) {
+                process.exit();
+              }
             });
           }
-          if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
-            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
-              process.exit();
-            });
+          if (closeRemote() == false) {
+            process.exit();
           }
-          process.exit();
           return;
         case '\x12':
           this._is_stop = true;
@@ -477,20 +486,30 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             this.task.done();
             console.clear();
             setTimeout(() => {
+              console.clear();
               this.construct(this._cli);
             }, 3000);
           }
+          var closeRemote = () => {
+            if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+              this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+                stop();
+              });
+              return true;
+            }
+            return false;
+          }
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
-            executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
-              console.log(chalk.green('Local | '), stripAnsi(data));
+            return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
+              // console.log(chalk.green('Local | '), stripAnsi(data));
+              if (closeRemote() == false) {
+                stop();
+              }
             });
           }
-          if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
-            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
-              stop();
-            });
+          if (closeRemote() == false) {
+            stop();
           }
-          await stop();
           break;
       }
     }
@@ -532,7 +551,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             if (_oportunity > 4) {
               process.exit(1);
             }
-            if(this._is_stop == false) {
+            if (this._is_stop == false) {
               console.log(chalk.green('Retry Connect'));
             }
             _oportunity += 1;

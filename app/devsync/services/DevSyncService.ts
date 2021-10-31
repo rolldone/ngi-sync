@@ -387,18 +387,27 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           return;
         case '\x03':
           this._is_stop = true;
-          console.log(chalk.green('Remote | '), 'Stop the devsync..');
+          console.log(chalk.green('Remote | '), 'Stop the devsync..');          
+          var closeRemote = () => {
+            if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+              this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+                process.exit();
+              });
+              return true;
+            }
+            return false;
+          }
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
-            executeLocalCommand('devsync', this._currentConf, "exit", (data) => {
-              console.log(chalk.green('Local | '), stripAnsi(data));
+            return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
+              // console.log(chalk.green('Local | '), stripAnsi(data));
+              if (closeRemote() == false) {
+                process.exit();
+              }
             });
           }
-          if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
-            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
-              process.exit();
-            });
+          if (closeRemote() == false) {
+            process.exit();
           }
-          process.exit();
           return;
         case '\x12':
           this._is_stop = true;
@@ -422,22 +431,32 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
             process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
-
             console.clear();
+            setTimeout(() => {
+              console.clear();
+              this.construct(this._cli);
+            }, 3000);
           }
-
-          this.construct(this._cli);
+          var closeRemote = () => {
+            if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+              this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+                stop();
+              });
+              return true;
+            }
+            return false;
+          }
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
-            executeLocalCommand('devsync', this._currentConf, "exit", (data) => {
-              console.log(chalk.green('Local | '), stripAnsi(data));
+            return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
+              // console.log(chalk.green('Local | '), stripAnsi(data));
+              if (closeRemote() == false) {
+                stop();
+              }
             });
           }
-          if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
-            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
-              stop();
-            });
+          if (closeRemote() == false) {
+            stop();
           }
-          await stop();
           break;
       }
     }
