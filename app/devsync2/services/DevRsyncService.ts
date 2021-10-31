@@ -441,14 +441,11 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         case '\x03':
           this._is_stop = true;
           console.log(chalk.green('Remote | '), 'Stop the devsync..');
-          // if (this._currentConf.devsync.script.local.on_stop != "" && this._currentConf.devsync.script.local.on_stop != null) {
-          //   executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
-          //     console.log(chalk.green('Local | '), stripAnsi(data));
-          //   });
-          // }
-          executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
-            console.log(chalk.green('Local | '), stripAnsi(data));
-          });
+          if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
+            executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
+              console.log(chalk.green('Local | '), stripAnsi(data));
+            });
+          }
           if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
             return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
               process.exit();
@@ -483,14 +480,11 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
               this.construct(this._cli);
             }, 3000);
           }
-          // if (this._currentConf.devsync.script.local.on_stop != "" && this._currentConf.devsync.script.local.on_stop != null) {
-          //   executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
-          //     console.log(chalk.green('Local | '), stripAnsi(data));
-          //   });
-          // }
-          executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
-            console.log(chalk.green('Local | '), stripAnsi(data));
-          });
+          if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
+            executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
+              console.log(chalk.green('Local | '), stripAnsi(data));
+            });
+          }
           if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
             return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
               stop();
