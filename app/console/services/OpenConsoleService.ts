@@ -63,7 +63,7 @@ export default BaseService.extend<OpenConsoleServiceInterface>({
     });
 
     _ptyProcess.on('exit', function (exitCode: any, signal: any) {
-      console.log(`exiting with  ${signal}`)
+      // console.log(`exiting with  ${signal}`)
       process.exit();
     });
 
