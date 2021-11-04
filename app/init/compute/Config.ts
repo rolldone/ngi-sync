@@ -56,9 +56,7 @@ export interface ConfigInterface extends BaseModelInterface {
     single_sync: Array<string>
     script: {
       local: {
-        on_start?: string
         on_ready?: string
-        on_stop?: string
       }
       remote: {
         on_ready?: string

@@ -39,8 +39,12 @@ export default class Uploader {
 		// Triggers the initial connection
 		this.client.sftp((err, sftp) => {
 			if (err) {
-				callback(CustomError('SftpErrorConectionException', 'There was a problem with connection'), null);
+				// callback(CustomError('SftpErrorConectionException', 'There was a problem with connection'), null);
 			}
+		});
+
+		this.client.on("error", (err) => {
+			callback(err, null);
 		});
 
 		this.client.on("ready", () => {
@@ -59,7 +63,7 @@ export default class Uploader {
 			// 	callback(CustomError('SftpErrorConectionException', 'There was a problem with connection'), null);
 			// }, 5000);
 			// pendingClose();
-			callback(err, null);
+			// callback(err, null);
 		});
 
 		this._exeHandlePush = this._handlePush();

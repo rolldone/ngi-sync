@@ -34,6 +34,7 @@ export interface DevSyncServiceInterface extends BaseServiceInterface {
   _executeCommand?: { (extra_command: any): void }
   _readLine?: ReadLine
   _task?: any
+  _is_stop?: boolean
 }
 
 export const COMMAND_SHORT = {
@@ -62,6 +63,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     return SyncPull.create(cli, sshConfig);
   },
   construct: async function (cli, extra_command) {
+    this._is_stop = false;
     this._cli = cli;
     await this._checkIsCygwin();
     this.task = observatory.add("Initializing...");
@@ -384,20 +386,31 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           _startWatchingWithTimeOut();
           return;
         case '\x03':
-          console.log(chalk.green('Remote | '), 'Stop the devsync..');
-          if (this._currentConf.devsync.script.local.on_stop != "" && this._currentConf.devsync.script.local.on_stop != null) {
-            executeLocalCommand('devsync', this._currentConf, this._currentConf.devsync.script.local.on_stop, (data) => {
-              console.log(chalk.green('Local | '), stripAnsi(data));
+          this._is_stop = true;
+          console.log(chalk.green('Remote | '), 'Stop the devsync..');          
+          var closeRemote = () => {
+            if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+              this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+                process.exit();
+              });
+              return true;
+            }
+            return false;
+          }
+          if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
+            return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
+              // console.log(chalk.green('Local | '), stripAnsi(data));
+              if (closeRemote() == false) {
+                process.exit();
+              }
             });
           }
-          if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
-            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
-              process.exit();
-            });
+          if (closeRemote() == false) {
+            process.exit();
           }
-          process.exit();
           return;
         case '\x12':
+          this._is_stop = true;
           let stop = async () => {
             _startWatchingWithTimeOut(true);
             syncPull.stopSubmitWatch();
@@ -418,22 +431,32 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
             process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
-
             console.clear();
+            setTimeout(() => {
+              console.clear();
+              this.construct(this._cli);
+            }, 3000);
           }
-
-          this.construct(this._cli);
-          if (this._currentConf.devsync.script.local.on_stop != "" && this._currentConf.devsync.script.local.on_stop != null) {
-            executeLocalCommand('devsync', this._currentConf, this._currentConf.devsync.script.local.on_stop, (data) => {
-              console.log(chalk.green('Local | '), stripAnsi(data));
+          var closeRemote = () => {
+            if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+              this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+                stop();
+              });
+              return true;
+            }
+            return false;
+          }
+          if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
+            return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
+              // console.log(chalk.green('Local | '), stripAnsi(data));
+              if (closeRemote() == false) {
+                stop();
+              }
             });
           }
-          if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
-            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
-              stop();
-            });
+          if (closeRemote() == false) {
+            stop();
           }
-          await stop();
           break;
       }
     }
@@ -455,16 +478,30 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
     await this.watcher.ready();
     _startWatchingWithTimeOut();
-
+    let _oportunity = 0;
+    this.task.status("connecting server");
     var reCallCurrentCOnf = () => {
       if (this.uploader == null) return;
-      this.task.status("connecting server");
       this.uploader.connect((err: any, res: any) => {
+        if (_oportunity == 0) {
+          if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
+            executeLocalCommand('devsync', this._currentConf, this._currentConf.devsync.script.local.on_ready, (data) => {
+              console.log(chalk.green('Local | '), stripAnsi(data));
+            });
+          }
+        }
         if (err) {
-          console.log('err', err);
-          return setTimeout(() => {
+          console.log(chalk.green('Error'), err);
+          setTimeout(() => {
+            if (_oportunity > 4) {
+              process.exit(1);
+            }
+            if(this._is_stop == false) {
+              console.log(chalk.green('Retry Connect'));
+            }
+            _oportunity += 1;
             reCallCurrentCOnf();
-          }, 1000);
+          }, 3000);
         }
         if (this.uploader == null) return;
         // All done, stop indicator and show workspace
@@ -472,17 +509,13 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         // console.log('2x');
         this.task.done(res).details(this._currentConf.host);
         this._cli.workspace();
-        if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
-          executeLocalCommand('devsync', this._currentConf, this._currentConf.devsync.script.local.on_ready, (data) => {
-            console.log(chalk.green('Local | '), stripAnsi(data));
-          });
-        }
+
         if (this._currentConf.devsync.script.remote.on_ready != "" && this._currentConf.devsync.script.remote.on_ready != null) {
           return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, () => {
-            console.log(chalk.green('Remote | '), 'Ready to use :)')
+            // console.log(chalk.green('Remote | '), 'Ready to use :)')
           });
         }
-        console.log(chalk.green('Remote | '), 'Ready to use :)')
+        // console.log(chalk.green('Remote | '), 'Ready to use :)')
       });
     }
     reCallCurrentCOnf();
