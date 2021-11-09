@@ -345,6 +345,11 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
     })
     this.uploader = new Uploader(currentConf, this._cli);
+    // Are we running app locally via node?
+    const isLocal = typeof process.pkg === 'undefined'
+    // Build the base path based on current running mode (if packaged, we need the location of executable)
+    const basePath = isLocal ? path.join(__dirname, '..', '..', '..', '/public/img', "") : path.dirname(process.execPath) + "/public/img";
+
     this.uploader.setOnListener((action: string, props: any) => {
       switch (action) {
 
@@ -353,7 +358,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             {
               title: "Restart",
               message: "Devsync Restarted",
-              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
+              icon: path.join(basePath, 'warning.png'), // Absolute path (doesn't work on balloons)
               sound: true, // Only Notification Center or Windows Toasters
               wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
               type: 'warning',
@@ -371,7 +376,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             {
               title: action,
               message: props.return,
-              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'failed.jpg'), // Absolute path (doesn't work on balloons)
+              icon: path.join(basePath, 'failed.jpg'), // Absolute path (doesn't work on balloons)
               sound: true, // Only Notification Center or Windows Toasters
               wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
               type: 'error',
@@ -389,7 +394,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             {
               title: action,
               message: props.return,
-              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
+              icon: path.join(basePath, 'warning.png'), // Absolute path (doesn't work on balloons)
               sound: true, // Only Notification Center or Windows Toasters
               wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
               type: 'warning',
@@ -408,7 +413,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             {
               title: action,
               message: props.return,
-              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'success.png'), // Absolute path (doesn't work on balloons)
+              icon: path.join(basePath, 'success.png'), // Absolute path (doesn't work on balloons)
               sound: true, // Only Notification Center or Windows Toasters
               wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
               type: 'info',
