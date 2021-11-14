@@ -92,11 +92,37 @@ export default class Uploader {
 				if (callback == null) return;
 				callback();
 			}).on('data', (data) => {
-				console.log(chalk.green("Remote | "), stripAnsi(data.toString()))
+				let _split: Array<string> = data.toString().split(/\n/); // data.split(/\n?\r/);
+				// console.log('raw ', [_split]);
+				for (var a = 0; a < _split.length; a++) {
+					switch (_split[a]) {
+						case '':
+						case '\r':
+						case '\u001b[32m\r':
+							break;
+						default:
+							process.stdout.write(chalk.green('Remote | '));
+							process.stdout.write(_split[a] + '\n');
+							break;
+					}
+				}
+				// console.log(chalk.green("Remote | "), stripAnsi(data.toString()))
 				// console.log('STDOUT: ' + data);
-			}).stderr.on('data', (data) => {
-				console.log(chalk.red("Remote | "), stripAnsi(data.toString()))
-				// console.log('STDERR: ' + data);
+			}).stderr.on('data', (data: any) => {
+				let _split: Array<string> = data.toString().split(/\n/); // data.split(/\n?\r/);
+				// console.log('raw ', [_split]);
+				for (var a = 0; a < _split.length; a++) {
+					switch (_split[a]) {
+						case '':
+						case '\r':
+						case '\u001b[32m\r':
+							break;
+						default:
+							process.stdout.write(chalk.red('Remote | '));
+							process.stdout.write(_split[a] + '\n');
+							break;
+					}
+				}
 			});
 		});
 	}
