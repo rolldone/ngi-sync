@@ -8,6 +8,12 @@ localPath: .
 remotePath: /root/workspaces/ngi-sync
 devsync:
   ignores: []
+  script:
+    local:
+      ? on_ready
+    remote:
+      ? on_ready
+      ? on_stop
   downloads:
     - dist_2/
   single_sync: []

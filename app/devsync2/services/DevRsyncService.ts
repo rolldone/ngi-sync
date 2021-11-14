@@ -445,7 +445,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           return;
         case '\x03':
           this._is_stop = true;
-          console.log(chalk.green('Remote | '), 'Stop the devsync..');
+          process.stdout.write(chalk.green('Remote | ') + 'Stop the devsync..' + '\r');
           var closeRemote = () => {
             if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
               this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
@@ -542,7 +542,20 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
             executeLocalCommand('devrsync', this._currentConf, this._currentConf.devsync.script.local.on_ready, (data) => {
               if (this._is_stop == true) return;
-              console.log(chalk.green('Local | '), stripAnsi(data));
+              let _split: Array<string> = data.split(/\n/); // data.split(/\n?\r/);
+              // console.log('raw ', [_split]);
+              for (var a = 0; a < _split.length; a++) {
+                switch (_split[a]) {
+                  case '':
+                  case '\r':
+                  case '\u001b[32m\r':
+                    break;
+                  default:
+                    process.stdout.write(chalk.green('Local | '));
+                    process.stdout.write(_split[a] + '\n');
+                    break;
+                }
+              }
             });
           }
         }

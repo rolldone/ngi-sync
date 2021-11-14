@@ -18,8 +18,10 @@ declare module NodeJS {
     node_identity : string
   }
   interface Process {
+    /* Mengisi ke kosongan process.blablabla */
     /* Jika kerja di backend define ini manual */
     browser: boolean
+    pkg: any
   }
 }
 
