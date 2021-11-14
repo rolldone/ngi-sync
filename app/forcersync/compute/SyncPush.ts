@@ -405,7 +405,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           _remote_path = config.username + '@' + config.host + ':' + _remote_path + '/'
         }
 
-        console.log(chalk.green('Rsync Upload | '), _local_path, ' >> ', _remote_path);
+        process.stdout.write(chalk.green('Rsync Upload | ') + _local_path + ' >> ' + _remote_path + '\n');
 
         // if (extraWatchs[index + 1] != null) {
         //   this._recursiveRsync(extraWatchs, index + 1);
@@ -431,7 +431,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
         });
 
-        console.log(chalk.green('Rsync Upload | '), 'rsync command -> ', rsync.command());
+        process.stdout.write(chalk.green('Rsync Upload | ') + 'rsync command -> ' + rsync.command() + '\n');
 
         var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
         var ptyProcess = this.iniPtyProcess(shell, []);
@@ -457,9 +457,21 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
 
         ptyProcess.on('data', (data: any) => {
           // console.log(data)
-          let _text = this._stripAnsi(data.toString());
-          if (_text != "") {
-            console.log(chalk.green("Rsync Upload | "), _text);
+          // let _text = this._stripAnsi(data.toString());
+          let _split = data.split(/\n/);// this._stripAnsi(data.toString());
+          if (_split != "") {
+            for (var a = 0; a < _split.length; a++) {
+              switch (_split[a]) {
+                case '':
+                case '\r':
+                case '\u001b[32m\r':
+                  break;
+                default:
+                  process.stdout.write(chalk.green('Rsync Upload | '));
+                  process.stdout.write(this._stripAnsi(_split[a]).replace('X','') + '\n');
+                  break;
+              }
+            }
           }
           if (data.includes('failed: Not a directory')) {
             _is_file = true;
