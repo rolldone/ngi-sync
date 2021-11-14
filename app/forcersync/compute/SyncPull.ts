@@ -45,7 +45,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
           _remote_path = _remote_path + '/';
         }
 
-        console.log(chalk.green('Rsync Download | '), _local_path, ' << ', _remote_path);
+        process.stdout.write(chalk.green('Rsync Download | ') + _local_path + ' << ' + _remote_path + '\n');
         // if (extraWatchs[index + 1] != null) {
         //   this._recursiveRsync(extraWatchs, index + 1);
         // } else {
@@ -73,16 +73,27 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         });
 
 
-        console.log(chalk.green("Rsync Download | "), 'rsync command -> ', rsync.command());
+        process.stdout.write(chalk.green("Rsync Download | ") + 'rsync command -> ' + rsync.command() + '\n');
 
         var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
         var ptyProcess = this.iniPtyProcess(shell, []);
         ptyProcess.write(rsync.command() + '\r');
         let firstString = null;
         ptyProcess.on('data', (data: any) => {
-          let _text = this._stripAnsi(data.toString());
-          if (_text != "") {
-            console.log(chalk.green("Rsync Download | "), _text);
+          let _split = data.split(/\n/);// this._stripAnsi(data.toString());
+          if (_split != "") {
+            for (var a = 0; a < _split.length; a++) {
+              switch (_split[a]) {
+                case '':
+                case '\r':
+                case '\u001b[32m\r':
+                  break;
+                default:
+                  process.stdout.write(chalk.green('Rsync Download | '));
+                  process.stdout.write(this._stripAnsi(_split[a]).replace('X', '') + '\n');
+                  break;
+              }
+            }
           }
           if (data.includes('failed: Not a directory')) {
             _is_file = true;
