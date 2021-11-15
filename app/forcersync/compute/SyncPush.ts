@@ -435,7 +435,12 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
 
         var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
         var ptyProcess = this.iniPtyProcess(shell, []);
-        ptyProcess.write(rsync.command() + '\r');
+        ptyProcess.write('ls ' + _local_path + ' ' + '\r');
+        setTimeout(()=>{
+          if(ptyProcess != null){
+            ptyProcess.write(rsync.command() + '\r');
+          }
+        },1000);
 
         // ptyProcess.write('pwd\n')
         // var _readLine = this.initReadLine();
@@ -468,7 +473,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
                   break;
                 default:
                   process.stdout.write(chalk.green('Rsync Upload | '));
-                  process.stdout.write(this._stripAnsi(_split[a]).replace('X','') + '\n');
+                  process.stdout.write(this._stripAnsi(_split[a]).replace('X', '') + '\n');
                   break;
               }
             }
