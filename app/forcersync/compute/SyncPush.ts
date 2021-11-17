@@ -124,6 +124,8 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       // output : process.stdout,
       terminal: true
     });
+
+    /* Example form prompt */
     // i.question("What do you think of node.js?", function(answer) {
     //   // console.log("Thank you for your valuable feedback.");
     //   // i.close();
@@ -435,7 +437,14 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
 
         var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
         var ptyProcess = this.iniPtyProcess(shell, []);
-        ptyProcess.write(rsync.command() + '\r');
+        if(_is_file == false){
+          ptyProcess.write('ls ' + _local_path + ' ' + '\r');
+        }
+        setTimeout(()=>{
+          if(ptyProcess != null){
+            ptyProcess.write(rsync.command() + '\r');
+          }
+        },2000);
 
         // ptyProcess.write('pwd\n')
         // var _readLine = this.initReadLine();
@@ -468,13 +477,14 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
                   break;
                 default:
                   process.stdout.write(chalk.green('Rsync Upload | '));
-                  process.stdout.write(this._stripAnsi(_split[a]).replace('X','') + '\n');
+                  process.stdout.write(this._stripAnsi(_split[a]).replace('X', '') + '\n');
                   break;
               }
             }
           }
-          if (data.includes('failed: Not a directory')) {
+          if (data.includes('Not a directory')) {
             _is_file = true;
+            ptyProcess.write('exit' + '\r');
           }
         });
 
@@ -489,6 +499,10 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
               this._recursiveRsync(extraWatchs, index + 1);
             }
           } else {
+            if (_is_file == true) {
+              this._recursiveRsync(extraWatchs, index, _is_file);
+              return;
+            }
             this._onListener({
               action: "exit",
               return: {

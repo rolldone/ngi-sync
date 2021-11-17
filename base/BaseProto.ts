@@ -4,13 +4,13 @@ const UberProto: BaseProtoInterface<any> = uberproto;
 
 export default UberProto.extend<BaseProtoInterface<any>>({
   __init: 'construct',
-  _replaceAt : function(input, search, replace, start, end) {
+  _replaceAt: function (input, search, replace, start, end) {
     return input.slice(0, start)
-        + input.slice(start, end).replace(search, replace)
-        + input.slice(end);
+      + input.slice(start, end).replace(search, replace)
+      + input.slice(end);
   },
-  _getStatInfo : function(permission,passTypeData){
-    let infoCollections : Array<string> = [
+  _getStatInfo: function (permission, passTypeData) {
+    let infoCollections: Array<string> = [
       '0010000', // named pipe (fifo)
       '0020000', // character special
       '0040000', // directory
@@ -21,8 +21,8 @@ export default UberProto.extend<BaseProtoInterface<any>>({
       '0160000' //whiteout 
     ];
     let whatType = null;
-    for(var a=0;a<infoCollections.length;a++){
-      switch(permission & parseInt(infoCollections[a],8)){
+    for (var a = 0; a < infoCollections.length; a++) {
+      switch (permission & parseInt(infoCollections[a], 8)) {
         case 16384:
           whatType = 'directory';
           break;
@@ -33,20 +33,20 @@ export default UberProto.extend<BaseProtoInterface<any>>({
           whatType = 'link';
           break;
       }
-      if(whatType != null){
+      if (whatType != null) {
         break;
       }
     }
-    if(passTypeData!=null){
-      if(passTypeData == whatType){
+    if (passTypeData != null) {
+      if (passTypeData == whatType) {
         return true;
       }
       return false;
     }
     return whatType;
   },
-  _waitingTimeout : function(timeoutNumber){
-    return new Promise((resolve : Function)=>{
+  _waitingTimeout: function (timeoutNumber) {
+    return new Promise((resolve: Function) => {
       setTimeout(() => {
         resolve();
       }, timeoutNumber);
@@ -68,5 +68,26 @@ export default UberProto.extend<BaseProtoInterface<any>>({
       }
     }
     return tt.join("");
+  },
+  safeJSON: function (props, endpoint, defaultValue = null, index) {
+    endpoint = endpoint.split(".");
+    if (endpoint.length == 0) {
+      return defaultValue;
+    }
+    if (index == null) {
+      index = 0;
+    }
+    if (props == null) {
+      return defaultValue;
+    }
+    if (props[endpoint[index]] == null) {
+      return defaultValue;
+    }
+    props = props[endpoint[index]];
+    index += 1;
+    if (index == endpoint.length) {
+      return props;
+    }
+    return this.safeJSON(props, endpoint.join("."), defaultValue, index);
   }
 });
