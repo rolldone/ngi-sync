@@ -210,17 +210,32 @@ const Config = BaseModel.extend<ConfigInterface>({
           for (var a = 0; a < match.length; a++) {
             match[a] = match[a].replace('=', '');
           }
-          for (var a = 0; a < match.length; a++) {
-            let testValue = this.safeJSON(newObject, match[a], '-');
-            switch (true) {
-              case typeof testValue === "string":
-                testStringValue = testStringValue.replace(new RegExp('=' + match[a], 'g'), upath.normalizeSafe(this.safeJSON(newObject, match[a], '')))
-                break;
-              case typeof testValue === "number":
-                testStringValue = testStringValue.replace(new RegExp('=' + match[a], 'g'), this.safeJSON(newObject, match[a], ''))
-                break;
+          var checkData = () => {
+            for (var a = 0; a < match.length; a++) {
+              let testValue = this.safeJSON(newObject, match[a], null);
+              switch (true) {
+                case typeof testValue === "string":
+                  testStringValue = testStringValue.replace(new RegExp('=' + match[a], 'g'), upath.normalizeSafe(this.safeJSON(newObject, match[a], '')))
+                  break;
+                case typeof testValue === "number":
+                  testStringValue = testStringValue.replace(new RegExp('=' + match[a], 'g'), this.safeJSON(newObject, match[a], ''))
+                  break;
+                default:
+                  break;
+              }
             }
           }
+          /* First process for initialize object first */
+          checkData();
+          /* Second process for process data if any sub in sub pattern 
+             Example : 
+             {
+               hello: Hellow world
+               test: =hello
+               test2: =test
+             }
+          */
+          checkData();
           this._config = JSON.parse(testStringValue);
           return true;
         } catch (e) {
