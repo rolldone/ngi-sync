@@ -2,7 +2,7 @@ import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import { CliInterface, EXIT_CODE } from "../services/CliService";
 import path, { join as pathJoin } from "path";
 import { readFileSync, existsSync, statSync, createReadStream } from "fs";
-import { String } from "lodash";
+import { String, uniq } from "lodash";
 import upath from 'upath';
 const { parse } = require("jsonplus");
 import YAML from 'yaml'
@@ -205,17 +205,37 @@ const Config = BaseModel.extend<ConfigInterface>({
           this._originConfig = Object.assign({}, this._config);
           let newObject = this._config as any;
           testStringValue = JSON.stringify(this._config);
-          for (var key in newObject) {
-            switch (true) {
-              case typeof newObject[key] === 'string':
-                testStringValue = testStringValue.replace(new RegExp('=' + key, 'g'), upath.normalizeSafe(newObject[key]))
-                break;
-              case typeof newObject[key] === 'number':
-                testStringValue = testStringValue.replace(new RegExp('=' + key, 'g'), newObject[key])
-              default:
-                break;
+          let match = testStringValue.match(/=[^=|'|"|\\| ]+/g);
+          match = uniq(match);
+          for (var a = 0; a < match.length; a++) {
+            match[a] = match[a].replace('=', '');
+          }
+          var checkData = () => {
+            for (var a = 0; a < match.length; a++) {
+              let testValue = this.safeJSON(newObject, match[a], null);
+              switch (true) {
+                case typeof testValue === "string":
+                  testStringValue = testStringValue.replace(new RegExp('=' + match[a], 'g'), upath.normalizeSafe(this.safeJSON(newObject, match[a], '')))
+                  break;
+                case typeof testValue === "number":
+                  testStringValue = testStringValue.replace(new RegExp('=' + match[a], 'g'), this.safeJSON(newObject, match[a], ''))
+                  break;
+                default:
+                  break;
+              }
             }
           }
+          /* First process for initialize object first */
+          checkData();
+          /* Second process for process data if any sub in sub pattern 
+             Example : 
+             {
+               hello: Hellow world
+               test: =hello
+               test2: =test
+             }
+          */
+          checkData();
           this._config = JSON.parse(testStringValue);
           return true;
         } catch (e) {

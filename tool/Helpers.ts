@@ -3,6 +3,7 @@ import StaticType from "@root/base/StaticType";
 import ansiRegex from 'ansi-regex';
 const pty = require('node-pty');
 import os from 'os';
+var size = require('window-size');
 
 const md5 = require('md5');
 
@@ -36,6 +37,8 @@ export const executeLocalCommand = (key: string, config: ConfigInterface, comman
     executeData[key] = pty.spawn(shell, [], {
       name: 'xterm-color',
       cwd: process.env.HOME,
+      cols: size.width,
+      rows: size.height,
       env: {
         /* Fill from parent process.env */
         ...process.env,
@@ -51,10 +54,20 @@ export const executeLocalCommand = (key: string, config: ConfigInterface, comman
       /* Disable pty stdout print */
       // process.stdout.write(data);
     });
+    const resizeFunc = function () {
+      let { width, height } = size.get();
+      executeData[key].resize(width, height)
+    }
+    process.stdout.on('resize', resizeFunc);
+    executeData[key].on('exit', (exitCode: any, signal: any) => {
+      process.stdout.removeListener('resize', resizeFunc);
+      executeDataDone[key] = true;
+    });
   }
   if (command == "exit") {
     executeData[key].write('\u0003');
-    executeDataDone[key] = true;
+    executeData[key].write('exit\r');
+    callback("");
   } else {
     executeData[key].write("cd " + config.localPath + " && " + command + '\r');
   }
