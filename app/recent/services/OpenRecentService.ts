@@ -3,10 +3,12 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import inquirer = require("inquirer");
 import path from "path";
 import upath from 'upath';
+import os from 'os';
 var objectScan = require('object-scan');
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 
 const RECENT_FILE_NAME = 'recent.json';
+const home_dir = os.homedir();
 
 export interface OpenRecentServiceInterface extends BaseServiceInterface {
   _realdData: {
@@ -40,7 +42,7 @@ export default BaseService.extend<OpenRecentServiceInterface>({
     writeFileSync(upath.normalizeSafe(basePathFolder.replace('app/recent', "")) + '/' + RECENT_FILE_NAME, JSON.stringify(data));
   },
   construct: function (props) {
-    let basePathFolder = upath.normalizeSafe(path.dirname(__dirname));
+    let basePathFolder = upath.normalizeSafe(home_dir); // upath.normalizeSafe(path.dirname(__dirname));
     let test: any = existsSync(upath.normalizeSafe(basePathFolder.replace('app/recent', "") + '/' + RECENT_FILE_NAME));
     if (test == false) {
       test = {};

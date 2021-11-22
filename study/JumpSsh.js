@@ -34,7 +34,6 @@ var test = async function(){
     var masterCon = connectionsArray[index];
     masterCon.on('ready',function(){
       if(index == hoopings.length-1){
-        console.log('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',index);
         masterCon.exec(commandServer, (err, stream) => {
           if (err) {
             console.log('SECOND :: exec error: ' + err);
