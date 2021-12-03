@@ -184,8 +184,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           resolve()
           return;
         }
-        // console.log(`stdout: ${stdout}`);
-        // console.error(`stderr: ${stderr}`);
         console.log('==========================================================================================================');
         console.log(' YOU ARE IN CYGWIN');
         console.log(' Make sure you have add noacl on /etc/fstab, because rsync problem with permission if no have defined!');
@@ -241,14 +239,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         let arrayString: Array<string> = currentConf.devsync.downloads == null ? [] : currentConf.devsync.downloads;
         for (var a = 0; a < arrayString.length; a++) {
           arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
-          /**
-           * Remove if folder have file extention
-           * Not Use anymore just keep it the original
-           */
-          // var isSame = arrayString[a].substr(arrayString[a].lastIndexOf('.') + 1);
-          // if (isSame != arrayString[a]) {
-          //   arrayString[a] = arrayString[a].split("/").slice(0, -1).join("/");
-          // }
         }
         return arrayString;
       })(),
@@ -373,8 +363,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       }
     });
 
-
-
     /* Define readline nodejs for listen CTRL + R */
     this._readLine = rl.createInterface({
       input: process.stdin,
@@ -420,19 +408,17 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             _startWatchingWithTimeOut(true);
             syncPull.stopSubmitWatch();
             syncPull = null;
+
             /* Close readline */
             this._readLine.close();
             this._readLine = null;
 
             /* Restart the syncronize */
             this.uploader.onListener('RESTART', {});
-            // this.uploader.client.close();
             this.uploader = null;
 
             await this.watcher.close();
             this.watcher = null;
-
-            // this._currentConf = null;
 
             process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
@@ -453,7 +439,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           }
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
             return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
-              // console.log(chalk.green('Local | '), stripAnsi(data));
               if (closeRemote() == false) {
                 stop();
               }
@@ -491,9 +476,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         if (_oportunity == 0) {
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
             executeLocalCommand('devsync', this._currentConf, this._currentConf.devsync.script.local.on_ready, (data) => {
-              // console.log(chalk.green('Local | '), stripAnsi(data));
-              let _split: Array<string> = data.split(/\n/); // data.split(/\n?\r/);
-              // console.log('raw ', [_split]);
+              let _split: Array<string> = data.split(/\n/);
               for (var a = 0; a < _split.length; a++) {
                 switch (_split[a]) {
                   case '':
@@ -531,10 +514,8 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
         if (this._currentConf.devsync.script.remote.on_ready != "" && this._currentConf.devsync.script.remote.on_ready != null) {
           return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, () => {
-            // console.log(chalk.green('Remote | '), 'Ready to use :)')
           });
         }
-        // console.log(chalk.green('Remote | '), 'Ready to use :)')
       });
     }
     reCallCurrentCOnf();

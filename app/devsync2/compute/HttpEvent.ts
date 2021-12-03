@@ -274,9 +274,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
       },
       handleFlowControl: true
     });
-    // _ptyProcess.write('cd ' + this._config.localPath + '\r');
     _ptyProcess.on('data', (data: string) => {
-      // console.log(data)
       /* No need readline because not type keyboard mode */
       // process.stdout.write(data);
       switch (true) {
@@ -311,12 +309,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
 
     _ptyProcess.on('exit', function (exitCode: any, signal: any) {
       // console.log(`exiting with  ${signal}`)
-      //  process.exit();
-    });
-
-    process.stdout.on('resize', function () {
-      let { width, height } = size.get();
-      // _ptyProcess.resize(width, height)
+      // process.exit();
     });
 
     _ptyProcess.write(sshCommand + "\r");
