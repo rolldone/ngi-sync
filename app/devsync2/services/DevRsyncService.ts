@@ -73,15 +73,18 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     this._is_stop = false;
     /* Check is cygwin or not */
     await this._checkIsCygwin();
-    /*  */
+
     this._cli = cli;
     this.task = observatory.add("Initializing...");
+
     /* Define config */
     this._currentConf = this.returnConfig(cli);
+
     /* Call extra command if want to call direct menu inside devsync2 */
     if (extra_command != null) {
       return this._executeCommand(extra_command);
     }
+
     /* Define question devsync2 menu */
     let questions: inquirer.QuestionCollection = [
       {
@@ -318,7 +321,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     this._httpEvent.setOnChangeListener(async (action, props) => {
       await this._download.startSftp();
       _pendingTimeoutStopDownload();
-      /* console.log('action', action, props); */
       switch (action) {
         case 'CLIENT_REQUEST':
           this._task['CLIENT_REQUEST'] = observatory.add("Remote success trying request");// observatory.add(this.eventToWord[event]);
@@ -457,7 +459,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           }
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
             return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
-              // console.log(chalk.green('Local | '), stripAnsi(data));
               if (closeRemote() == false) {
                 process.exit();
               }
@@ -506,7 +507,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           }
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
             return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
-              // console.log(chalk.green('Local | '), stripAnsi(data));
               if (closeRemote() == false) {
                 stop();
               }
@@ -542,7 +542,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
             executeLocalCommand('devrsync', this._currentConf, this._currentConf.devsync.script.local.on_ready, (data) => {
               if (this._is_stop == true) return;
-              let _split: Array<string> = data.split(/\n/); // data.split(/\n?\r/);
+              let _split: Array<string> = data.split(/\n/);
               // console.log('raw ', [_split]);
               for (var a = 0; a < _split.length; a++) {
                 switch (_split[a]) {
@@ -583,14 +583,13 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         // All done, stop indicator and show workspace
         this._cli.workspace();
         this.task.done(res).details(this._currentConf.host);
-        this._httpEvent.start();
-
-        if (this._currentConf.devsync.script.remote.on_ready != "" && this._currentConf.devsync.script.remote.on_ready != null) {
-          return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, () => {
-            // console.log(chalk.green('Remote | '), 'Ready to use :)')
-          });
-        }
-        // console.log(chalk.green('Remote | '), 'Ready to use :)')
+        this._httpEvent.installAgent(() => {
+          this._httpEvent.start();
+          if (this._currentConf.devsync.script.remote.on_ready != "" && this._currentConf.devsync.script.remote.on_ready != null) {
+            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, () => {
+            });
+          }
+        });
       });
     }
     reCallCurrentCOnf();

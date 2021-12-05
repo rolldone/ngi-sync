@@ -16,6 +16,7 @@ export enum PROMPT_CHOICE {
   DOWNLOAD = 'Download',
   UPLOAD = 'Upload',
   BROWSE_OTHER = "Browse other",
+  ALL = 'All Datas',
   EXIT = "Back Previous / Exit"
 }
 export interface SingleSyncServiceInterface extends DevRsyncPushServiceInterface {
@@ -74,6 +75,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
         },
         choices: [
           ..._config.devsync.single_sync,
+          PROMPT_CHOICE.ALL,
           PROMPT_CHOICE.BROWSE_OTHER,
           PROMPT_CHOICE.EXIT
         ]
@@ -109,6 +111,34 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
         }
         process.exit(0);
         return
+      }
+      if (passAnswer.single_sync_list == PROMPT_CHOICE.ALL) {
+        switch(passAnswer.option){
+          case PROMPT_CHOICE.UPLOAD:
+            masterData.saveData('command.forcersync.index', {
+              mode: 'soft',
+              callback: (err: boolean) => {
+                if (err == true) {
+                  return process.exit(1);
+                };
+                /* Call rsync pull data */
+                this._promptAction(questions);
+              }
+            });
+            break;
+          case PROMPT_CHOICE.DOWNLOAD:
+            masterData.saveData('command.forcersync.pull', {
+              callback: (err: boolean) => {
+                if (err == true) {
+                  return process.exit(1);
+                };
+                /* Run the devsync2 */
+                this._promptAction(questions);
+              }
+            });
+            break;
+        }
+        return;
       }
       if (passAnswer.browse_file != null) {
         let fixPath = upath.normalizeSafe(passAnswer.browse_file);

@@ -54,6 +54,7 @@ export interface ConfigInterface extends BaseModelInterface {
     ignores: Array<string | RegExp>
     downloads: Array<string>
     single_sync: Array<string>
+    os_target: string
     script: {
       local: {
         on_ready?: string
