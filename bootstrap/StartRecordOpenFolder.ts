@@ -13,14 +13,6 @@ export default function (next: Function) {
   } else {
     test = JSON.parse(readFileSync(upath.normalizeSafe(home_dir + '/recent.json')||'{}', 'utf8'));
   }
-  let tt = upath.parse(path.resolve(""));
-  // if(test[tt.name] != null){
-  //   if(test[tt.name] != path.resolve){
-
-  //   }
-  // }else{
-  //   test[tt.name] = path.resolve("");
-  // }
   test[path.resolve("")] = path.resolve("");
   process.stdout.write.bind(process.stdout)('You are in: '+path.resolve("")+'\n');
   test = {
