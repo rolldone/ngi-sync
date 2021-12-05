@@ -3,7 +3,7 @@ import http, { Server as HttpServer } from 'http';
 import { AddressInfo } from "net";
 const querystring = require('querystring');
 var url = require('url');
-import { Client } from 'ssh2';
+import Client from "@root/tool/ssh2-sftp-client";
 import SSHConfig, { SSHConfigInterface } from "@root/tool/ssh-config";
 import upath from 'upath';
 import { IPty } from 'node-pty';
@@ -12,10 +12,12 @@ import { CliInterface } from "../services/CliService";
 var size = require('window-size');
 import os from 'os';
 import { ConfigInterface } from "./Config";
-import { readFileSync, writeFileSync } from "fs";
+import { fstatSync, readFileSync, Stats, statSync, writeFileSync } from "fs";
 import parseGitIgnore from '@root/tool/parse-gitignore'
 import ignore from 'ignore'
 import { uniq } from "lodash";
+import path from "path";
+const chalk = require('chalk');
 
 export type DirectAccessType = {
   ssh_configs: Array<any>
@@ -43,6 +45,7 @@ export interface HttpEventInterface extends BaseModelInterface {
   _getExtraWatchs?: {
     (gitIgnore: Array<any>): void
   }
+  installAgent: { (callback: Function): void }
   removeSameString: { (fullPath: string, basePath: string): string }
   _randomPort?: number
 }
@@ -202,6 +205,9 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
     this._onChangeListener = func;
   },
   start() {
+    if (this._server.listening) {
+      return;
+    }
     this._server.listen(0, () => {
       const { port, address } = this._server.address() as AddressInfo
       this._onChangeListener('LISTEN_PORT', port + "");
@@ -221,6 +227,85 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
       } catch (e) {
         // couldn't kill the process
       }
+    }
+  },
+  async installAgent(callback) {
+    try {
+      this._client = new Client();
+      await this._client.connect({
+        port: this._config.port,
+        host: this._config.host,
+        username: this._config.username,
+        password: this._config.password,
+        // agentForward: true,
+        privateKey: this._config.privateKey ? readFileSync(this._config.privateKey).toString() : undefined,
+        jumps: this._config.jumps,
+        path: this._config.remotePath
+        // debug: true
+      });
+
+      let fileName = 'ngi-sync-agent-linux';
+      let dirCommand = 'dir';
+      switch (this._config.devsync.os_target) {
+        case 'windows':
+          fileName = 'ngi-sync-agent-win.exe';
+          break;
+        case 'darwin':
+          dirCommand = 'ls';
+          fileName = 'ngi-sync-agent-win.app';
+          break;
+      }
+      let localFilePath = upath.normalizeSafe(path.dirname(require.main.filename) + '/' + fileName);
+      let remoteFilePath = upath.normalizeSafe(this._config.remotePath + '/' + fileName);
+      let exists = await this._client.exists(remoteFilePath);
+      let curretnFileStat = statSync(upath.normalizeSafe(path.dirname(require.main.filename)) + '/' + fileName, {});
+
+      let _afterInstall = async () => {
+        switch (this._config.devsync.os_target) {
+          case 'windows':
+            callback();
+            this._client.end();
+            break;
+          default:
+          case 'darwin':
+          case 'linux':
+            let rawSSH = await this._client.getRawSSH2();
+            rawSSH.exec('chmod +x ' + remoteFilePath, (err: any, stream: any) => {
+              callback();
+              this._client.end();
+            })
+            break;
+        }
+      }
+
+      let _install = async () => {
+        try {
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write('Copy file agent -> ' + localFilePath + ' - ' + remoteFilePath + '\n');
+          try {
+            await this._client.delete(remoteFilePath);
+          } catch (ex) { }
+          await this._client.fastPut(localFilePath, remoteFilePath);
+          _afterInstall();
+        } catch (ex) {
+          console.log('_install - err ', ex);
+        }
+      }
+
+      if (exists != false) {
+        let stat = await this._client.stat(remoteFilePath);
+        if (curretnFileStat.mtime > stat.modifyTime) {
+          return _install();
+        }
+        process.stdout.write(chalk.green('Devsync | '));
+        process.stdout.write('ngi-sync-agent already installed!' + '\n');
+        _afterInstall();
+      } else {
+        _install();
+      }
+
+    } catch (ex) {
+      console.log('installAgent - ex ', ex);
     }
   },
   generateSSHConfig() {
@@ -295,7 +380,16 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
         case data.includes(`${this._config.username}@`):
           if (isLoginFinish == false) {
             _ptyProcess.write(`cd ${this._config.remotePath} \r`);
-            _ptyProcess.write(`ngi-sync devsync_remote ${this._randomPort}` + "\r");
+            switch (this._config.devsync.os_target) {
+              case 'windows':
+                _ptyProcess.write(`ngi-sync-agent-win.exe devsync_remote ${this._randomPort}` + "\r");
+                break;
+              case 'darwin':
+              case 'linux':
+              default:
+                _ptyProcess.write(`./ngi-sync-agent-linux devsync_remote ${this._randomPort}` + "\r");
+                break;
+            }
             isLoginFinish = true;
           }
           break;

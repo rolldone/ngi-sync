@@ -76,15 +76,15 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
 
     this._cli = cli;
     this.task = observatory.add("Initializing...");
-    
+
     /* Define config */
     this._currentConf = this.returnConfig(cli);
-    
+
     /* Call extra command if want to call direct menu inside devsync2 */
     if (extra_command != null) {
       return this._executeCommand(extra_command);
     }
-    
+
     /* Define question devsync2 menu */
     let questions: inquirer.QuestionCollection = [
       {
@@ -583,12 +583,13 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         // All done, stop indicator and show workspace
         this._cli.workspace();
         this.task.done(res).details(this._currentConf.host);
-        this._httpEvent.start();
-
-        if (this._currentConf.devsync.script.remote.on_ready != "" && this._currentConf.devsync.script.remote.on_ready != null) {
-          return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, () => {
-          });
-        }
+        this._httpEvent.installAgent(() => {
+          this._httpEvent.start();
+          if (this._currentConf.devsync.script.remote.on_ready != "" && this._currentConf.devsync.script.remote.on_ready != null) {
+            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, () => {
+            });
+          }
+        });
       });
     }
     reCallCurrentCOnf();
