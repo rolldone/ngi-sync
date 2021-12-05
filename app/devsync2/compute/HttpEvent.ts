@@ -87,6 +87,16 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
         gitIgnore[a] = gitIgnore[a].replace(" ", "");
       }
 
+      /* Remove "/" or "/*" path ignore, Because download mode will not working if this defined */
+      for (var a = 0; a < gitIgnore.length; a++) {
+        if (gitIgnore[a] == "/") {
+          gitIgnore.splice(a, 1);
+        }
+        if (gitIgnore[a] == "/*") {
+          gitIgnore.splice(a, 1);
+        }
+      }
+
       let newResGItIngore = [];
       for (var a = 0; a < gitIgnore.length; a++) {
         if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
