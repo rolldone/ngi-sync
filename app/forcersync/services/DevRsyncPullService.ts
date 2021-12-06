@@ -40,7 +40,7 @@ const DevRsyncPullService = DevRsyncPushService.extend<DevRsyncPullServiceInterf
       path_mode: currentConf.pathMode,
       jumps: currentConf.jumps,
       single_sync: currentConf.devsync.single_sync || [],
-      mode: props.mode || 'hard',
+      mode: props.mode || 'soft',
       downloads: currentConf.devsync.downloads
     });
     this._syncPull.setOnListener((props: any) => {

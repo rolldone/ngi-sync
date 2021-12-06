@@ -552,6 +552,9 @@ export default class Watcher {
 	};
 
 	private unlinkDir = (path: string) => {
+		if (upath.normalizeSafe(path).includes(this._contain_path[upath.dirname(path)]) == true) {
+			return;
+		}
 		this._contain_path[upath.normalizeSafe(path)] = upath.normalizeSafe(path);
 		if (safeJSON(this.config, 'devsync.trigger_permission.unlink_folder', false) == false) {
 			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");

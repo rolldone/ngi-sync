@@ -40,7 +40,6 @@ const ForceRsync = BaseController.extend<ForceRsyncInterface>({
     this.returnDevRsyncPushService(cliService,props);
   },
   pull: function (props) {
-    /* soon */
     let cliService = this.returnCliService();
     this.returnDevRsyncPullService(cliService,props);
   }
