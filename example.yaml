@@ -8,6 +8,7 @@ port: "221"
 localPath: D:/workspaces_DO
 remotePath: "/home/ubuntu/workspaces"
 devsync:
+  os_target: linux
   ignores: []
   downloads:
     - artywiz_hotfix/storage/logs/

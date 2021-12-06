@@ -26,7 +26,8 @@
       "node_modules/node-pty/**/*.js"
     ],
     "assets": [
-      "dist/example.yaml"
+      "dist/example.yaml",
+      "bin/ngi-sync-agent-linux"
     ],
     "targets": [
       "node12-win-x64",
