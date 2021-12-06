@@ -76,7 +76,7 @@ export default class Uploader {
 		return upath.normalizeSafe(remotePath);
 	}
 	_index: number = 0
-	_concurent: number = 8
+	_concurent: number = 4
 	_pendingUpload: {
 		[key: string]: DebouncedFunc<any>
 	} = {}
