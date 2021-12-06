@@ -47,13 +47,15 @@ export const COMMAND_SHORT = {
   SOFT_PUSH_SYNC: 'soft_push_sync',
   FORCE_PUSH_SYNC: 'force_push_sync',
   FORCE_SINGLE_SYNC: 'force_single_sync',
+  FORCE_PULL_SYNC: 'force_pull_sync'
 }
 
 export const COMMAND_TARGET = {
   SAFE_SYNC: COMMAND_SHORT.SAFE_SYNC + ' :: DevSync Basic Safe Syncronise \n  - Trigger by edit file :)',
-  SAFE_PULL_SYNC: COMMAND_SHORT.SAFE_PULL_SYNC + ' :: devsync Pull Syncronise \n  - This feature only download by your base template \n  - And ignore all file you define on config file and .sync_ignore :)',
+  SAFE_PULL_SYNC: COMMAND_SHORT.SAFE_PULL_SYNC + ' :: devsync Pull Syncronise and then run devsync mode \n  - This feature will download from target to source \n  - And ignore all file that you define on .sync_ignore :)',
+  FORCE_PULL_SYNC: COMMAND_SHORT.FORCE_PULL_SYNC + ' :: devsync Force Pull Syncronise and then run devsync mode \n  - This feature will download from target to source \n  - And ignore all file that you define on .sync_ignore \n  - ' + chalk.red('And will delete the file from source if deleted on target, Be Careful! :('),
   SAFE_SYNC_NON_FORCE: COMMAND_SHORT.SAFE_SYNC_NON_FORCE + ' :: DevSync Basic with non force file \n  - Trigger by edit file :). Ignored file not activated except pull sync \n  - Caution : This mode will take a long time indexing the file. and need more consume RAM',
-  SOFT_PUSH_SYNC: COMMAND_SHORT.SOFT_PUSH_SYNC + ' :: DevSync Soft Push Data. \n  - Your sensitive data will be safe on target :)',
+  SOFT_PUSH_SYNC: COMMAND_SHORT.SOFT_PUSH_SYNC + ' :: DevSync Safe push data and then run devsync mode \n  - Your sensitive data will be safe on target :)',
   FORCE_PUSH_SYNC: COMMAND_SHORT.FORCE_PUSH_SYNC + ' :: DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
   FORCE_SINGLE_SYNC: COMMAND_SHORT.FORCE_SINGLE_SYNC + ' :: DevSync Single Syncronize \n  - You can download simple file or folder',
 }
@@ -93,10 +95,11 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         message: "Devsync Mode :",
         choices: [
           COMMAND_TARGET.SAFE_SYNC,
-          COMMAND_TARGET.SAFE_SYNC_NON_FORCE,
+          // COMMAND_TARGET.SAFE_SYNC_NON_FORCE,
           COMMAND_TARGET.SAFE_PULL_SYNC,
           COMMAND_TARGET.SOFT_PUSH_SYNC,
-          COMMAND_TARGET.FORCE_PUSH_SYNC,
+          COMMAND_TARGET.FORCE_PULL_SYNC,
+          // COMMAND_TARGET.FORCE_PUSH_SYNC,
           COMMAND_TARGET.FORCE_SINGLE_SYNC
         ]
       },
@@ -176,6 +179,19 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           }
         });
         break;
+      case COMMAND_SHORT.FORCE_PULL_SYNC:
+        /* Call rsync pull data */
+        masterData.saveData('command.forcersync.pull', {
+          mode: 'hard',
+          callback: (err: boolean) => {
+            if (err == true) {
+              return process.exit(1);
+            };
+            /* Run the devsync2 */
+            this._devSyncSafeSyncronise();
+          }
+        });
+        break;
       case COMMAND_SHORT.SAFE_SYNC_NON_FORCE:
         /* Call rsync pull data */
         masterData.saveData('command.forcersync.pull', {
@@ -241,6 +257,8 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         this._executeCommand(COMMAND_SHORT.SAFE_SYNC_NON_FORCE);
       } else if (passAnswer.target == COMMAND_TARGET.FORCE_SINGLE_SYNC) {
         this._executeCommand(COMMAND_SHORT.FORCE_SINGLE_SYNC);
+      } else if (passAnswer.target == COMMAND_TARGET.FORCE_PULL_SYNC) {
+        this._executeCommand(COMMAND_SHORT.FORCE_PULL_SYNC);
       } else {
         if (passAnswer.default_devsync == false) {
           this._devSyncSafeSyncronise();
