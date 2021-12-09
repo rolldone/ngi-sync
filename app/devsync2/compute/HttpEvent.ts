@@ -273,16 +273,18 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
       let _afterInstall = async () => {
         switch (this._config.devsync.os_target) {
           case 'windows':
+            await this._client.end();
             callback();
-            this._client.end();
             break;
           default:
           case 'darwin':
           case 'linux':
             let rawSSH = await this._client.getRawSSH2();
             rawSSH.exec('chmod +x ' + remoteFilePath, (err: any, stream: any) => {
-              callback();
-              this._client.end();
+              rawSSH.exec('exit', async (err: any, stream: any) => {
+                await this._client.end();
+                callback();
+              });
             })
             break;
         }
@@ -294,6 +296,10 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           process.stdout.write('Copy file agent -> ' + localFilePath + ' - ' + remoteFilePath + '\n');
           try {
             await this._client.delete(remoteFilePath);
+          } catch (ex) { }
+          try {
+            await this._client.mkdir(path.dirname(localFilePath), true);
+            await this._client.chmod(path.dirname(localFilePath), this._config.pathMode);
           } catch (ex) { }
           await this._client.fastPut(localFilePath, remoteFilePath);
           _afterInstall();

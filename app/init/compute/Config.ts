@@ -72,7 +72,7 @@ declare var masterData: MasterDataInterface;
 
 const Config = BaseModel.extend<ConfigInterface>({
   model: "",
-  pathMode: "0777",
+  pathMode: "0775",
   construct: function (cli: CliInterface) {
     this.cli = cli;
     /* Check sync-config on current directory */
