@@ -293,7 +293,7 @@ export default class Watcher {
 	}
 
 	async close(): Promise<void> {
-		this.uploader.client.close();
+		this.uploader.client.end();
 		for (var a = 0; a < this._unwatch.length; a++) {
 			await this._unwatch[a].close();
 		}
