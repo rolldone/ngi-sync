@@ -413,12 +413,13 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             this._readLine.close();
             this._readLine = null;
 
-            /* Restart the syncronize */
-            this.uploader.onListener('RESTART', {});
-            this.uploader = null;
 
             await this.watcher.close();
             this.watcher = null;
+
+            /* Restart the syncronize */
+            this.uploader.onListener('RESTART', {});
+            this.uploader = null;
 
             process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();

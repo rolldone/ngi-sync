@@ -499,12 +499,14 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             /* Close readline */
             this._readLine.close();
             this._readLine = null;
-            /* Restart the syncronize */
-            this.uploader.onListener('RESTART', {});
-            this.uploader = null;
             /* Waiting process watcher and uploader closed */
             await this.watcher.close();
             this.watcher = null;
+
+            /* Restart the syncronize */
+            this.uploader.onListener('RESTART', {});
+            this.uploader = null;
+
             /*  */
             process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
