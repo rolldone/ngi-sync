@@ -301,7 +301,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
             await this._client.mkdir(path.dirname(localFilePath), false);
             await this._client.chmod(path.dirname(localFilePath), this._config.pathMode);
           } catch (ex) { }
-          await this._client.fastPut(localFilePath, remoteFilePath);
+          await this._client.put(localFilePath, remoteFilePath);
           _afterInstall();
         } catch (ex) {
           console.log('_install - err ', ex);
