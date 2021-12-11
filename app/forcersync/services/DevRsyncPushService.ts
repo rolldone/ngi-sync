@@ -41,7 +41,7 @@ const DevRsyncPushService = BaseService.extend<DevRsyncPushServiceInterface>({
       jumps: currentConf.jumps,
       single_sync: currentConf.devsync.single_sync || [],
       mode: props.mode || 'hard',
-      withoutSyncIgnorePattern: props.withoutSyncIgnorePattern || true,
+      withoutSyncIgnorePattern: props.withoutSyncIgnorePattern || false,
       downloads: currentConf.devsync.downloads
     });
     this._syncPush.setOnListener((props: any) => {
