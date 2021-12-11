@@ -33,7 +33,6 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
       let _filterPatternRules = this._filterPatternRule();
       // console.log('_filterPatternRules',_filterPatternRules);
       let config = this._config;
-      let _local_path = config.local_path + '/' + props.single_sync_list;
 
       let _source = (() => {
         switch (props.option.toLowerCase()) {
@@ -41,21 +40,21 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
             let _local_path = upath.normalizeSafe(config.local_path + '/' + props.single_sync_list);
             // Convert absolute path to relative
             _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path));
-            return upath.normalizeSafe(_local_path + '/');
+            return upath.normalizeSafe(_local_path);
           case 'download':
-            return config.username + '@' + config.host + ':' + upath.normalizeSafe(config.base_path + '/' + props.single_sync_list + '/');
+            return config.username + '@' + config.host + ':' + upath.normalizeSafe(config.base_path + '/' + props.single_sync_list);
         }
       })()
 
       let _destination = (() => {
         switch (props.option.toLowerCase()) {
           case 'upload':
-            return config.username + '@' + config.host + ':' + upath.normalizeSafe(config.base_path + '/' + props.single_sync_list + '/');
+            return config.username + '@' + config.host + ':' + upath.normalizeSafe(config.base_path + '/' + props.single_sync_list);
           case 'download':
             let _local_path = upath.normalizeSafe(config.local_path + '/' + props.single_sync_list);
             // Convert absolute path to relative
             _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path));
-            return upath.normalizeSafe(_local_path + '/');
+            return upath.normalizeSafe(_local_path);
         }
       })()
 

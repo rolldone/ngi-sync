@@ -405,7 +405,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           _remote_path = config.username + '@' + config.host + ':' + _remote_path;
         } else {
           _local_path = upath.normalizeSafe('./' + _local_path + '/')
-          _remote_path = config.username + '@' + config.host + ':' + _remote_path + '/'
+          _remote_path = config.username + '@' + config.host + ':' + _remote_path
         }
 
         process.stdout.write(chalk.green('Rsync Upload | ') + _local_path + ' >> ' + _remote_path + '\n');
@@ -428,7 +428,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           include: [],
           /* Exclude after include */
           exclude: extraWatchs[index].ignores,
-          set: '--no-perms --no-owner --no-group --size-only --checksum ' + (config.mode == "hard" ? '--delete' : ''),
+          set: '--chmod=D2775,F774 --size-only --checksum ' + (config.mode == "hard" ? '--delete' : ''),
           // flags : '-vt',
           flags: '-avzL',
           shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
@@ -536,9 +536,9 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
 
       // Send All data on single_sync sync-config.yaml
       if (this._config.withoutSyncIgnorePattern == true) {
-        extraWatch = [];  
+        extraWatch = [];
         for (var i = 0; i < this._config.single_sync.length; i++) {
-          switch(this._config.single_sync[i]){
+          switch (this._config.single_sync[i]) {
             case "/**":
             case "/*":
             case "/":

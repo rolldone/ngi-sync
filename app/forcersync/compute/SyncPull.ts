@@ -41,8 +41,8 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
           }
         } else {
           _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + extraWatchs[index].path));
-          _local_path = _local_path + '/';
-          _remote_path = _remote_path + '/';
+          _local_path = _local_path;
+          _remote_path = _remote_path;
         }
 
         process.stdout.write(chalk.green('Rsync Download | ') + _local_path + ' << ' + _remote_path + '\n');
