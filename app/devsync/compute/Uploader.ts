@@ -179,7 +179,7 @@ export default class Uploader {
 						}
 
 						try {
-							await this.client.mkdir(upath.dirname(remote), false)
+							await this.client.mkdir(upath.dirname(remote), true)
 							await this.client.chmod(upath.dirname(remote), this.config.pathMode)
 						} catch (ex) {}
 
@@ -204,7 +204,7 @@ export default class Uploader {
 							}
 						}
 						// Uplad the file
-						this.client.fastPut(fileName, remote, { concurrency: 64, mode: this.config.pathMode }).then(() => {
+						this.client.put(fileName, remote, { concurrency: 64, mode: this.config.pathMode }).then(() => {
 							/* This is use for prevent upload to remote. */
 							/* Is use on watcher */
 							let fileUploadRecord = masterData.getData('FILE_UPLOAD_RECORD', {}) as any;

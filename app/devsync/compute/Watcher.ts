@@ -1,6 +1,6 @@
 import * as chokidar from "chokidar"
 const chalk = require('chalk');
-import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync, unlink, rmdir } from "fs";
+import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync, unlink, rmdir, statSync } from "fs";
 import Uploader from "./Uploader";
 import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
@@ -46,6 +46,7 @@ export default class Watcher {
 	tempFolder = '.sync_temp/';
 	_unwatch?: Array<any>
 	files: any;
+	_monitorRecursive?: NodeJS.Timeout
 	_onListener: Function;
 	_getTimeoutSftp: { (overrideTimeout?: number): number };
 	_setTimeoutSftp() {
@@ -176,6 +177,17 @@ export default class Watcher {
 			ignorePermissionErrors: false
 		});
 		this._unwatch.push(this.files);
+
+
+		// Monitor exist directory
+		this._monitorRecursive = setInterval(() => {
+			for (var key in _extraWatch) {
+				if (existsSync(upath.normalizeSafe(base + '/' + key)) == false) {
+					mkdirSync(upath.normalizeSafe(base + '/' + key), { recursive: true });
+				}
+			}
+		}, 5000);
+
 		// Attach events
 		["all", "add", "change", "unlink", "unlinkDir"].forEach(method => {
 			this.files.on(method, this.handler(method));
@@ -297,6 +309,7 @@ export default class Watcher {
 		for (var a = 0; a < this._unwatch.length; a++) {
 			await this._unwatch[a].close();
 		}
+		clearInterval(this._monitorRecursive);
 	}
 
 	setOnListener(onListener: Function) {
