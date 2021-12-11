@@ -179,7 +179,7 @@ export default class Uploader {
 						}
 
 						try {
-							await this.client.mkdir(upath.dirname(remote), true)
+							await this.client.mkdir(upath.dirname(remote), false)
 							await this.client.chmod(upath.dirname(remote), this.config.pathMode)
 						} catch (ex) {}
 
