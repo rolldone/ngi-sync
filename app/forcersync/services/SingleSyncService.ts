@@ -231,7 +231,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
       });
       _singleSync.setOnListener((props: any) => {
         if (props.action == "exit") {
-          console.clear();
+          // console.clear();
           setTimeout(() => {
             this._promptAction(questions);
           }, 500);

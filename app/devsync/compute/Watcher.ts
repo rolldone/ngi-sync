@@ -180,13 +180,14 @@ export default class Watcher {
 
 
 		// Monitor exist directory
-		this._monitorRecursive = setInterval(() => {
-			for (var key in _extraWatch) {
-				if (existsSync(upath.normalizeSafe(base + '/' + key)) == false) {
-					mkdirSync(upath.normalizeSafe(base + '/' + key), { recursive: true });
-				}
-			}
-		}, 5000);
+		// this._monitorRecursive = setInterval(() => {
+		// 	for (var key in _extraWatch) {
+		// 		if (existsSync(upath.normalizeSafe(base + '/' + key)) == false) {
+		// 			// mkdirSync(upath.normalizeSafe(base + '/' + key), { recursive: true });
+		// 			throw new Error("Missing "+upath.normalizeSafe(base + '/' + key)+" You have delete the watch file or folder point, this app will close. Try start again")
+		// 		}
+		// 	}
+		// }, 5000);
 
 		// Attach events
 		["all", "add", "change", "unlink", "unlinkDir"].forEach(method => {
@@ -309,7 +310,7 @@ export default class Watcher {
 		for (var a = 0; a < this._unwatch.length; a++) {
 			await this._unwatch[a].close();
 		}
-		clearInterval(this._monitorRecursive);
+		// clearInterval(this._monitorRecursive);
 	}
 
 	setOnListener(onListener: Function) {
