@@ -148,13 +148,33 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
     try {
       /* Loading the password */
       await this._currentConf.ready();
-
       let _filterPatternRules = this._filterPatternRule();
 
       let extraWatch: Array<{
         path: string
         ignores: Array<string>
       }> = this._generatePathMap();
+
+      // Download All data on single_sync sync-config.yaml
+      if (this._config.withoutSyncIgnorePattern == true) {
+        extraWatch = [];  
+        for (var i = 0; i < this._config.single_sync.length; i++) {
+          switch(this._config.single_sync[i]){
+            case "/**":
+            case "/*":
+            case "/":
+            case "/**/*":
+            case "**/*":
+              break;
+            default:
+              extraWatch.push({
+                path: this._config.single_sync[i],
+                ignores: []
+              })
+              break;
+          }
+        }
+      }
 
       this._recursiveRsync(extraWatch, 0);
       return;

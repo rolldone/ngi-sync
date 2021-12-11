@@ -74,6 +74,7 @@ export interface RsyncOptions {
   mode?: string
   single_sync: Array<string>
   downloads: Array<string>
+  withoutSyncIgnorePattern?: Boolean
 }
 
 /** 
@@ -427,7 +428,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           include: [],
           /* Exclude after include */
           exclude: extraWatchs[index].ignores,
-          set: "--no-perms --no-owner --no-group",
+          set: '--no-perms --no-owner --no-group --size-only --checksum ' + (config.mode == "hard" ? '--delete' : ''),
           // flags : '-vt',
           flags: '-avzL',
           shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
@@ -437,14 +438,14 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
 
         var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
         var ptyProcess = this.iniPtyProcess(shell, []);
-        if(_is_file == false){
+        if (_is_file == false) {
           ptyProcess.write('ls ' + _local_path + ' ' + '\r');
         }
-        setTimeout(()=>{
-          if(ptyProcess != null){
+        setTimeout(() => {
+          if (ptyProcess != null) {
             ptyProcess.write(rsync.command() + '\r');
           }
-        },2000);
+        }, 2000);
 
         // ptyProcess.write('pwd\n')
         // var _readLine = this.initReadLine();
@@ -532,6 +533,27 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
         path: string
         ignores: Array<string>
       }> = this._generatePathMap();
+
+      // Send All data on single_sync sync-config.yaml
+      if (this._config.withoutSyncIgnorePattern == true) {
+        extraWatch = [];  
+        for (var i = 0; i < this._config.single_sync.length; i++) {
+          switch(this._config.single_sync[i]){
+            case "/**":
+            case "/*":
+            case "/":
+            case "/**/*":
+            case "**/*":
+              break;
+            default:
+              extraWatch.push({
+                path: this._config.single_sync[i],
+                ignores: []
+              })
+              break;
+          }
+        }
+      }
 
       this._recursiveRsync(extraWatch, 0);
       return;

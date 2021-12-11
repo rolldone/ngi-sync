@@ -98,7 +98,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           // COMMAND_TARGET.SAFE_SYNC_NON_FORCE,
           COMMAND_TARGET.SAFE_PULL_SYNC,
           COMMAND_TARGET.SOFT_PUSH_SYNC,
-          COMMAND_TARGET.FORCE_PULL_SYNC,
+          // COMMAND_TARGET.FORCE_PULL_SYNC,
           // COMMAND_TARGET.FORCE_PUSH_SYNC,
           COMMAND_TARGET.FORCE_SINGLE_SYNC
         ]
@@ -116,6 +116,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         }
       }
     ];
+    // this._promptAction(questions);
     /* Call the promp action */
     this._promptAction(questions);
   },
@@ -206,11 +207,19 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         });
         break;
       case COMMAND_SHORT.FORCE_SINGLE_SYNC:
-        /* Call manual rsync single sync. This module can send data per folder inside project */
-        masterData.saveData('command.forcersync.single_sync', {
-          action: 'single_sync_nested_prompt',
-          from: 'command.devsync2.index'
-        });
+        let questions: inquirer.QuestionCollection = [
+          {
+            type: 'default',
+            name: "Enter again " + String.fromCodePoint(0x00002386)
+          }
+        ];
+        inquirer.prompt(questions)['then']((asnwers)=>{
+          /* Call manual rsync single sync. This module can send data per folder inside project */
+          masterData.saveData('command.forcersync.single_sync', {
+            action: 'single_sync_nested_prompt',
+            from: 'command.devsync2.index'
+          });
+        })
         break;
       default:
         /* Default menu every day used */
@@ -511,10 +520,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
             console.clear();
-            setTimeout(() => {
-              console.clear();
-              this.construct(this._cli);
-            }, 3000);
+            this.construct(this._cli);
           }
           var closeRemote = () => {
             if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {

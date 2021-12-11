@@ -295,13 +295,13 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write('Copy file agent -> ' + localFilePath + ' - ' + remoteFilePath + '\n');
           try {
-            await this._client.delete(remoteFilePath);
+            // await this._client.delete(remoteFilePath);
           } catch (ex) { }
           try {
-            await this._client.mkdir(path.dirname(localFilePath), true);
+            await this._client.mkdir(path.dirname(localFilePath), false);
             await this._client.chmod(path.dirname(localFilePath), this._config.pathMode);
           } catch (ex) { }
-          await this._client.fastPut(localFilePath, remoteFilePath);
+          await this._client.put(localFilePath, remoteFilePath);
           _afterInstall();
         } catch (ex) {
           console.log('_install - err ', ex);
