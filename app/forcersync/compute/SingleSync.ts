@@ -71,6 +71,7 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
         // exclude: _filterPatternRules.ignores,
         // flags : '-vt',
         flags: 'avzL',
+        set: '--no-perms --no-owner --no-group --size-only --checksum ' + (config.mode == "hard" ? '--delete' : ''),
         shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
       });
       console.log('rsync command -> ', rsync.command());

@@ -99,7 +99,7 @@ export class Uploader extends DevSyncUploader {
 
 						}
 						deleteQueueFunc();
-						this.client.fastPut(fileName, remote, { concurrency: 64, mode: this.config.pathMode }).then(() => {
+						this.client.put(fileName, remote, { concurrency: 64, mode: this.config.pathMode }).then(() => {
 							/* This is use for prevent upload to remote. */
 							/* Is use on Download.ts */
 							let fileUploadRecord = masterData.getData('FILE_UPLOAD_RECORD', {}) as any;
