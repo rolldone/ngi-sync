@@ -372,7 +372,8 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       let newIgnores = [];
       for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
         if (_filterPatternRules.ignores[b].includes(_filterPatternRules.pass[a])) {
-          newIgnores.push(_filterPatternRules.ignores[b]);
+          newIgnores.push(_filterPatternRules.ignores[b].replace(_filterPatternRules.pass[a],''));
+          _filterPatternRules.ignores.splice(b,1);
         }
       }
       /* Include double star pattern rule too */
@@ -428,7 +429,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           include: [],
           /* Exclude after include */
           exclude: extraWatchs[index].ignores,
-          set: '--chmod=D2775,F774 --size-only --checksum ' + (config.mode == "hard" ? '--delete' : ''),
+          set: '--no-perms --no-owner --no-group --chmod=D2775,F775 --size-only --checksum ' + (config.mode == "hard" ? '--force --delete' : ''),
           // flags : '-vt',
           flags: '-avzL',
           shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
