@@ -429,7 +429,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           include: [],
           /* Exclude after include */
           exclude: extraWatchs[index].ignores,
-          set: '--no-perms --no-owner --no-group --chmod=D2775,F775 --size-only --checksum ' + (config.mode == "hard" ? '--force --delete' : ''),
+          set: '--usermap=*:'+this._config.username+' --groupmap=*:'+this._config.username+' --chmod=D2775,F775 --size-only --checksum ' + (config.mode == "hard" ? '--force --delete' : ''),
           // flags : '-vt',
           flags: '-avzL',
           shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
