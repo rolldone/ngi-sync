@@ -4,7 +4,7 @@ import path from "path";
 import SyncPush, { SyncPushInterface } from "./SyncPush";
 import * as upath from "upath";
 import * as child_process from 'child_process';
-
+import SyncPull, { SynPullInterface } from "./SyncPull";
 export interface SingleSyncInterface extends Omit<SyncPushInterface, 'submitPushSelective' | 'model'> {
   submitPushSelective: {
     (props: {
@@ -12,6 +12,8 @@ export interface SingleSyncInterface extends Omit<SyncPushInterface, 'submitPush
       single_sync_list: string
     }): void
   }
+  _returnSyncPull?: { (...props: any): SynPullInterface }
+  _syncPull?: SynPullInterface
 }
 
 const SingleSync = SyncPush.extend<SingleSyncInterface>({
@@ -21,6 +23,7 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
   },
   construct: function (cli, config) {
     this._super(cli, config);
+    this._syncPull = this._returnSyncPull(cli, config);
   },
   _filterPatternRule: function () {
     return this._super();
@@ -28,8 +31,33 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
   submitPush: function () {
 
   },
+  _returnSyncPull: function (cli, config) {
+    return SyncPull.create(cli, config)
+  },
   submitPushSelective: function (props) {
     try {
+      // console.log('_source',_source,props);
+
+      let extraWatch: Array<{
+        path: string
+        ignores: Array<string>
+      }> = [];
+
+      extraWatch.push({
+        path: props.single_sync_list,
+        ignores: []
+      });
+
+      switch (props.option.toLowerCase()) {
+        case 'upload':
+          return this._recursiveRsync(extraWatch,0);
+        case 'download':
+          this._syncPull.setOnListener(this._onListener);
+          return this._syncPull._recursiveRsync(extraWatch,0);
+      }
+
+      return;
+
       let _filterPatternRules = this._filterPatternRule();
       // console.log('_filterPatternRules',_filterPatternRules);
       let config = this._config;
@@ -54,8 +82,6 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
         }
       })()
 
-      // console.log('_source',_source,props);
-
       var rsync = Rsync.build({
         /* Support multiple source too */
         source: _source,
@@ -66,11 +92,19 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
         // exclude: _filterPatternRules.ignores,
         // flags : '-vt',
         flags: 'avzL',
-        set: '--usermap=*:'+this._config.username+' --groupmap=*:'+this._config.username+' --chmod=D2775,F775 --size-only --checksum ' + (config.mode == "hard" ? '--delete' : ''),
+        set: '--usermap=*:' + this._config.username + ' --groupmap=*:' + this._config.username + ' --chmod=D2775,F775 --size-only --checksum ' + (config.mode == "hard" ? '--delete' : ''),
         shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
       });
-      console.log('_source',_source)
+      console.log('_source', _source)
       console.log('rsync command -> ', rsync.command());
+
+      switch (props.option.toLocaleLowerCase()) {
+        case 'upload':
+          this.submitPush()
+          break;
+        case 'download':
+          break;
+      }
 
       var child = child_process.spawn(rsync.command(), [''], {
         env: { IS_PROCESS: "single_sync" },
