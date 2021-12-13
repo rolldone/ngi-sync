@@ -37,24 +37,20 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
       let _source = (() => {
         switch (props.option.toLowerCase()) {
           case 'upload':
-            let _local_path = upath.normalizeSafe(config.local_path + '/' + props.single_sync_list);
-            // Convert absolute path to relative
-            _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path));
-            return upath.normalizeSafe(_local_path);
+            let _local_path = props.single_sync_list;
+            return upath.normalize(_local_path);
           case 'download':
-            return config.username + '@' + config.host + ':' + upath.normalizeSafe(config.base_path + '/' + props.single_sync_list);
+            return config.username + '@' + config.host + ':' + upath.normalize(config.base_path + '/' + props.single_sync_list);
         }
       })()
 
       let _destination = (() => {
         switch (props.option.toLowerCase()) {
           case 'upload':
-            return config.username + '@' + config.host + ':' + upath.normalizeSafe(config.base_path + '/' + props.single_sync_list);
+            return config.username + '@' + config.host + ':' + upath.normalize(config.base_path + '/' + props.single_sync_list);
           case 'download':
-            let _local_path = upath.normalizeSafe(config.local_path + '/' + props.single_sync_list);
-            // Convert absolute path to relative
-            _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path));
-            return upath.normalizeSafe(_local_path);
+            let _local_path = upath.normalize(props.single_sync_list);
+            return upath.normalize(_local_path);
         }
       })()
 
@@ -70,9 +66,10 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
         // exclude: _filterPatternRules.ignores,
         // flags : '-vt',
         flags: 'avzL',
-        set: '--no-perms --no-owner --no-group --size-only --checksum ' + (config.mode == "hard" ? '--delete' : ''),
+        set: '--usermap=*:'+this._config.username+' --groupmap=*:'+this._config.username+' --chmod=D2775,F775 --size-only --checksum ' + (config.mode == "hard" ? '--delete' : ''),
         shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
       });
+      console.log('_source',_source)
       console.log('rsync command -> ', rsync.command());
 
       var child = child_process.spawn(rsync.command(), [''], {

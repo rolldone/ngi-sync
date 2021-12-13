@@ -5,7 +5,7 @@ import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { CliInterface } from "./CliService";
 import { RsyncOptions } from "../compute/SyncPush";
 import SingleSync, { SingleSyncInterface } from "../compute/SingleSync";
-import { readFileSync } from "fs";
+import { lstatSync, readFileSync } from "fs";
 var inquirerFileTreeSelection = require("inquirer-file-tree-selection-prompt");
 import upath from 'upath';
 import { ConfigInterface } from "../compute/Config";
@@ -200,9 +200,12 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
       }
 
       if (passAnswer.browse_file != null) {
-        let fixPath = upath.normalizeSafe(passAnswer.browse_file);
-        fixPath = fixPath.replace(this._config.localPath, '');
-        fixPath = fixPath.replace('/', '');
+        let fixPath = upath.normalize(passAnswer.browse_file);
+        let _lstatSync = lstatSync(fixPath);
+        if(_lstatSync.isDirectory()){
+          fixPath += '/';
+        }
+        fixPath = fixPath.replace(upath.normalize(this._config.localPath+'/'), '');
         passAnswer.single_sync_list = fixPath;
         delete passAnswer.browse_file;
       }
