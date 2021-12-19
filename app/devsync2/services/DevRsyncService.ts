@@ -109,6 +109,9 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         message: "Are you want to pull data from remote target first?",
         default: false,
         when: (answers: any) => {
+          if (answers.target == COMMAND_TARGET.FORCE_SINGLE_SYNC){
+            return false;
+          }
           if (answers.target == COMMAND_TARGET.SAFE_SYNC) {
             return true;
           }
@@ -207,19 +210,23 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         });
         break;
       case COMMAND_SHORT.FORCE_SINGLE_SYNC:
-        let questions: inquirer.QuestionCollection = [
-          {
-            type: 'default',
-            name: "Enter again " + String.fromCodePoint(0x00002386)
-          }
-        ];
-        inquirer.prompt(questions)['then']((asnwers)=>{
-          /* Call manual rsync single sync. This module can send data per folder inside project */
-          masterData.saveData('command.forcersync.single_sync', {
-            action: 'single_sync_nested_prompt',
-            from: 'command.devsync2.index'
-          });
-        })
+        // let questions: inquirer.QuestionCollection = [
+        //   {
+        //     type: 'default',
+        //     name: "Enter again " + String.fromCodePoint(0x00002386)
+        //   }
+        // ];
+        // inquirer.prompt(questions)['then']((asnwers)=>{
+        //   /* Call manual rsync single sync. This module can send data per folder inside project */
+        //   masterData.saveData('command.forcersync.single_sync', {
+        //     action: 'single_sync_nested_prompt',
+        //     from: 'command.devsync2.index'
+        //   });
+        // })
+        masterData.saveData('command.forcersync.single_sync', {
+          action: 'single_sync_nested_prompt',
+          from: 'command.devsync2.index'
+        });
         break;
       default:
         /* Default menu every day used */
@@ -255,6 +262,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     });
   },
   _promptAction: function (questions) {
+    console.clear();
     inquirer.prompt(questions)['then']((passAnswer: any) => {
       if (passAnswer.target == COMMAND_TARGET.FORCE_PUSH_SYNC) {
         this._executeCommand(COMMAND_SHORT.FORCE_PUSH_SYNC);
@@ -489,11 +497,13 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
     });
     /* Define readline nodejs for listen CTRL + R */
-    this._readLine = rl.createInterface({
-      input: process.stdin,
-      // output : process.stdout,
-      terminal: true
-    });
+    if(this._readLine == null){
+      this._readLine = rl.createInterface({
+        input: process.stdin,
+        // output : process.stdout,
+        terminal: true
+      });
+    }
     /* Register new keypress */
     let remoteFuncKeypress = async (key: any, data: any) => {
       switch (data.sequence) {
@@ -537,8 +547,8 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             this._download.stop(this._download.status.SILENT);
             this._download = null;
             /* Close readline */
-            this._readLine.close();
-            this._readLine = null;
+            // this._readLine.close();
+            // this._readLine = null;
             /* Waiting process watcher and uploader closed */
             await this.watcher.close();
             this.watcher = null;
@@ -550,7 +560,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             /*  */
             process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
-            console.clear();
+            // console.clear();
             this.construct(this._cli);
           }
           var closeRemote = () => {
