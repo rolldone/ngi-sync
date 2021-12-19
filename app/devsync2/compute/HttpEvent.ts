@@ -293,6 +293,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
       let _install = async () => {
         try {
           process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('Install Agent :: '));
           process.stdout.write('Copy file agent -> ' + localFilePath + ' - ' + remoteFilePath + '\n');
           try {
             // await this._client.delete(remoteFilePath);
@@ -314,6 +315,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           return _install();
         }
         process.stdout.write(chalk.green('Devsync | '));
+        process.stdout.write(chalk.green('Install Agent :: '));
         process.stdout.write('ngi-sync-agent already installed!' + '\n');
         _afterInstall();
       } else {
