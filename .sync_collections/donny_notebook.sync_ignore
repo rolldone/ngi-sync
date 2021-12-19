@@ -4,5 +4,3 @@ sync-config.yaml
 node_modules
 dist/*
 !dist/test/
-dist_2/*
-!dist_2/app.d.ts
