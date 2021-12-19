@@ -298,49 +298,73 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     this._download.setOnListener((action, props) => {
       switch (action) {
         case 'REJECTED':
-          this._task['REJECTED'] = observatory.add("REJECTED :: ");
-          this._task['REJECTED'].fail(props);
-          this._task['REJECTED'] = null;
+          // this._task['REJECTED'] = observatory.add("REJECTED :: ");
+          // this._task['REJECTED'].fail(props);
+          // this._task['REJECTED'] = null;
+          process.stdout.write(chalk.red('Devsync | '));
+          process.stdout.write(chalk.red('REJECTED :: '));
+          process.stdout.write(props+'\n');
           break;
         case 'REJECTED_DOWNLOAD':
-          this._task['REJECTED_DOWNLOAD'] = observatory.add("Download Failed :: ");
-          this._task['REJECTED_DOWNLOAD'].fail(props);
+          // this._task['REJECTED_DOWNLOAD'] = observatory.add("Download Failed :: ");
+          // this._task['REJECTED_DOWNLOAD'].fail(props);
+          process.stdout.write(chalk.red('Devsync | '));
+          process.stdout.write(chalk.red('Download Failed :: '));
+          process.stdout.write(props+'\n');
           break;
         case 'ONGOING':
           break;
         case 'DELETED_FOLDER':
-          this._task['DELETED_FOLDER'] = observatory.add("DELETED_FOLDER :: ");
-          this._task['DELETED_FOLDER'].done(props);
+          // this._task['DELETED_FOLDER'] = observatory.add("DELETED_FOLDER :: ");
+          // this._task['DELETED_FOLDER'].done(props);
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('DELETED_FOLDER :: '));
+          process.stdout.write(props+'\n');
           break;
         case 'DELETED':
-          this._task['DELETED'] = observatory.add("DELETED :: ");
-          this._task['DELETED'].done(props);
+          // this._task['DELETED'] = observatory.add("DELETED :: ");
+          // this._task['DELETED'].done(props);
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('DELETED :: '));
+          process.stdout.write(props+'\n');
           break;
         case 'DOWNLOADED_DONE':
           // this._task['DOWNLOADED'].done();
           // this._task['DOWNLOADED'] = null;
-          this._task['DOWNLOADED'] = observatory.add("FINISH :: ");
-          this._task['DOWNLOADED'].done();
+          // this._task['DOWNLOADED'] = observatory.add("FINISH :: ");
+          // this._task['DOWNLOADED'].done();
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('FINISH')+'\n');
           break;
         case 'DOWNLOADED':
           // if (this._task['DOWNLOADED'] == null) {
           //   this._task['DOWNLOADED'] = observatory.add("DOWNLOADED :: ");
           // }
-          this._task['DOWNLOADED'] = observatory.add("DOWNLOADED :: ");
-          this._task['DOWNLOADED'].done(props);
+          // this._task['DOWNLOADED'] = observatory.add("DOWNLOADED :: ");
+          // this._task['DOWNLOADED'].done(props);
+          
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('DOWNLOADED :: '));
+          process.stdout.write(props+'\n');
           break;
         case 'TRYING_STOP':
-          if (this._task['STOP_DOWNLOAD'] == null) {
-            this._task['STOP_DOWNLOAD'] = observatory.add("TRYING STOP_DOWNLOAD");
-          }
+          // if (this._task['STOP_DOWNLOAD'] == null) {
+          //   this._task['STOP_DOWNLOAD'] = observatory.add("TRYING STOP_DOWNLOAD");
+          // }
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('TRYING STOP_DOWNLOAD'));
+          process.stdout.write('\n');
           break;
         case 'STOP':
-          if (this._task['STOP_DOWNLOAD'] == null) {
-            this._task['STOP_DOWNLOAD'] = observatory.add("TRYING STOP_DOWNLOAD");
-          }
-          this._task['STOP_DOWNLOAD'].status("Stop")
-          this._task['STOP_DOWNLOAD'].done();
-          this._task['STOP_DOWNLOAD'] = null;
+          // if (this._task['STOP_DOWNLOAD'] == null) {
+          //   this._task['STOP_DOWNLOAD'] = observatory.add("TRYING STOP_DOWNLOAD");
+          // }
+          // this._task['STOP_DOWNLOAD'].status("Stop")
+          // this._task['STOP_DOWNLOAD'].done();
+          // this._task['STOP_DOWNLOAD'] = null;
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('TRYING STOP_DOWNLOAD :: '));
+          process.stdout.write('Stop'+'\n');
           break;
       }
     });
@@ -350,12 +374,19 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       _pendingTimeoutStopDownload();
       switch (action) {
         case 'CLIENT_REQUEST':
-          this._task['CLIENT_REQUEST'] = observatory.add("Remote success trying request");// observatory.add(this.eventToWord[event]);
-          this._task['CLIENT_REQUEST'].done();
+          // this._task['CLIENT_REQUEST'] = observatory.add("Remote success trying request");// observatory.add(this.eventToWord[event]);
+          // this._task['CLIENT_REQUEST'].done();
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('CLIENT_REQUEST :: '));
+          process.stdout.write('Remote success trying request'+'\n');
           break;
         case 'LISTEN_PORT':
-          this._task['LISTEN_PORT'] = observatory.add("Listen Reverse Port :: " + props);// observatory.add(this.eventToWord[event]);
-          this._task['LISTEN_PORT'].done();
+          // this._task['LISTEN_PORT'] = observatory.add("Listen Reverse Port :: " + props);// observatory.add(this.eventToWord[event]);
+          // this._task['LISTEN_PORT'].done();
+          
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('LISTEN_PORT :: '));
+          process.stdout.write('Listen Reverse Port :: '+props+'\n');
           break;
         case 'ADD':
           this._download.startWaitingDownloads(props).then((data) => { }).catch(err => { });

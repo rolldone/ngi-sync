@@ -53,7 +53,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
     // for (var a = 0; a < _directAccess.ssh_commands.length; a++) {
     //   arrayQuestions.push(_directAccess.ssh_commands[a].access_name);
     // }
-
+    console.clear();
     inquirer.registerPrompt('file-tree-selection', inquirerFileTreeSelection);
     let questions: inquirer.QuestionCollection = [
       {
@@ -78,10 +78,11 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
             }
             return false;
           }
+          
           return true;
         },
         choices: ()=>{
-          let singleSyncs = _config.devsync.single_sync
+          let singleSyncs = Object.assign([],_config.devsync.single_sync);
           if(singleSyncs.length > 0){
             singleSyncs.push('----------');
             singleSyncs.push(PROMPT_CHOICE.ALL_ABOVE);
@@ -89,7 +90,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
           return  [
             ...singleSyncs,
             PROMPT_CHOICE.ALL_WITH_SYNC_IGNORE_PATTERN,
-            PROMPT_CHOICE.BROWSE_OTHER,
+            // PROMPT_CHOICE.BROWSE_OTHER,
             PROMPT_CHOICE.EXIT
           ]
         }
@@ -102,9 +103,8 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
           if (va1.single_sync_list == "Browse other") {
             return true;
           }
-          if (va1.single_sync_list == "Exit") {
-            process.exit(0);
-            return;
+          if (va1.single_sync_list == PROMPT_CHOICE.EXIT) {
+            return false;
           }
           return false;
         }
@@ -195,6 +195,8 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
               break;
           }
           return;
+        case PROMPT_CHOICE.EXIT:
+          return masterData.saveData(this._props.from, {});
         default:
           break;
       }
