@@ -364,11 +364,13 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     });
 
     /* Define readline nodejs for listen CTRL + R */
-    this._readLine = rl.createInterface({
-      input: process.stdin,
-      // output : process.stdout,
-      terminal: true
-    });
+    if(this._readLine == null){
+      this._readLine = rl.createInterface({
+        input: process.stdin,
+        // output : process.stdout,
+        terminal: true
+      });
+    }
 
     let remoteFuncKeypress = async (key: any, data: any) => {
       switch (data.sequence) {
@@ -410,8 +412,8 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             syncPull = null;
 
             /* Close readline */
-            this._readLine.close();
-            this._readLine = null;
+            // this._readLine.close();
+            // this._readLine = null;
 
 
             await this.watcher.close();
@@ -423,7 +425,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
             process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
-            console.clear();
             setTimeout(() => {
               console.clear();
               this.construct(this._cli);

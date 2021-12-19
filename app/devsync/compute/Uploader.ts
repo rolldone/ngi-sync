@@ -60,6 +60,9 @@ export default class Uploader {
 		[key: string]: any
 	} = {}
 	_exeHandlePush: Function = null;
+	clientClose():void{
+		this.client.end();
+	}
 	async _executeCommand(whatCommand: string, callback?: Function) {
 		let rawSSH = await this.client.getRawSSH2();
 		rawSSH.exec("cd " + this.config.remotePath + " && " + whatCommand, (err: any, stream: any) => {
