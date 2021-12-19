@@ -1,8 +1,8 @@
 /** this file is same with devsync module */
 import DevSyncUploader from "@root/app/devsync/compute/Uploader";
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
-import { Client } from "@root/tool/scp2/Scp2";
 import { statSync } from "fs";
+import Client from "@root/tool/ssh2-sftp-client";
 import { debounce } from "lodash";
 import upath from 'upath';
 
@@ -94,12 +94,18 @@ export class Uploader extends DevSyncUploader {
 						}
 						try {
 							await this.client.mkdir(upath.dirname(remote), true);
-							await this.client.chmod(upath.dirname(remote), this.config.pathMode)
+							await this.client.chmod(upath.dirname(remote), 0o775)
 						} catch (ex) {
 
 						}
 						deleteQueueFunc();
-						this.client.put(fileName, remote, { concurrency: 64, mode: this.config.pathMode }).then(() => {
+						this.client.put(fileName, remote, {
+							writeStreamOptions: {
+								flags: 'w',  // w - write and a - append
+								encoding: null, // use null for binary files
+								mode: 0o774, // mode to use for created file (rwx)
+							}
+						}).then(() => {
 							/* This is use for prevent upload to remote. */
 							/* Is use on Download.ts */
 							let fileUploadRecord = masterData.getData('FILE_UPLOAD_RECORD', {}) as any;

@@ -121,7 +121,6 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
             return: 'Remaining ' + _remainingOrder + ' files still uploading'// 'Sync is done!'
           })
         } else {
-          this.onListener('DOWNLOADED', 'Last Upload: ' + whatFile);// 'Sync is done!')
           this.onListener('DOWNLOADED_DONE', '');// 'Sync is done!')
         }
       }, 3000 /* 10000 */);

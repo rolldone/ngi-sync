@@ -180,13 +180,14 @@ export default class Watcher {
 
 
 		// Monitor exist directory
-		this._monitorRecursive = setInterval(() => {
-			for (var key in _extraWatch) {
-				if (existsSync(upath.normalizeSafe(base + '/' + key)) == false) {
-					mkdirSync(upath.normalizeSafe(base + '/' + key), { recursive: true });
-				}
-			}
-		}, 5000);
+		// this._monitorRecursive = setInterval(() => {
+		// 	for (var key in _extraWatch) {
+		// 		if (existsSync(upath.normalizeSafe(base + '/' + key)) == false) {
+		// 			// mkdirSync(upath.normalizeSafe(base + '/' + key), { recursive: true });
+		// 			throw new Error("Missing "+upath.normalizeSafe(base + '/' + key)+" You have delete the watch file or folder point, this app will close. Try start again")
+		// 		}
+		// 	}
+		// }, 5000);
 
 		// Attach events
 		["all", "add", "change", "unlink", "unlinkDir"].forEach(method => {
@@ -233,38 +234,36 @@ export default class Watcher {
 			let { path, event, message } = props;
 			switch (event) {
 				case 'all':
-					if (this.tasks['all'] != null) {
-						this.tasks['all'].status(path.replace(this.config.localPath, "") + "");
-						this.getRemoveSelfTask['all']();
-						return;
-					}
-					this.getRemoveSelfTask['all'] = this.removeSelfTask('all');
-					this.tasks['all'] = observatory.add(message);// observatory.add(this.eventToWord[event]);
-					this.tasks['all'].status(path.replace(this.config.localPath, "") + "");
-					this.getRemoveSelfTask['all']();
-					break;
-				case 'add':
-					// if (this.tasks['add'] != null) {
-					// 	this.tasks['add'].done(path.replace(this.config.localPath, "") + "");
-					// 	this.getRemoveSelfTask['add']();
+					// if (this.tasks['all'] != null) {
+					// 	this.tasks['all'].status(path.replace(this.config.localPath, "") + "");
+					// 	this.getRemoveSelfTask['all']();
 					// 	return;
 					// }
-					// this.getRemoveSelfTask['add'] = this.removeSelfTask('add');
-					this.tasks['add'] = observatory.add(message);
-					this.tasks['add'].done(path.replace(this.config.localPath, "") + "");
-					// this.getRemoveSelfTask['add']();
+					// this.getRemoveSelfTask['all'] = this.removeSelfTask('all');
+					// this.tasks['all'] = observatory.add(message);// observatory.add(this.eventToWord[event]);
+					// this.tasks['all'].status(path.replace(this.config.localPath, "") + "");
+					// this.getRemoveSelfTask['all']();
+
+					process.stdout.write(chalk.green('Devsync | '));
+					process.stdout.write(message);
+					process.stdout.write(path.replace(this.config.localPath, "") + "" + '\n');
+					break;
+				case 'add':
+					// this.tasks['add'] = observatory.add(message);
+					// this.tasks['add'].done(path.replace(this.config.localPath, "") + "");
+
+					process.stdout.write(chalk.green('Devsync | '));
+					process.stdout.write(message);
+					process.stdout.write(path.replace(this.config.localPath, "") + "" + '\n');
 
 					break;
 				case 'change':
-					// if (this.tasks['change'] != null) {
-					// 	this.tasks['change'].done(path.replace(this.config.localPath, "") + "");
-					// 	this.getRemoveSelfTask['change']();
-					// 	return;
-					// }
-					// this.getRemoveSelfTask['change'] = this.removeSelfTask('change');
-					this.tasks['change'] = observatory.add(message);
-					this.tasks['change'].done(path.replace(this.config.localPath, "") + "");
-					// this.getRemoveSelfTask['change']();
+					// this.tasks['change'] = observatory.add(message);
+					// this.tasks['change'].done(path.replace(this.config.localPath, "") + "");
+
+					process.stdout.write(chalk.green('Devsync | '));
+					process.stdout.write(message);
+					process.stdout.write(path.replace(this.config.localPath, "") + "" + '\n');
 					break;
 			}
 		});
@@ -309,7 +308,7 @@ export default class Watcher {
 		for (var a = 0; a < this._unwatch.length; a++) {
 			await this._unwatch[a].close();
 		}
-		clearInterval(this._monitorRecursive);
+		// clearInterval(this._monitorRecursive);
 	}
 
 	setOnListener(onListener: Function) {
@@ -341,8 +340,10 @@ export default class Watcher {
 			}
 			unlinkSync(destinationFile);
 		} catch (ex: any) {
-			this.tasks['Delete Cache Err'] = observatory.add("Delete Cache ERR :: ");
-			this.tasks['Delete Cache Err'].fail(ex.message);
+			// this.tasks['Delete Cache Err'] = observatory.add("Delete Cache ERR :: ");
+			// this.tasks['Delete Cache Err'].fail(ex.message);
+			process.stdout.write(chalk.red('Devsync | '));
+			process.stdout.write(ex.message+ '\n');
 			return false;
 		}
 	}
@@ -396,6 +397,12 @@ export default class Watcher {
 			if (fileDownoadRecord[upath.normalizeSafe(path)] == true) {
 				delete fileDownoadRecord[upath.normalizeSafe(path)];
 				masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
+				switch(method){
+					case 'add':
+					case 'change':
+						this.setCacheFile(path);
+						break;
+				}
 				return;
 			}
 
@@ -448,9 +455,8 @@ export default class Watcher {
 				pendingTask[whatTask].cancel();
 			}
 			pendingTask[whatTask] = debounce((whatTask: string) => {
-				// this.tasks['newLine'].done();
-				this.tasks[whatTask].done();
-				this.tasks[whatTask] = null;
+				// this.tasks[whatTask].done();
+				// this.tasks[whatTask] = null;
 			}, 2000);
 			pendingTask[whatTask](whatTask);
 		}
@@ -469,13 +475,18 @@ export default class Watcher {
 	private _sameAddPath: string = ""
 	private add = (path: string) => {
 		if (safeJSON(this.config, 'devsync.trigger_permission.add', false) == false) {
-			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('ADD ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
-			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot add data sync on server");
-			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+			// this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('ADD ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
+			// this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot add data sync on server");
+			// this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+
+			process.stdout.write(chalk.red('Devsync | '));
+			process.stdout.write(chalk.red('ADD ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
+			process.stdout.write(chalk.red("You have setting permission cannot add data sync on server"+ '\n'));
 			return;
 		}
 		if (this._sameAddPath == path) {
-			console.log('Ups get 2x add :: ', path);
+			process.stdout.write(chalk.green('Devsync | '));
+			process.stdout.write(chalk.green('Ups get 2x add :: '+path)+'\n');
 			this._sameAddPath = null;
 		} else {
 			this._sameAddPath = path;
@@ -491,22 +502,31 @@ export default class Watcher {
 			})
 		}).catch((err) => {
 			this.deleteCacheFile(path);
-			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('ADD ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
-			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details(err.message);
-			this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+			// this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('ADD ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
+			// this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details(err.message);
+			// this.tasks["add-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+
+			process.stdout.write(chalk.red('Devsync | '));
+			process.stdout.write(chalk.red('ADD ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
+			process.stdout.write(chalk.red(err.message+ '\n'));
 		});
 	};
 
 	private _sameChangePath: string = ""
 	private change = (path: string) => {
 		if (safeJSON(this.config, 'devsync.trigger_permission.change', false) == false) {
-			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('CHANGE ERR :: ' + path.replace(this.config.localPath, "") + "");
-			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot update data sync on server");
-			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+			// this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('CHANGE ERR :: ' + path.replace(this.config.localPath, "") + "");
+			// this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot update data sync on server");
+			// this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+
+			process.stdout.write(chalk.red('Devsync | '));
+			process.stdout.write(chalk.red('CHANGE ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
+			process.stdout.write(chalk.red("You have setting permission cannot update data sync on server"+ '\n'));
 			return;
 		}
 		if (this._sameChangePath == path) {
-			console.log('Ups get 2x change :: ', path);
+			process.stdout.write(chalk.green('Devsync | '));
+			process.stdout.write(chalk.green('Ups get 2x change :: '+path)+'\n');
 			this._sameChangePath = null;
 		} else {
 			this._sameChangePath = path;
@@ -522,9 +542,13 @@ export default class Watcher {
 			})
 		}).catch((err) => {
 			this.deleteCacheFile(path);
-			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('CHANGE ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
-			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details(err.message);
-			this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+			// this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('CHANGE ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
+			// this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details(err.message);
+			// this.tasks["change-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+
+			process.stdout.write(chalk.red('Devsync | '));
+			process.stdout.write(chalk.red('CHANGE ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
+			process.stdout.write(chalk.red(err.message+ '\n'));
 			// this.tasks[this.change.name].fail("Fail").details(err.message);
 		});
 	};
@@ -536,9 +560,13 @@ export default class Watcher {
 			return;
 		}
 		if (safeJSON(this.config, 'devsync.trigger_permission.unlink', false) == false) {
-			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
-			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot unlink data sync on server");
-			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+			// this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
+			// this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot unlink data sync on server");
+			// this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+
+			process.stdout.write(chalk.red('Devsync | '));
+			process.stdout.write(chalk.red('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
+			process.stdout.write(chalk.red("You have setting permission cannot unlink data sync on server"+ '\n'));
 			return;
 		}
 		if (this._sameUnlinkPath == path) {
@@ -549,8 +577,12 @@ export default class Watcher {
 		}
 		this.uploader.unlinkFile(path, this._getTimeoutSftp(50)).then(remote => {
 			this.deleteCacheFile(path);
-			this.tasks['unlink'] = observatory.add("UNLINK :: DONE ");
-			this.tasks['unlink'].done(remote);
+			// this.tasks['unlink'] = observatory.add("UNLINK :: DONE ");
+			// this.tasks['unlink'].done(remote);
+
+			process.stdout.write(chalk.green('Devsync | '));
+			process.stdout.write(chalk.white('UNLINK DONE :: '));
+			process.stdout.write(remote+'\n');
 		}).catch((err) => {
 			/* If first filter getting lost */
 			/* Trap again on this place */
@@ -558,9 +590,13 @@ export default class Watcher {
 				return;
 			}
 			this.deleteCacheFile(path);
-			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
-			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details(`Error deleting file ${err} or maybe just deleted from target.`);
-			this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+			// this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
+			// this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details(`Error deleting file ${err} or maybe just deleted from target.`);
+			// this.tasks["unlink-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+
+			process.stdout.write(chalk.red('Devsync | '));
+			process.stdout.write(chalk.red('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
+			process.stdout.write(chalk.red(err.message+ '\n'));
 		});
 	};
 
@@ -570,20 +606,32 @@ export default class Watcher {
 		}
 		this._contain_path[upath.normalizeSafe(path)] = upath.normalizeSafe(path);
 		if (safeJSON(this.config, 'devsync.trigger_permission.unlink_folder', false) == false) {
-			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
-			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot unlink directory data sync on server");
-			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+			// this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
+			// this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details("You have setting permission cannot unlink directory data sync on server");
+			// this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails');
+
+			process.stdout.write(chalk.red('Devsync | '));
+			process.stdout.write(chalk.red('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
+			process.stdout.write(chalk.red("You have setting permission cannot unlink directory data sync on server"+ '\n'));
 			return;
 		}
 		this.uploader.unlinkFolder(path, this._getTimeoutSftp(100)).then(remote => {
 			this.deleteCacheFile(path, WATCHER_ACTION.DELETE_FOLDER);
-			this.tasks['unlinkDir'] = observatory.add("UNLINKDIR :: DONE ");
-			this.tasks['unlinkDir'].done(remote);
+			// this.tasks['unlinkDir'] = observatory.add("UNLINKDIR :: DONE ");
+			// this.tasks['unlinkDir'].done(remote);
+
+			process.stdout.write(chalk.green('Devsync | '));
+			process.stdout.write(chalk.white('UNLINKDIR DONE :: '));
+			process.stdout.write(remote+'\n');
 		}).catch((err) => {
 			this.deleteCacheFile(path, WATCHER_ACTION.DELETE_FOLDER);
-			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
-			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details(`Error deleting folder ${err}`);
-			this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails')
+			// this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
+			// this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].details(`Error deleting folder ${err}`);
+			// this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))].fail('Fails')
+
+			process.stdout.write(chalk.red('Devsync | '));
+			process.stdout.write(chalk.red('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
+			process.stdout.write(chalk.red(err.message+ '\n'));
 		});
 	};
 }

@@ -5,7 +5,7 @@ import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { CliInterface } from "./CliService";
 import { RsyncOptions } from "../compute/SyncPush";
 import SingleSync, { SingleSyncInterface } from "../compute/SingleSync";
-import { readFileSync } from "fs";
+import { lstatSync, readFileSync } from "fs";
 var inquirerFileTreeSelection = require("inquirer-file-tree-selection-prompt");
 import upath from 'upath';
 import { ConfigInterface } from "../compute/Config";
@@ -53,7 +53,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
     // for (var a = 0; a < _directAccess.ssh_commands.length; a++) {
     //   arrayQuestions.push(_directAccess.ssh_commands[a].access_name);
     // }
-
+    console.clear();
     inquirer.registerPrompt('file-tree-selection', inquirerFileTreeSelection);
     let questions: inquirer.QuestionCollection = [
       {
@@ -78,10 +78,11 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
             }
             return false;
           }
+          
           return true;
         },
         choices: ()=>{
-          let singleSyncs = _config.devsync.single_sync
+          let singleSyncs = Object.assign([],_config.devsync.single_sync);
           if(singleSyncs.length > 0){
             singleSyncs.push('----------');
             singleSyncs.push(PROMPT_CHOICE.ALL_ABOVE);
@@ -89,7 +90,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
           return  [
             ...singleSyncs,
             PROMPT_CHOICE.ALL_WITH_SYNC_IGNORE_PATTERN,
-            PROMPT_CHOICE.BROWSE_OTHER,
+            // PROMPT_CHOICE.BROWSE_OTHER,
             PROMPT_CHOICE.EXIT
           ]
         }
@@ -102,9 +103,8 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
           if (va1.single_sync_list == "Browse other") {
             return true;
           }
-          if (va1.single_sync_list == "Exit") {
-            process.exit(0);
-            return;
+          if (va1.single_sync_list == PROMPT_CHOICE.EXIT) {
+            return false;
           }
           return false;
         }
@@ -195,14 +195,19 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
               break;
           }
           return;
+        case PROMPT_CHOICE.EXIT:
+          return masterData.saveData(this._props.from, {});
         default:
           break;
       }
 
       if (passAnswer.browse_file != null) {
-        let fixPath = upath.normalizeSafe(passAnswer.browse_file);
-        fixPath = fixPath.replace(this._config.localPath, '');
-        fixPath = fixPath.replace('/', '');
+        let fixPath = upath.normalize(passAnswer.browse_file);
+        let _lstatSync = lstatSync(fixPath);
+        if(_lstatSync.isDirectory()){
+          fixPath += '/';
+        }
+        fixPath = fixPath.replace(upath.normalize(this._config.localPath+'/'), '');
         passAnswer.single_sync_list = fixPath;
         delete passAnswer.browse_file;
       }
@@ -231,7 +236,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
       });
       _singleSync.setOnListener((props: any) => {
         if (props.action == "exit") {
-          console.clear();
+          // console.clear();
           setTimeout(() => {
             this._promptAction(questions);
           }, 500);
