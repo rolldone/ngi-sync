@@ -40,9 +40,9 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
             _local_path = "./";
           }
         } else {
-          _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + extraWatchs[index].path));
-          _local_path = _local_path + '/';
-          _remote_path = _remote_path + '/';
+          _local_path = path.relative(upath.normalize(path.resolve("")), upath.normalize(_local_path + '/' + extraWatchs[index].path) + '/');
+          _local_path = _local_path;
+          _remote_path = upath.normalize(_remote_path + '/');
         }
 
         process.stdout.write(chalk.green('Rsync Download | ') + _local_path + ' << ' + _remote_path + '\n');
@@ -58,7 +58,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
           /* Support multiple source too */
           source: config.username + '@' + config.host + ':' + _remote_path,
           // source : upath.normalize(_local_path+'/'),
-          destination: upath.normalizeSafe('./' + _local_path),
+          destination: upath.normalize('./' + _local_path),
           /* Include First */
           include: [],
           /* Exclude after include */
@@ -157,9 +157,9 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
 
       // Download All data on single_sync sync-config.yaml
       if (this._config.withoutSyncIgnorePattern == true) {
-        extraWatch = [];  
+        extraWatch = [];
         for (var i = 0; i < this._config.single_sync.length; i++) {
-          switch(this._config.single_sync[i]){
+          switch (this._config.single_sync[i]) {
             case "/**":
             case "/*":
             case "/":

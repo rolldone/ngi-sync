@@ -50,23 +50,23 @@ BaseStart({
       case 'devsync':
         masterData.saveData('command.devsync.index', {});
         return;
-      case 'forcesftp':
-        masterData.saveData('command.forcesftp.index', {});
-        return;
+      // // case 'forcesftp':
+      // //   masterData.saveData('command.forcesftp.index', {});
+      //   return;
       case 'devsync2':
         if (segment1._[1] != null) {
           return masterData.saveData('command.devsync2.short_command', segment1._[1]);
         }
         masterData.saveData('command.devsync2.index', null);
         return;
-      case 'devsync_remote':
-        /* Force user can delete */
-        // process.env.IS_PROCESS = "open_console";
-        masterData.saveData('command.devsync_remote.index', segment1._[1]);
-        return;
-      case 'forcersync':
-        masterData.saveData('command.forcersync.index', {});
-        return;
+      // case 'devsync_remote':
+      //   /* Force user can delete */
+      //   // process.env.IS_PROCESS = "open_console";
+      //   masterData.saveData('command.devsync_remote.index', segment1._[1]);
+      //   return;
+      // case 'forcersync':
+      //   masterData.saveData('command.forcersync.index', {});
+      //  return;
       case 'singlesync':
         masterData.saveData('command.forcersync.single_sync', {});
         return;
