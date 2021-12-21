@@ -53,19 +53,22 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         //     action: "exit",
         //     return: {}
         //   })
-        // }
+        // })
+
+        let _delete_mode_active = config.mode == "hard" ? true : false;
+        _delete_mode_active = extraWatchs[index].includes.length > 0 ? false : _delete_mode_active
         var rsync = Rsync.build({
           /* Support multiple source too */
           source: config.username + '@' + config.host + ':' + _remote_path,
           // source : upath.normalize(_local_path+'/'),
           destination: upath.normalize('./' + _local_path),
           /* Include First */
-          include: [],
+          include: extraWatchs[index].includes || [],
           /* Exclude after include */
           exclude: extraWatchs[index].ignores,
           // flags : '-vt',
-          flags: '-avzL',
-          set: '--size-only --checksum ' + (config.mode == "hard" ? '--delete' : ''),
+          flags: '-avzLm',
+          set: '--size-only --checksum ' + (_delete_mode_active == true ? '--delete' : ''),
           // set : '--no-perms --no-owner --no-group',
           // set : '--chmod=D777,F777',
           // set : '--perms --chmod=u=rwx,g=rwx,o=,Dg+s',
@@ -157,6 +160,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
       let extraWatch: Array<{
         path: string
         ignores: Array<string>
+        includes?: Array<string>
       }> = this._generatePathMap();
 
       // Download All data on single_sync sync-config.yaml
