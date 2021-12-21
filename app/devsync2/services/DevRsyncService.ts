@@ -14,7 +14,6 @@ import { executeLocalCommand, stripAnsi } from "@root/tool/Helpers";
 const observatory = require("observatory");
 const notifier = require('node-notifier');
 const chalk = require('chalk');
-const pty = require('node-pty');
 
 declare var masterData: MasterDataInterface
 
@@ -51,13 +50,13 @@ export const COMMAND_SHORT = {
 }
 
 export const COMMAND_TARGET = {
-  SAFE_SYNC: COMMAND_SHORT.SAFE_SYNC + ' :: DevSync Basic Safe Syncronise \n  - Trigger by edit file :)',
-  SAFE_PULL_SYNC: COMMAND_SHORT.SAFE_PULL_SYNC + ' :: devsync Pull Syncronise and then run devsync mode \n  - This feature will download from target to source \n  - And ignore all file that you define on .sync_ignore :)',
-  FORCE_PULL_SYNC: COMMAND_SHORT.FORCE_PULL_SYNC + ' :: devsync Force Pull Syncronise and then run devsync mode \n  - This feature will download from target to source \n  - And ignore all file that you define on .sync_ignore \n  - ' + chalk.red('And will delete the file from source if deleted on target, Be Careful! :('),
-  SAFE_SYNC_NON_FORCE: COMMAND_SHORT.SAFE_SYNC_NON_FORCE + ' :: DevSync Basic with non force file \n  - Trigger by edit file :). Ignored file not activated except pull sync \n  - Caution : This mode will take a long time indexing the file. and need more consume RAM',
-  SOFT_PUSH_SYNC: COMMAND_SHORT.SOFT_PUSH_SYNC + ' :: DevSync Safe push data and then run devsync mode \n  - Your sensitive data will be safe on target :)',
-  FORCE_PUSH_SYNC: COMMAND_SHORT.FORCE_PUSH_SYNC + ' :: DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
-  FORCE_SINGLE_SYNC: COMMAND_SHORT.FORCE_SINGLE_SYNC + ' :: DevSync Single Syncronize \n  - You can download simple file or folder',
+  SAFE_SYNC: COMMAND_SHORT.SAFE_SYNC + ' :: DevSync Basic Safe Syncronise - Trigger by edit file :)',
+  SAFE_PULL_SYNC: COMMAND_SHORT.SAFE_PULL_SYNC + ' :: devsync Pull Syncronise and then run devsync mode - This feature will download from target to source - And ignore all file that you define on .sync_ignore :)',
+  FORCE_PULL_SYNC: COMMAND_SHORT.FORCE_PULL_SYNC + ' :: devsync Force Pull Syncronise and then run devsync mode - This feature will download from target to source - And ignore all file that you define on .sync_ignore \n  - ' + chalk.red('And will delete the file from source if deleted on target, Be Careful! :('),
+  SAFE_SYNC_NON_FORCE: COMMAND_SHORT.SAFE_SYNC_NON_FORCE + ' :: DevSync Basic with non force file - Trigger by edit file :). Ignored file not activated except pull sync - Caution : This mode will take a long time indexing the file. and need more consume RAM',
+  SOFT_PUSH_SYNC: COMMAND_SHORT.SOFT_PUSH_SYNC + ' :: DevSync Safe push data and then run devsync mode - Your sensitive data will be safe on target :)',
+  FORCE_PUSH_SYNC: COMMAND_SHORT.FORCE_PUSH_SYNC + ' :: DevSync Force Push Data - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
+  FORCE_SINGLE_SYNC: COMMAND_SHORT.FORCE_SINGLE_SYNC + ' :: DevSync Single Syncronize - You can download simple file or folder',
 }
 
 const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
@@ -90,7 +89,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     /* Define question devsync2 menu */
     let questions: inquirer.QuestionCollection = [
       {
-        type: "list",
+        type: "rawlist",
         name: "target",
         message: "Devsync Mode :",
         choices: [

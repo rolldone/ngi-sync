@@ -125,6 +125,10 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
               this._recursiveRsync(extraWatchs, index + 1);
             }
           } else {
+            if (_is_file == true) {
+              this._recursiveRsync(extraWatchs, index, _is_file);
+              return;
+            }
             this._onListener({
               action: "exit",
               return: {
