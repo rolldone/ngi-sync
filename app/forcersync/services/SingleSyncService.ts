@@ -57,7 +57,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
     inquirer.registerPrompt('file-tree-selection', inquirerFileTreeSelection);
     let questions: inquirer.QuestionCollection = [
       {
-        type: "list",
+        type: "rawlist",
         name: "option",
         message: "Single Sync :",
         choices: [
@@ -68,7 +68,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
         ]
       },
       {
-        type: "list",
+        type: "rawlist",
         name: "single_sync_list",
         message: "Which folder :",
         when: (va1: any) => {
@@ -110,7 +110,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
         }
       },
       {
-        type: "list",
+        type: "rawlist",
         name: "rsync_mode",
         message: "Which folder :",
         when: (va1: any) => {
@@ -237,9 +237,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
       _singleSync.setOnListener((props: any) => {
         if (props.action == "exit") {
           // console.clear();
-          setTimeout(() => {
-            this._promptAction(questions);
-          }, 500);
+          this._promptAction(questions);
         }
       })
       _singleSync.submitPushSelective(passAnswer);
