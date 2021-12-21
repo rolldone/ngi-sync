@@ -66,7 +66,7 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
       let currentConf = this.returnConfigModel(cli);
       let questions: inquirer.QuestionCollection = [
         {
-          type: "list",
+          type: "rawlist",
           name: "action",
           message: "You have sync collection config data :",
           choices: [
