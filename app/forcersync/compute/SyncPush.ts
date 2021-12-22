@@ -365,10 +365,10 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       includes?: Array<string>
       prevent_delete_mode?: boolean
     }> = [];
-    
+
     let __gg = [];
-    for(var a=0;a<_filterPatternRules.ignores.length;a++){
-      _filterPatternRules.ignores[a] = _filterPatternRules.ignores[a].replace(' ','');
+    for (var a = 0; a < _filterPatternRules.ignores.length; a++) {
+      _filterPatternRules.ignores[a] = _filterPatternRules.ignores[a].replace(' ', '');
     }
     extraWatch.push({
       path: "/",
@@ -380,14 +380,14 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       let newIgnores = [];
       for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
         if (_filterPatternRules.ignores[b].includes(_filterPatternRules.pass[a])) {
-          newIgnores.push(_filterPatternRules.ignores[b].replace(_filterPatternRules.pass[a], '').replace(' ',''));
+          newIgnores.push(_filterPatternRules.ignores[b].replace(_filterPatternRules.pass[a], '').replace(' ', ''));
           _filterPatternRules.ignores.splice(b, 1);
         }
       }
       /* Include double star pattern rule too */
       for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
         if (_filterPatternRules.ignores[b].includes("**")) {
-          newIgnores.push(_filterPatternRules.ignores[b].replace(' ',''));
+          newIgnores.push(_filterPatternRules.ignores[b].replace(' ', ''));
         }
       }
 
@@ -400,8 +400,8 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       while (extraWatch[extraWatch.length - 1].path.includes("*")) {
         let _dirname = upath.dirname(extraWatch[extraWatch.length - 1].path);
         extraWatch[extraWatch.length - 1].path = _dirname;
-        extraWatch[extraWatch.length - 1].ignores = ["*",this._removeDuplicate(".sync_temp/"+_filterPatternRules.pass[a],'/')];
-        extraWatch[extraWatch.length - 1].includes[0] = _filterPatternRules.pass[a]// '/'+this._replaceAt(this._removeSameString(_filterPatternRules.pass[a], _dirname), '/', '', 0, 1);
+        extraWatch[extraWatch.length - 1].ignores = ["*", this._removeDuplicate(".sync_temp/" + _filterPatternRules.pass[a], '/')];
+        extraWatch[extraWatch.length - 1].includes[0] = upath.normalize('/' + _filterPatternRules.pass[a]); // '/'+this._replaceAt(this._removeSameString(_filterPatternRules.pass[a], _dirname), '/', '', 0, 1);
         extraWatch[extraWatch.length - 1].includes[1] = "*/";
       }
     }
