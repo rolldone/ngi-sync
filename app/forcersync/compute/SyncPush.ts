@@ -401,7 +401,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
         let _dirname = upath.dirname(extraWatch[extraWatch.length - 1].path);
         extraWatch[extraWatch.length - 1].path = _dirname;
         extraWatch[extraWatch.length - 1].ignores = ["*", this._removeDuplicate(".sync_temp/" + _filterPatternRules.pass[a], '/')];
-        extraWatch[extraWatch.length - 1].includes[0] = upath.normalize('/' + _filterPatternRules.pass[a]); // '/'+this._replaceAt(this._removeSameString(_filterPatternRules.pass[a], _dirname), '/', '', 0, 1);
+        extraWatch[extraWatch.length - 1].includes[0] = this._removeDuplicate('/' + _filterPatternRules.pass[a],'/'); // '/'+this._replaceAt(this._removeSameString(_filterPatternRules.pass[a], _dirname), '/', '', 0, 1);
         extraWatch[extraWatch.length - 1].includes[1] = "*/";
       }
     }
