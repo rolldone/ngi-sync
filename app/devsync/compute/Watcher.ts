@@ -155,6 +155,14 @@ export default class Watcher {
 				}
 			}
 		}
+		/* Include double star pattern rule too */
+		for (var key in _extraWatch) {
+			for (var b = 0; b < originIgnore.length; b++) {
+				if (originIgnore[b].includes("**")) {
+					_extraWatch[key].push(originIgnore[b].replace(' ',''));
+				}
+			}
+		}
 		console.log('-------------------------------------')
 		console.log(' You get extra watch : ');
 		for (var key in _extraWatch) {
