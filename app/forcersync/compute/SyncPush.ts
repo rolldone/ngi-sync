@@ -5,7 +5,7 @@ import Config, { ConfigInterface } from "./Config";
 import * as upath from "upath";
 import * as child_process from 'child_process';
 import parseGitIgnore from '@root/tool/parse-gitignore'
-import _, { debounce } from 'lodash';
+import _, { debounce, includes } from 'lodash';
 import ignore from 'ignore'
 const micromatch = require('micromatch');
 import { readdirSync, readFileSync, statSync } from "fs";
@@ -47,6 +47,7 @@ export interface SyncPushInterface extends BaseModelInterface {
     (extraWatchs: Array<{
       path: string
       ignores: Array<string>
+      includes?: Array<string>
     }>, index?: number, isFile?: boolean): void
   }
   _generatePathMap?: {
@@ -361,31 +362,48 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
     let extraWatch: Array<{
       path: string
       ignores: Array<string>
+      includes?: Array<string>
+      prevent_delete_mode?: boolean
     }> = [];
 
+    let __gg = [];
+    for (var a = 0; a < _filterPatternRules.ignores.length; a++) {
+      _filterPatternRules.ignores[a] = _filterPatternRules.ignores[a].replace(' ', '');
+    }
     extraWatch.push({
       path: "/",
-      ignores: _filterPatternRules.ignores
+      ignores: _filterPatternRules.ignores,
+      includes: []
     });
 
     for (var a = 0; a < _filterPatternRules.pass.length; a++) {
       let newIgnores = [];
       for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
         if (_filterPatternRules.ignores[b].includes(_filterPatternRules.pass[a])) {
-          newIgnores.push(_filterPatternRules.ignores[b].replace(_filterPatternRules.pass[a],''));
-          _filterPatternRules.ignores.splice(b,1);
+          newIgnores.push(_filterPatternRules.ignores[b].replace(_filterPatternRules.pass[a], '').replace(' ', ''));
+          _filterPatternRules.ignores.splice(b, 1);
         }
       }
       /* Include double star pattern rule too */
       for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
         if (_filterPatternRules.ignores[b].includes("**")) {
-          newIgnores.push(_filterPatternRules.ignores[b]);
+          newIgnores.push(_filterPatternRules.ignores[b].replace(' ', ''));
         }
       }
+
       extraWatch.push({
         path: _filterPatternRules.pass[a],
-        ignores: newIgnores
+        ignores: newIgnores,
+        includes: []
       });
+
+      while (extraWatch[extraWatch.length - 1].path.includes("*")) {
+        let _dirname = upath.dirname(extraWatch[extraWatch.length - 1].path);
+        extraWatch[extraWatch.length - 1].path = _dirname;
+        extraWatch[extraWatch.length - 1].ignores = ["*", this._removeDuplicate(".sync_temp/" + _filterPatternRules.pass[a], '/')];
+        extraWatch[extraWatch.length - 1].includes[0] = this._removeDuplicate('/' + _filterPatternRules.pass[a],'/'); // '/'+this._replaceAt(this._removeSameString(_filterPatternRules.pass[a], _dirname), '/', '', 0, 1);
+        extraWatch[extraWatch.length - 1].includes[1] = "*/";
+      }
     }
     return extraWatch;
   },
@@ -411,27 +429,20 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
 
         process.stdout.write(chalk.green('Rsync Upload | ') + _local_path + ' >> ' + _remote_path + '\n');
 
-        // if (extraWatchs[index + 1] != null) {
-        //   this._recursiveRsync(extraWatchs, index + 1);
-        // } else {
-        //   this._onListener({
-        //     action: "exit",
-        //     return: {}
-        //   })
-        // }
-        // return;
+        let _delete_mode_active = config.mode == "hard" ? true : false;
+        _delete_mode_active = extraWatchs[index].includes.length > 0 ? false : _delete_mode_active
         var rsync = Rsync.build({
           /* Support multiple source too */
           source: _local_path,
           // source : upath.normalize(_local_path+'/'),
           destination: _remote_path,
           /* Include First */
-          include: [],
+          include: extraWatchs[index].includes,
           /* Exclude after include */
           exclude: extraWatchs[index].ignores,
-          set: '--usermap=*:'+this._config.username+' --groupmap=*:'+this._config.username+' --chmod=D2775,F775 --size-only --checksum ' + (config.mode == "hard" ? '--force --delete' : ''),
+          set: '--usermap=*:' + this._config.username + ' --groupmap=*:' + this._config.username + ' --chmod=D2775,F775 --size-only --checksum ' + (_delete_mode_active == true ? '--force --delete' : ''),
           // flags : '-vt',
-          flags: '-avzL',
+          flags: '-avzLm',
           shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
         });
 
