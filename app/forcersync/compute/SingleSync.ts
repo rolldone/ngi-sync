@@ -41,11 +41,13 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
       let extraWatch: Array<{
         path: string
         ignores: Array<string>
+        includes?: Array<string>
       }> = [];
 
       extraWatch.push({
         path: props.single_sync_list,
-        ignores: []
+        ignores: [],
+        includes: []
       });
 
       switch (props.option.toLowerCase()) {
