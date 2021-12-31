@@ -1,8 +1,8 @@
 /** this file is same with devsync module */
 import DevSyncUploader from "@root/app/devsync/compute/Uploader";
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
-import { Client } from "@root/tool/scp2/Scp2";
 import { statSync } from "fs";
+import Client from "@root/tool/ssh2-sftp-client";
 import { debounce } from "lodash";
 import upath from 'upath';
 
@@ -41,7 +41,7 @@ export class Uploader extends DevSyncUploader {
 			}
 			/* Mengikuti kelipatan concurent */
 			let _debouncePendingOut = first_time_out == null ? (100 * (entry.queue_no == 0 ? 1 : entry.queue_no + 1)) : first_time_out;
-			this._pendingUpload[entry.path] = debounce((entry: any) => {
+			this._pendingUpload[entry.path] = debounce(async (entry: any) => {
 				let deleteQueueFunc = () => {
 					this._pendingUpload[entry.path] = null;
 					delete this._pendingUpload[entry.path];
@@ -69,74 +69,78 @@ export class Uploader extends DevSyncUploader {
 
 				switch (action) {
 					case 'add_change':
-						/* Check the size of file first */
-						let stats = statSync(upath.normalizeSafe(fileName));
-						let size_limit = this.config.size_limit;
-						if (size_limit == null) {
-							size_limit = 5;
-						}
-						size_limit = size_limit * 1000000;
-						if (stats.size > size_limit) {
-							this.onListener('WARNING', {
-								return: 'File size more than ' + this.config.size_limit + 'MB : ' + upath.normalizeSafe(fileName)
-							})
-						}
-						this.client.mkdir(upath.dirname(remote), { mode: this.config.pathMode }, err => {
-							deleteQueueFunc();
-							if (err) {
-								reject({
-									message: `Could not create ${upath.dirname(remote)}`,
-									error: err
-								});
-								next();
-							} else {
-								// Uplad the file
-								this.client.upload(fileName, remote, (err: any) => {
-									if (err) {
-										this.onListener('REJECTED', {
-											return: err.message
-										});
-									} else {
-										/* This is use for prevent upload to remote. */
-										/* Is use on Download.ts */
-										let fileUploadRecord = masterData.getData('FILE_UPLOAD_RECORD', {}) as any;
-										fileUploadRecord[remote] = true;
-										masterData.saveData('FILE_UPLOAD_RECORD', fileUploadRecord);
-									}
-									resolve(remote);
-									next();
-								});
+						try {
+							/* Check the size of file first */
+							let stats = statSync(upath.normalizeSafe(fileName));
+							let size_limit = this.config.size_limit;
+							if (size_limit == null) {
+								size_limit = 5;
 							}
+							size_limit = size_limit * 1000000;
+							if (stats.size > size_limit) {
+								this.onListener('WARNING', {
+									return: 'File size more than ' + this.config.size_limit + 'MB : ' + upath.normalizeSafe(fileName)
+								})
+							}
+
+						} catch (ex) {
+							console.log('ex', ex);
+							deleteQueueFunc();
+							reject({
+								message: `Could not create ${upath.dirname(remote)}`,
+								error: ex
+							});
+							return next();
+						}
+						try {
+							await this.client.mkdir(upath.dirname(remote), true);
+							await this.client.chmod(upath.dirname(remote), 0o775)
+						} catch (ex) {
+
+						}
+						deleteQueueFunc();
+						this.client.put(fileName, remote, {
+							writeStreamOptions: {
+								flags: 'w',  // w - write and a - append
+								encoding: null, // use null for binary files
+								mode: 0o774, // mode to use for created file (rwx)
+							}
+						}).then(() => {
+							/* This is use for prevent upload to remote. */
+							/* Is use on Download.ts */
+							let fileUploadRecord = masterData.getData('FILE_UPLOAD_RECORD', {}) as any;
+							fileUploadRecord[remote] = true;
+							masterData.saveData('FILE_UPLOAD_RECORD', fileUploadRecord);
+							resolve(remote);
+							next();
+						}).catch((err: any) => {
+							this.onListener('REJECTED', {
+								return: err.message
+							});
+							resolve(remote);
+							next();
 						});
 						break;
 					case 'delete_file':
-						this.client.sftp((err: any, sftp) => {
+						this.client.delete(remote).then(() => {
 							deleteQueueFunc();
-							if (err) {
-								reject(err.message);
-								next();
-							} else {
-								sftp.unlink(remote, (err: any) => {
-									if (err) {
-										reject(err.message);
-									} else {
-										resolve(remote);
-									}
-									next();
-								});
-							}
-						});
+							resolve(remote);
+							next();
+						}).catch((err) => {
+							deleteQueueFunc();
+							reject(err.message);
+							next();
+						})
 						break;
 					case 'delete_folder':
-						this.client.exec("rm -R " + remote, (err: any) => {
+						this.client.rmdir(remote, true).then(() => {
 							deleteQueueFunc();
-							if (err) {
-								reject(err.message);
-							} else {
-								resolve(remote);
-							}
+							resolve(remote);
 							next();
-						});
+						}).catch((err) => {
+							deleteQueueFunc();
+							reject(err.message);
+						})
 						break;
 				}
 

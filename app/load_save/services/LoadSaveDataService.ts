@@ -61,7 +61,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
 
     let questions: inquirer.QuestionCollection = [
       {
-        type: "list",
+        type: "rawlist",
         name: "action",
         message: "Action Mode :",
         choices: [
@@ -130,7 +130,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
     }
     let questions: inquirer.QuestionCollection = [
       {
-        type: "search-list",
+        type: "rawlist",
         name: "target_load",
         message: "Display data saved :",
         choices: ress,
@@ -159,7 +159,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
     ress.push("New file");
     let questions: inquirer.QuestionCollection = [
       {
-        type: "search-list",
+        type: "rawlist",
         name: "target_save",
         message: "Display data saved :",
         choices: ress,
@@ -190,7 +190,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
     ress.push("New file");
     let questions: inquirer.QuestionCollection = [
       {
-        type: "search-list",
+        type: "rawlist",
         name: "target_delete",
         message: "Display data saved :",
         choices: ress,

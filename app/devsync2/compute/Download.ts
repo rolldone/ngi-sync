@@ -121,7 +121,6 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
             return: 'Remaining ' + _remainingOrder + ' files still uploading'// 'Sync is done!'
           })
         } else {
-          this.onListener('DOWNLOADED', 'Last Upload: ' + whatFile);// 'Sync is done!')
           this.onListener('DOWNLOADED_DONE', '');// 'Sync is done!')
         }
       }, 3000 /* 10000 */);
@@ -407,7 +406,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
           passphrase: currentConf.password,
           privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
           paths: (() => {
-            let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;
+            let arrayString: Array<string> = currentConf.devsync.downloads == null ? [] : currentConf.devsync.downloads;
             for (var a = 0; a < arrayString.length; a++) {
               arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
             }
@@ -419,7 +418,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
         }))
         this._client.on('error', (err) => {
           console.log('SFTP CLIENT CONNECTION :: ', err);
-          process.exit(0)
+          // process.exit(0)
         })
         this._exeHandlePush = this._handlePush();
       }

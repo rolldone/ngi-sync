@@ -2,7 +2,7 @@ import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import { CliInterface, EXIT_CODE } from "../services/CliService";
 import path, { join as pathJoin } from "path";
 import { readFileSync, existsSync, statSync, createReadStream } from "fs";
-import { String } from "lodash";
+import { String, uniq } from "lodash";
 import upath from 'upath';
 const { parse } = require("jsonplus");
 import YAML from 'yaml'
@@ -36,8 +36,8 @@ export interface ConfigInterface extends BaseModelInterface {
   localPath?: string;
   remotePath?: string;
   privateKey?: string;
-  ignores?: Array<string | RegExp>;
-  downloads?: Array<string>
+  // ignores?: Array<string | RegExp>;
+  // downloads?: Array<string>
   pathMode?: string
   cli?: CliInterface
   _loadConfig?: { (): void }
@@ -45,18 +45,34 @@ export interface ConfigInterface extends BaseModelInterface {
   backup?: object
   safe_mode?: Boolean | null
   direct_access?: Array<any>
-  single_sync?: Array<string>
-  trigger_permission?: trigger_permission
+  // single_sync?: Array<string>
+  // trigger_permission?: trigger_permission
   size_limit?: number
   saved_file_name?: string
   _hasPassphrase?: { (ssh_path: string): Promise<boolean> }
+  devsync?: {
+    ignores: Array<string | RegExp>
+    downloads: Array<string>
+    single_sync: Array<string>
+    os_target: string
+    script: {
+      local: {
+        on_ready?: string
+      }
+      remote: {
+        on_ready?: string
+        on_stop?: string
+      }
+    }
+    trigger_permission: trigger_permission
+  }
 }
 
 declare var masterData: MasterDataInterface;
 
 const Config = BaseModel.extend<ConfigInterface>({
   model: "",
-  pathMode: "0777",
+  pathMode: "775",
   construct: function (cli: CliInterface) {
     this.cli = cli;
     /* Check sync-config on current directory */
@@ -190,17 +206,37 @@ const Config = BaseModel.extend<ConfigInterface>({
           this._originConfig = Object.assign({}, this._config);
           let newObject = this._config as any;
           testStringValue = JSON.stringify(this._config);
-          for (var key in newObject) {
-            switch (true) {
-              case typeof newObject[key] === 'string':
-                testStringValue = testStringValue.replace(new RegExp('=' + key, 'g'), upath.normalizeSafe(newObject[key]))
-                break;
-              case typeof newObject[key] === 'number':
-                testStringValue = testStringValue.replace(new RegExp('=' + key, 'g'), newObject[key])
-              default:
-                break;
+          let match = testStringValue.match(/=[^=|'|"|\\| ]+/g);
+          match = uniq(match);
+          for (var a = 0; a < match.length; a++) {
+            match[a] = match[a].replace('=', '');
+          }
+          var checkData = () => {
+            for (var a = 0; a < match.length; a++) {
+              let testValue = this.safeJSON(newObject, match[a], null);
+              switch (true) {
+                case typeof testValue === "string":
+                  testStringValue = testStringValue.replace(new RegExp('=' + match[a], 'g'), upath.normalizeSafe(this.safeJSON(newObject, match[a], '')))
+                  break;
+                case typeof testValue === "number":
+                  testStringValue = testStringValue.replace(new RegExp('=' + match[a], 'g'), this.safeJSON(newObject, match[a], ''))
+                  break;
+                default:
+                  break;
+              }
             }
           }
+          /* First process for initialize object first */
+          checkData();
+          /* Second process for process data if any sub in sub pattern 
+             Example : 
+             {
+               hello: Hellow world
+               test: =hello
+               test2: =test
+             }
+          */
+          checkData();
           this._config = JSON.parse(testStringValue);
           return true;
         } catch (e) {
@@ -223,7 +259,7 @@ const Config = BaseModel.extend<ConfigInterface>({
         [key: string]: any
       } = this;
       ["reset_cache", "saved_file_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
-        "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission"].forEach(prop => {
+        "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission", "devsync"].forEach(prop => {
           if (prop == 'localPath') {
             if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
               self[prop] = upath.normalizeSafe(path.resolve(self._config[prop] || self[prop]));

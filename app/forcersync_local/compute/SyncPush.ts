@@ -95,7 +95,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, "model" | "_setSshConf
       });
 
         
-    let defaultIgnores: Array<string | RegExp> = [/node_modules/, /.git/, /.svn/, /bower_components/];
+    let defaultIgnores: Array<string | RegExp> = [/.git/, /.svn/]; // /bower_components/ /node_modules/
     // let tt = ((pass: Array<string>): Array<string> => {
     //   let newpath = [];
     //   for (var a = 0; a < pass.length; a++) {

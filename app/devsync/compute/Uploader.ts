@@ -1,10 +1,12 @@
 import * as upath from "upath";
 import { readFileSync, statSync } from "fs";
-import { Client } from "scp2";
+import Client from "@root/tool/ssh2-sftp-client";
 import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
 import _, { debounce, DebouncedFunc } from 'lodash';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+import { stripAnsi } from "@root/tool/Helpers";
+const chalk = require('chalk');
 
 declare var masterData: MasterDataInterface;
 declare var CustomError: { (name: string, message: string): any }
@@ -21,44 +23,24 @@ export default class Uploader {
 	setOnListener(func: Function) {
 		this.onListener = func;
 	}
-	connect(callback: Function): void {
-		this.client = new Client({
-			port: this.config.port,
-			host: this.config.host,
-			username: this.config.username,
-			password: this.config.password,
-			// agentForward: true,
-			privateKey: this.config.privateKey ? readFileSync(this.config.privateKey).toString() : undefined,
-			jumps: this.config.jumps,
-			path: this.config.remotePath
-			// debug: true
-		});
-
-		// Triggers the initial connection
-		this.client.sftp((err, sftp) => {
-			if (err) {
-				callback(CustomError('SftpErrorConectionException', 'There was a problem with connection'), null);
-			}
-		});
-
-		this.client.on("ready", () => {
+	async connect(callback: Function) {
+		this.client = new Client();
+		try {
+			await this.client.connect({
+				port: this.config.port,
+				host: this.config.host,
+				username: this.config.username,
+				password: this.config.password,
+				// agentForward: true,
+				privateKey: this.config.privateKey ? readFileSync(this.config.privateKey).toString() : undefined,
+				jumps: this.config.jumps,
+				path: this.config.remotePath
+				// debug: true
+			});
 			callback(null, 'Connected');
-		});
-
-		let pendingClose: any = null;
-		this.client.on('close', (err: any) => {
-			// if (pendingClose != null) {
-			// 	pendingClose.cancel();
-			// }
-			// pendingClose = _.debounce(() => {
-			// 	console.log('2vmfdkvm');
-			// 	console.log('2vmfdkvm');
-			// 	console.log('2vmfdkvm');
-			// 	callback(CustomError('SftpErrorConectionException', 'There was a problem with connection'), null);
-			// }, 5000);
-			// pendingClose();
-			callback(err, null);
-		});
+		} catch (ex) {
+			callback(ex, null);
+		}
 
 		this._exeHandlePush = this._handlePush();
 	}
@@ -70,7 +52,7 @@ export default class Uploader {
 		return upath.normalizeSafe(remotePath);
 	}
 	_index: number = 0
-	_concurent: number = 8
+	_concurent: number = 4
 	_pendingUpload: {
 		[key: string]: DebouncedFunc<any>
 	} = {}
@@ -78,6 +60,52 @@ export default class Uploader {
 		[key: string]: any
 	} = {}
 	_exeHandlePush: Function = null;
+	clientClose():void{
+		this.client.end();
+	}
+	async _executeCommand(whatCommand: string, callback?: Function) {
+		let rawSSH = await this.client.getRawSSH2();
+		rawSSH.exec("cd " + this.config.remotePath + " && " + whatCommand, (err: any, stream: any) => {
+			if (err) throw err;
+			stream.on('close', (code, signal) => {
+				// console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+				if (callback == null) return;
+				callback();
+			}).on('data', (data) => {
+				let _split: Array<string> = data.toString().split(/\n/); // data.split(/\n?\r/);
+				// console.log('raw ', [_split]);
+				for (var a = 0; a < _split.length; a++) {
+					switch (_split[a]) {
+						case '':
+						case '\r':
+						case '\u001b[32m\r':
+							break;
+						default:
+							process.stdout.write(chalk.green('Remote | '));
+							process.stdout.write(_split[a] + '\n');
+							break;
+					}
+				}
+				// console.log(chalk.green("Remote | "), stripAnsi(data.toString()))
+				// console.log('STDOUT: ' + data);
+			}).stderr.on('data', (data: any) => {
+				let _split: Array<string> = data.toString().split(/\n/); // data.split(/\n?\r/);
+				// console.log('raw ', [_split]);
+				for (var a = 0; a < _split.length; a++) {
+					switch (_split[a]) {
+						case '':
+						case '\r':
+						case '\u001b[32m\r':
+							break;
+						default:
+							process.stdout.write(chalk.red('Remote | '));
+							process.stdout.write(_split[a] + '\n');
+							break;
+					}
+				}
+			});
+		});
+	}
 	_handlePush() {
 		var debounceClose: any = null;
 		/* Create function possible close connection if upload done  */
@@ -110,7 +138,7 @@ export default class Uploader {
 			}
 			/* Mengikuti kelipatan concurent */
 			let _debouncePendingOut = first_time_out == null ? (100 * (entry.queue_no == 0 ? 1 : entry.queue_no + 1)) : first_time_out;
-			this._pendingUpload[entry.path] = _.debounce((entry: any) => {
+			this._pendingUpload[entry.path] = _.debounce(async (entry: any) => {
 				let deleteQueueFunc = () => {
 					this._pendingUpload[entry.path] = null;
 					delete this._pendingUpload[entry.path];
@@ -152,81 +180,73 @@ export default class Uploader {
 								return: 'File size more than ' + this.config.size_limit + 'MB : ' + upath.normalizeSafe(fileName)
 							})
 						}
-						this.client.mkdir(upath.dirname(remote), { mode: this.config.pathMode }, err => {
-							deleteQueueFunc();
-							if (err) {
-								reject({
-									message: `Could not create ${upath.dirname(remote)}`,
-									error: err
+
+						try {
+							await this.client.mkdir(upath.dirname(remote), true)
+							await this.client.chmod(upath.dirname(remote), 0o775)
+						} catch (ex) { }
+
+						deleteQueueFunc();
+						/* Dont let file edited by server upload to server again! */
+						let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
+						if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
+							if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
+								this.onListener('REJECTED', {
+									return: 'File edited by system dont let uploaded.'  // upath.normalizeSafe(fileName)
+								})
+								delete this._pendingQueue[remote];
+								masterData.updateData('file_edit_from_server', {
+									[upath.normalizeSafe(fileName)]: false
 								});
-							} else {
-								/* Dont let file edited by server upload to server again! */
-								let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
-								if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
-									if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
-										this.onListener('REJECTED', {
-											return: 'File edited by system dont let uploaded.'  // upath.normalizeSafe(fileName)
-										})
-										delete this._pendingQueue[remote];
-										masterData.updateData('file_edit_from_server', {
-											[upath.normalizeSafe(fileName)]: false
-										});
-										reject({
-											message: 'File edited by system dont let uploaded.',  // upath.normalizeSafe(fileName)
-											error: ""
-										});
-										next();
-										return;
-									}
-								}
-								// Uplad the file
-								this.client.upload(fileName, remote, (err: any) => {
-									if (err) {
-										this.onListener('REJECTED', {
-											return: err.message
-										});
-									} else {
-										/* This is use for prevent upload to remote. */
-										/* Is use on watcher */
-										let fileUploadRecord = masterData.getData('FILE_UPLOAD_RECORD', {}) as any;
-										fileUploadRecord[fileName] = true;
-										masterData.saveData('FILE_UPLOAD_RECORD', fileUploadRecord);
-									}
-									// console.log('remote - done ',remote)
-									resolve(remote);
-									next();
+								reject({
+									message: 'File edited by system dont let uploaded.',  // upath.normalizeSafe(fileName)
+									error: ""
+								});
+								next();
+								return;
+							}
+						}
+						// Uplad the file
+						this.client.put(fileName, remote, { mode: 0o774 }).then(() => {
+							/* This is use for prevent upload to remote. */
+							/* Is use on watcher */
+							let fileUploadRecord = masterData.getData('FILE_UPLOAD_RECORD', {}) as any;
+							fileUploadRecord[fileName] = true;
+							masterData.saveData('FILE_UPLOAD_RECORD', fileUploadRecord);
+							// console.log('remote - done ',remote)
+							resolve(remote);
+							next();
+						}).catch((err: any) => {
+							if (err) {
+								this.onListener('REJECTED', {
+									return: err.message
 								});
 							}
+							// console.log('remote - done ',remote)
+							resolve(remote);
+							next();
 						});
 						break;
 					case 'delete_file':
-						this.client.sftp((err: any, sftp) => {
+						this.client.delete(remote).then(() => {
 							deleteQueueFunc();
-							if (err) {
-								reject(err.message);
-								next();
-							} else {
-								sftp.unlink(remote, (err: any) => {
-									if (err) {
-										reject(err.message);
-									} else {
-										resolve(remote);
-									}
-									next();
-								});
-							}
-						});
+							resolve(remote);
+							next();
+						}).catch((err) => {
+							deleteQueueFunc();
+							reject(err.message);
+							next();
+						})
 						break;
 					case 'delete_folder':
-						this.client.exec("rm -R " + remote, (err: any) => {
+						this.client.rmdir(remote, true).then(() => {
 							deleteQueueFunc();
-							if (err) {
-								reject(err.message);
-							} else {
-								resolve(remote);
-							}
+							resolve(remote);
 							next();
-						});
+						}).catch((err) => {
+							deleteQueueFunc();
+							reject(err.message);
+						})
 						break;
 				}
 			}, _debouncePendingOut);
