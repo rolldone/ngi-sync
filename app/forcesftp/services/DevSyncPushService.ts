@@ -38,8 +38,8 @@ const DevSyncServicePush = BaseService.extend<DevSyncServicePushInterface>({
         paths: [],
         ignores: (() => {
           let arrayString: Array<string | RegExp> = [
-            ...(currentConf.downloads == null ? [] : currentConf.downloads),
-            ...(currentConf.ignores == null ? [] : currentConf.ignores)
+            ...(currentConf.devsync.downloads == null ? [] : currentConf.devsync.downloads),
+            ...(currentConf.devsync.ignores == null ? [] : currentConf.devsync.ignores)
           ]
           for (var a = 0; a < arrayString.length; a++) {
             arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
@@ -59,7 +59,7 @@ const DevSyncServicePush = BaseService.extend<DevSyncServicePushInterface>({
         path_mode: currentConf.pathMode,
         jumps: currentConf.jumps,
         mode : props.mode || 'hard',
-        trigger_permission : currentConf.trigger_permission
+        trigger_permission : currentConf.devsync.trigger_permission
       });
     }).then(() => {
       this.task.status("connecting server");

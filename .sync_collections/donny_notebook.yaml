@@ -6,14 +6,22 @@ host: virtualbox.lan
 port: 22
 localPath: .
 remotePath: /root/workspaces/ngi-sync
-ignores: []
-downloads: []
-single_sync: []
-trigger_permission:
-  unlink_folder: true
-  unlink: true
-  change: true
-  add: true
+devsync:
+  ignores: []
+  script:
+    local:
+      ? on_ready
+    remote:
+      ? on_ready
+      ? on_stop
+  downloads:
+    - dist_2/
+  single_sync: []
+  trigger_permission:
+    unlink_folder: true
+    unlink: true
+    change: true
+    add: true
 direct_access:
   config_file: ""
   ssh_configs:

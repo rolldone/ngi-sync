@@ -32,7 +32,7 @@ const CommandService = InitConfigService.extend<Omit<CommandServiceInterface, 'r
     this._currentConf = currentConf;
     let questions: inquirer.QuestionCollection = [
       {
-        type: "list",
+        type: "rawlist",
         name: "target",
         message: "To which target do you want to send the command:",
         choices: [

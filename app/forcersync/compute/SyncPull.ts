@@ -40,12 +40,12 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
             _local_path = "./";
           }
         } else {
-          _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + extraWatchs[index].path));
-          _local_path = _local_path + '/';
-          _remote_path = _remote_path + '/';
+          _local_path = path.relative(upath.normalize(path.resolve("")), upath.normalize(_local_path + '/' + extraWatchs[index].path) + '/');
+          _local_path = _local_path;
+          _remote_path = upath.normalize(_remote_path + '/');
         }
 
-        console.log(chalk.green('Rsync Download | '), _local_path, ' << ', _remote_path);
+        process.stdout.write(chalk.green('Rsync Download | ') + _local_path + ' << ' + _remote_path + '\n');
         // if (extraWatchs[index + 1] != null) {
         //   this._recursiveRsync(extraWatchs, index + 1);
         // } else {
@@ -53,19 +53,22 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         //     action: "exit",
         //     return: {}
         //   })
-        // }
+        // })
+
+        let _delete_mode_active = config.mode == "hard" ? true : false;
+        _delete_mode_active = extraWatchs[index].includes.length > 0 ? false : _delete_mode_active
         var rsync = Rsync.build({
           /* Support multiple source too */
           source: config.username + '@' + config.host + ':' + _remote_path,
           // source : upath.normalize(_local_path+'/'),
-          destination: upath.normalizeSafe('./' + _local_path),
+          destination: upath.normalize('./' + _local_path),
           /* Include First */
-          include: [],
+          include: extraWatchs[index].includes || [],
           /* Exclude after include */
           exclude: extraWatchs[index].ignores,
           // flags : '-vt',
-          flags: '-avzL',
-          set: '--size-only --checksum',
+          flags: '-avzLm',
+          set: '--size-only --checksum ' + (_delete_mode_active == true ? '--delete' : ''),
           // set : '--no-perms --no-owner --no-group',
           // set : '--chmod=D777,F777',
           // set : '--perms --chmod=u=rwx,g=rwx,o=,Dg+s',
@@ -73,16 +76,27 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         });
 
 
-        console.log(chalk.green("Rsync Download | "), 'rsync command -> ', rsync.command());
+        process.stdout.write(chalk.green("Rsync Download | ") + 'rsync command -> ' + rsync.command() + '\n');
 
         var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
         var ptyProcess = this.iniPtyProcess(shell, []);
         ptyProcess.write(rsync.command() + '\r');
         let firstString = null;
         ptyProcess.on('data', (data: any) => {
-          let _text = this._stripAnsi(data.toString());
-          if (_text != "") {
-            console.log(chalk.green("Rsync Download | "), _text);
+          let _split = data.split(/\n/);// this._stripAnsi(data.toString());
+          if (_split != "") {
+            for (var a = 0; a < _split.length; a++) {
+              switch (_split[a]) {
+                case '':
+                case '\r':
+                case '\u001b[32m\r':
+                  break;
+                default:
+                  process.stdout.write(chalk.green('Rsync Download | '));
+                  process.stdout.write(this._stripAnsi(_split[a]).replace('X', '') + '\n');
+                  break;
+              }
+            }
           }
           if (data.includes('failed: Not a directory')) {
             _is_file = true;
@@ -114,6 +128,10 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
               this._recursiveRsync(extraWatchs, index + 1);
             }
           } else {
+            if (_is_file == true) {
+              this._recursiveRsync(extraWatchs, index, _is_file);
+              return;
+            }
             this._onListener({
               action: "exit",
               return: {
@@ -137,13 +155,34 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
     try {
       /* Loading the password */
       await this._currentConf.ready();
-
       let _filterPatternRules = this._filterPatternRule();
 
       let extraWatch: Array<{
         path: string
         ignores: Array<string>
+        includes?: Array<string>
       }> = this._generatePathMap();
+
+      // Download All data on single_sync sync-config.yaml
+      if (this._config.withoutSyncIgnorePattern == true) {
+        extraWatch = [];
+        for (var i = 0; i < this._config.single_sync.length; i++) {
+          switch (this._config.single_sync[i]) {
+            case "/**":
+            case "/*":
+            case "/":
+            case "/**/*":
+            case "**/*":
+              break;
+            default:
+              extraWatch.push({
+                path: this._config.single_sync[i],
+                ignores: []
+              })
+              break;
+          }
+        }
+      }
 
       this._recursiveRsync(extraWatch, 0);
       return;

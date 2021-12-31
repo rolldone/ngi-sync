@@ -31,22 +31,24 @@ const DevRsyncPushService = BaseService.extend<DevRsyncPushServiceInterface>({
       host: currentConf.host,
       username: currentConf.username,
       password: currentConf.password,
-      privateKeyPath : currentConf.privateKey,
+      privateKeyPath: currentConf.privateKey,
       privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
       paths: [],
-      ignores: currentConf.ignores,
+      ignores: currentConf.devsync.ignores,
       base_path: currentConf.remotePath,
       local_path: currentConf.localPath,
       path_mode: currentConf.pathMode,
       jumps: currentConf.jumps,
-      single_sync : currentConf.single_sync || [],
+      single_sync: currentConf.devsync.single_sync || [],
       mode: props.mode || 'hard',
-      downloads: currentConf.downloads
+      withoutSyncIgnorePattern: props.withoutSyncIgnorePattern || false,
+      downloads: currentConf.devsync.downloads
     });
     this._syncPush.setOnListener((props: any) => {
       if (callback != null) {
         callback(props.return.e == 1 ? true : false);
-        if(props.return.e == 1){
+        
+        if (props.return.e == 1) {
           this._syncPush = null;
         }
       }

@@ -12,6 +12,7 @@ import path = require("path");
 const notifier = require('node-notifier');
 import * as child_process from 'child_process';
 import rl, { ReadLine } from 'readline';
+import { executeLocalCommand, stripAnsi } from "@root/tool/Helpers";
 const chalk = require('chalk');
 const observatory = require("observatory");
 
@@ -33,6 +34,7 @@ export interface DevSyncServiceInterface extends BaseServiceInterface {
   _executeCommand?: { (extra_command: any): void }
   _readLine?: ReadLine
   _task?: any
+  _is_stop?: boolean
 }
 
 export const COMMAND_SHORT = {
@@ -45,12 +47,12 @@ export const COMMAND_SHORT = {
 }
 
 export const COMMAND_TARGET = {
-  SAFE_SYNC: COMMAND_SHORT.SAFE_SYNC + ' :: DevSync Basic Safe Syncronise \n  - Trigger by edit file :)',
-  SAFE_PULL_SYNC: COMMAND_SHORT.SAFE_PULL_SYNC + ' :: devsync Pull Syncronise \n  - This feature only download by your base template \n  - And ignore all file you define on config file and .sync_ignore :)',
-  SAFE_SYNC_NON_FORCE: COMMAND_SHORT.SAFE_SYNC_NON_FORCE + ' :: DevSync Basic with non force file \n  - Trigger by edit file :). Ignored file not activated except pull sync \n  - Caution : This mode will take a long time indexing the file. and need more consume RAM',
-  SOFT_PUSH_SYNC: COMMAND_SHORT.SOFT_PUSH_SYNC + ' :: DevSync Soft Push Data. \n  - Your sensitive data will be safe on target :)',
-  FORCE_PUSH_SYNC: COMMAND_SHORT.FORCE_PUSH_SYNC + ' :: DevSync Force Push Data \n  - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
-  FORCE_SINGLE_SYNC: COMMAND_SHORT.FORCE_SINGLE_SYNC + ' :: DevSync Single Syncronize \n  - You can download simple file or folder',
+  SAFE_SYNC: COMMAND_SHORT.SAFE_SYNC + ' :: DevSync Basic Safe Syncronise - Trigger by edit file :)',
+  SAFE_PULL_SYNC: COMMAND_SHORT.SAFE_PULL_SYNC + ' :: devsync Pull Syncronise - This feature only download by your base template - And ignore all file you define on config file and .sync_ignore :)',
+  SAFE_SYNC_NON_FORCE: COMMAND_SHORT.SAFE_SYNC_NON_FORCE + ' :: DevSync Basic with non force file - Trigger by edit file :). Ignored file not activated except pull sync - Caution : This mode will take a long time indexing the file. and need more consume RAM',
+  SOFT_PUSH_SYNC: COMMAND_SHORT.SOFT_PUSH_SYNC + ' :: DevSync Soft Push Data. - Your sensitive data will be safe on target :)',
+  FORCE_PUSH_SYNC: COMMAND_SHORT.FORCE_PUSH_SYNC + ' :: DevSync Force Push Data - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
+  FORCE_SINGLE_SYNC: COMMAND_SHORT.FORCE_SINGLE_SYNC + ' :: DevSync Single Syncronize - You can download simple file or folder',
 }
 
 const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
@@ -61,6 +63,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     return SyncPull.create(cli, sshConfig);
   },
   construct: async function (cli, extra_command) {
+    this._is_stop = false;
     this._cli = cli;
     await this._checkIsCygwin();
     this.task = observatory.add("Initializing...");
@@ -71,7 +74,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     }
     let questions: inquirer.QuestionCollection = [
       {
-        type: "list",
+        type: "rawlist",
         name: "target",
         message: "Devsync Mode :",
         choices: [
@@ -181,8 +184,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           resolve()
           return;
         }
-        // console.log(`stdout: ${stdout}`);
-        // console.error(`stderr: ${stderr}`);
         console.log('==========================================================================================================');
         console.log(' YOU ARE IN CYGWIN');
         console.log(' Make sure you have add noacl on /etc/fstab, because rsync problem with permission if no have defined!');
@@ -235,24 +236,16 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       password: currentConf.password,
       privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
       paths: (() => {
-        let arrayString: Array<string> = currentConf.downloads == null ? [] : currentConf.downloads;
+        let arrayString: Array<string> = currentConf.devsync.downloads == null ? [] : currentConf.devsync.downloads;
         for (var a = 0; a < arrayString.length; a++) {
           arrayString[a] = this._removeDuplicate(currentConf.remotePath + '/' + arrayString[a], '/');
-          /**
-           * Remove if folder have file extention
-           * Not Use anymore just keep it the original
-           */
-          // var isSame = arrayString[a].substr(arrayString[a].lastIndexOf('.') + 1);
-          // if (isSame != arrayString[a]) {
-          //   arrayString[a] = arrayString[a].split("/").slice(0, -1).join("/");
-          // }
         }
         return arrayString;
       })(),
       base_path: currentConf.remotePath,
       local_path: currentConf.localPath,
       jumps: currentConf.jumps,
-      trigger_permission: currentConf.trigger_permission
+      trigger_permission: currentConf.devsync.trigger_permission
     });
 
     let historyStatus: {
@@ -287,6 +280,11 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
     let _startWatchingWithTimeOut = syncPull.startWatchingWithTimeOut();
     this.uploader = new Uploader(currentConf, this._cli);
+    // Are we running app locally via node?
+    const isLocal = typeof process.pkg === 'undefined'
+    // Build the base path based on current running mode (if packaged, we need the location of executable)
+    const basePath = isLocal ? path.join(__dirname, '..', '..', '..', '/public/img', "") : path.dirname(process.execPath) + "/public/img";
+
     this.uploader.setOnListener((action: string, props: any) => {
       switch (action) {
         case 'RESTART':
@@ -294,7 +292,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             {
               title: "Restart",
               message: "Devsync Restarted",
-              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
+              icon: path.join(basePath, 'warning.png'), // Absolute path (doesn't work on balloons)
               sound: true, // Only Notification Center or Windows Toasters
               wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
               type: 'warning',
@@ -312,7 +310,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             {
               title: action,
               message: props.return,
-              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'failed.jpg'), // Absolute path (doesn't work on balloons)
+              icon: path.join(basePath, 'failed.jpg'), // Absolute path (doesn't work on balloons)
               sound: true, // Only Notification Center or Windows Toasters
               wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
               type: 'error',
@@ -330,7 +328,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             {
               title: action,
               message: props.return,
-              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'warning.png'), // Absolute path (doesn't work on balloons)
+              icon: path.join(basePath, 'warning.png'), // Absolute path (doesn't work on balloons)
               sound: true, // Only Notification Center or Windows Toasters
               wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
               type: 'warning',
@@ -349,7 +347,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             {
               title: action,
               message: props.return,
-              icon: path.join(__dirname, '..', '..', '..', '..', '/public/img', 'success.png'), // Absolute path (doesn't work on balloons)
+              icon: path.join(basePath, 'success.png'), // Absolute path (doesn't work on balloons)
               sound: true, // Only Notification Center or Windows Toasters
               wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
               type: 'info',
@@ -365,14 +363,14 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       }
     });
 
-
-
     /* Define readline nodejs for listen CTRL + R */
-    this._readLine = rl.createInterface({
-      input: process.stdin,
-      // output : process.stdout,
-      terminal: true
-    });
+    if(this._readLine == null){
+      this._readLine = rl.createInterface({
+        input: process.stdin,
+        // output : process.stdout,
+        terminal: true
+      });
+    }
 
     let remoteFuncKeypress = async (key: any, data: any) => {
       switch (data.sequence) {
@@ -383,33 +381,74 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           _startWatchingWithTimeOut();
           return;
         case '\x03':
-          process.exit();
+          this._is_stop = true;
+          process.stdout.write(chalk.green('Remote | ') + 'Stop the devsync..' + '\r');
+          var closeRemote = () => {
+            if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+              this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+                process.exit();
+              });
+              return true;
+            }
+            return false;
+          }
+          if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
+            return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
+              // console.log(chalk.green('Local | '), stripAnsi(data));
+              if (closeRemote() == false) {
+                process.exit();
+              }
+            });
+          }
+          if (closeRemote() == false) {
+            process.exit();
+          }
           return;
         case '\x12':
-          _startWatchingWithTimeOut(true);
-          syncPull.stopSubmitWatch();
-          syncPull = null;
-          /* Close readline */
-          this._readLine.close();
-          this._readLine = null;
+          this._is_stop = true;
+          let stop = async () => {
+            _startWatchingWithTimeOut(true);
+            syncPull.stopSubmitWatch();
+            syncPull = null;
 
-          /* Restart the syncronize */
-          this.uploader.onListener('RESTART', {});
-          // this.uploader.client.close();
-          this.uploader = null;
+            /* Close readline */
+            // this._readLine.close();
+            // this._readLine = null;
 
-          await this.watcher.close();
-          this.watcher = null;
 
-          // this._currentConf = null;
+            await this.watcher.close();
+            this.watcher = null;
 
-          process.stdin.off('keypress', remoteFuncKeypress);
-          this.task.done();
+            /* Restart the syncronize */
+            this.uploader.onListener('RESTART', {});
+            this.uploader = null;
 
-          console.clear();
-
-          this.construct(this._cli);
-
+            process.stdin.off('keypress', remoteFuncKeypress);
+            this.task.done();
+            setTimeout(() => {
+              console.clear();
+              this.construct(this._cli);
+            }, 3000);
+          }
+          var closeRemote = () => {
+            if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
+              this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
+                stop();
+              });
+              return true;
+            }
+            return false;
+          }
+          if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
+            return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
+              if (closeRemote() == false) {
+                stop();
+              }
+            });
+          }
+          if (closeRemote() == false) {
+            stop();
+          }
           break;
       }
     }
@@ -431,16 +470,42 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
     await this.watcher.ready();
     _startWatchingWithTimeOut();
-
+    let _oportunity = 0;
+    this.task.status("connecting server");
     var reCallCurrentCOnf = () => {
       if (this.uploader == null) return;
-      this.task.status("connecting server");
       this.uploader.connect((err: any, res: any) => {
+        if (_oportunity == 0) {
+          if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
+            executeLocalCommand('devsync', this._currentConf, this._currentConf.devsync.script.local.on_ready, (data) => {
+              let _split: Array<string> = data.split(/\n/);
+              for (var a = 0; a < _split.length; a++) {
+                switch (_split[a]) {
+                  case '':
+                  case '\r':
+                  case '\u001b[32m\r':
+                    break;
+                  default:
+                    process.stdout.write(chalk.green('Local | '));
+                    process.stdout.write(_split[a] + '\n');
+                    break;
+                }
+              }
+            });
+          }
+        }
         if (err) {
-          console.log('err', err);
-          return setTimeout(() => {
+          console.log(chalk.green('Error'), err);
+          setTimeout(() => {
+            if (_oportunity > 4) {
+              process.exit(1);
+            }
+            if (this._is_stop == false) {
+              console.log(chalk.green('Retry Connect'));
+            }
+            _oportunity += 1;
             reCallCurrentCOnf();
-          }, 1000);
+          }, 3000);
         }
         if (this.uploader == null) return;
         // All done, stop indicator and show workspace
@@ -448,6 +513,11 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         // console.log('2x');
         this.task.done(res).details(this._currentConf.host);
         this._cli.workspace();
+
+        if (this._currentConf.devsync.script.remote.on_ready != "" && this._currentConf.devsync.script.remote.on_ready != null) {
+          return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, () => {
+          });
+        }
       });
     }
     reCallCurrentCOnf();

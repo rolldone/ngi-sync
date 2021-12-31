@@ -5,7 +5,7 @@ interface BaseProtoInterface<T extends BaseProtoInterface<T>> {
    * Direct to be this
    */
   binding?: () => this
-  create?: (...props ?: any) => this
+  create?: (...props?: any) => this
   _super?: Function
   /**
    * Use this method
@@ -17,10 +17,11 @@ interface BaseProtoInterface<T extends BaseProtoInterface<T>> {
   extend?: { <I>(i: I): I }
   __init?: string
   construct?: any
-  _replaceAt ?: {(input : string, search : string, replace : string, start : number, end : number) : string}
-  _getStatInfo ?: {(permission:number,passTypeData?:string):boolean|string}
-  _waitingTimeout ?: {(timeoutNumber):Promise}
-  _removeDuplicate ?: { (x: string, theChar: string): string }
+  _replaceAt?: { (input: string, search: string, replace: string, start: number, end: number): string }
+  _getStatInfo?: { (permission: number, passTypeData?: string): boolean | string }
+  _waitingTimeout?: { (timeoutNumber): Promise }
+  _removeDuplicate?: { (x: string, theChar: string): string }
+  safeJSON?: { (props: any, endpoint: string|array<string>, defaultValue?: any, index?: number) }
 }
 
 interface BaseControllerInterface extends BaseProtoInterface<BaseControllerInterface> {

@@ -5,13 +5,13 @@ import Config, { ConfigInterface } from "./Config";
 import * as upath from "upath";
 import * as child_process from 'child_process';
 import parseGitIgnore from '@root/tool/parse-gitignore'
-import _, { debounce } from 'lodash';
+import _, { debounce, includes } from 'lodash';
 import ignore from 'ignore'
 const micromatch = require('micromatch');
 import { readdirSync, readFileSync, statSync } from "fs";
 import path, { dirname } from "path";
 const isCygwin = require('is-cygwin');
-import ansiRegex from 'ansi-regex';
+import { stripAnsi } from '@root/tool/Helpers';
 
 import { IPty } from 'node-pty';
 var os = require('os');
@@ -47,6 +47,7 @@ export interface SyncPushInterface extends BaseModelInterface {
     (extraWatchs: Array<{
       path: string
       ignores: Array<string>
+      includes?: Array<string>
     }>, index?: number, isFile?: boolean): void
   }
   _generatePathMap?: {
@@ -74,6 +75,7 @@ export interface RsyncOptions {
   mode?: string
   single_sync: Array<string>
   downloads: Array<string>
+  withoutSyncIgnorePattern?: Boolean
 }
 
 /** 
@@ -83,11 +85,7 @@ export interface RsyncOptions {
  */
 const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
   _stripAnsi: (string) => {
-    if (typeof string !== 'string') {
-      throw new TypeError(`Expected a \`string\`, got \`${typeof string}\``);
-    }
-
-    return string.replace(ansiRegex(), '');
+    return stripAnsi(string);
   },
   returnConfig: function (cli) {
     return Config.create(cli);
@@ -128,6 +126,8 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       // output : process.stdout,
       terminal: true
     });
+
+    /* Example form prompt */
     // i.question("What do you think of node.js?", function(answer) {
     //   // console.log("Thank you for your valuable feedback.");
     //   // i.close();
@@ -362,30 +362,48 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
     let extraWatch: Array<{
       path: string
       ignores: Array<string>
+      includes?: Array<string>
+      prevent_delete_mode?: boolean
     }> = [];
 
+    let __gg = [];
+    for (var a = 0; a < _filterPatternRules.ignores.length; a++) {
+      _filterPatternRules.ignores[a] = _filterPatternRules.ignores[a].replace(' ', '');
+    }
     extraWatch.push({
       path: "/",
-      ignores: _filterPatternRules.ignores
+      ignores: _filterPatternRules.ignores,
+      includes: []
     });
 
     for (var a = 0; a < _filterPatternRules.pass.length; a++) {
       let newIgnores = [];
       for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
         if (_filterPatternRules.ignores[b].includes(_filterPatternRules.pass[a])) {
-          newIgnores.push(_filterPatternRules.ignores[b]);
+          newIgnores.push(_filterPatternRules.ignores[b].replace(_filterPatternRules.pass[a], '').replace(' ', ''));
+          _filterPatternRules.ignores.splice(b, 1);
         }
       }
       /* Include double star pattern rule too */
       for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
         if (_filterPatternRules.ignores[b].includes("**")) {
-          newIgnores.push(_filterPatternRules.ignores[b]);
+          newIgnores.push(_filterPatternRules.ignores[b].replace(' ', ''));
         }
       }
+
       extraWatch.push({
         path: _filterPatternRules.pass[a],
-        ignores: newIgnores
+        ignores: newIgnores,
+        includes: []
       });
+
+      while (extraWatch[extraWatch.length - 1].path.includes("*")) {
+        let _dirname = upath.dirname(extraWatch[extraWatch.length - 1].path);
+        extraWatch[extraWatch.length - 1].path = _dirname;
+        extraWatch[extraWatch.length - 1].ignores = ["*", this._removeDuplicate(".sync_temp/" + _filterPatternRules.pass[a], '/')];
+        extraWatch[extraWatch.length - 1].includes[0] = this._removeDuplicate('/' + _filterPatternRules.pass[a],'/'); // '/'+this._replaceAt(this._removeSameString(_filterPatternRules.pass[a], _dirname), '/', '', 0, 1);
+        extraWatch[extraWatch.length - 1].includes[1] = "*/";
+      }
     }
     return extraWatch;
   },
@@ -406,40 +424,40 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           _remote_path = config.username + '@' + config.host + ':' + _remote_path;
         } else {
           _local_path = upath.normalizeSafe('./' + _local_path + '/')
-          _remote_path = config.username + '@' + config.host + ':' + _remote_path + '/'
+          _remote_path = config.username + '@' + config.host + ':' + _remote_path
         }
 
-        console.log(chalk.green('Rsync Upload | '), _local_path, ' >> ', _remote_path);
+        process.stdout.write(chalk.green('Rsync Upload | ') + _local_path + ' >> ' + _remote_path + '\n');
 
-        // if (extraWatchs[index + 1] != null) {
-        //   this._recursiveRsync(extraWatchs, index + 1);
-        // } else {
-        //   this._onListener({
-        //     action: "exit",
-        //     return: {}
-        //   })
-        // }
-        // return;
+        let _delete_mode_active = config.mode == "hard" ? true : false;
+        _delete_mode_active = extraWatchs[index].includes.length > 0 ? false : _delete_mode_active
         var rsync = Rsync.build({
           /* Support multiple source too */
           source: _local_path,
           // source : upath.normalize(_local_path+'/'),
           destination: _remote_path,
           /* Include First */
-          include: [],
+          include: extraWatchs[index].includes,
           /* Exclude after include */
           exclude: extraWatchs[index].ignores,
-          set: "--no-perms --no-owner --no-group",
+          set: '--usermap=*:' + this._config.username + ' --groupmap=*:' + this._config.username + ' --chmod=D2775,F775 --size-only --checksum ' + (_delete_mode_active == true ? '--force --delete' : ''),
           // flags : '-vt',
-          flags: '-avzL',
+          flags: '-avzLm',
           shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
         });
 
-        console.log(chalk.green('Rsync Upload | '), 'rsync command -> ', rsync.command());
+        process.stdout.write(chalk.green('Rsync Upload | ') + 'rsync command -> ' + rsync.command() + '\n');
 
         var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
         var ptyProcess = this.iniPtyProcess(shell, []);
-        ptyProcess.write(rsync.command() + '\r');
+        if (_is_file == false) {
+          ptyProcess.write('ls ' + _local_path + ' ' + '\r');
+        }
+        setTimeout(() => {
+          if (ptyProcess != null) {
+            ptyProcess.write(rsync.command() + '\r');
+          }
+        }, 2000);
 
         // ptyProcess.write('pwd\n')
         // var _readLine = this.initReadLine();
@@ -461,12 +479,25 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
 
         ptyProcess.on('data', (data: any) => {
           // console.log(data)
-          let _text = this._stripAnsi(data.toString());
-          if (_text != "") {
-            console.log(chalk.green("Rsync Upload | "), _text);
+          // let _text = this._stripAnsi(data.toString());
+          let _split = data.split(/\n/);// this._stripAnsi(data.toString());
+          if (_split != "") {
+            for (var a = 0; a < _split.length; a++) {
+              switch (_split[a]) {
+                case '':
+                case '\r':
+                case '\u001b[32m\r':
+                  break;
+                default:
+                  process.stdout.write(chalk.green('Rsync Upload | '));
+                  process.stdout.write(this._stripAnsi(_split[a]).replace('X', '') + '\n');
+                  break;
+              }
+            }
           }
-          if (data.includes('failed: Not a directory')) {
+          if (data.includes('Not a directory')) {
             _is_file = true;
+            ptyProcess.write('exit' + '\r');
           }
         });
 
@@ -481,6 +512,10 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
               this._recursiveRsync(extraWatchs, index + 1);
             }
           } else {
+            if (_is_file == true) {
+              this._recursiveRsync(extraWatchs, index, _is_file);
+              return;
+            }
             this._onListener({
               action: "exit",
               return: {
@@ -510,6 +545,27 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
         path: string
         ignores: Array<string>
       }> = this._generatePathMap();
+
+      // Send All data on single_sync sync-config.yaml
+      if (this._config.withoutSyncIgnorePattern == true) {
+        extraWatch = [];
+        for (var i = 0; i < this._config.single_sync.length; i++) {
+          switch (this._config.single_sync[i]) {
+            case "/**":
+            case "/*":
+            case "/":
+            case "/**/*":
+            case "**/*":
+              break;
+            default:
+              extraWatch.push({
+                path: this._config.single_sync[i],
+                ignores: []
+              })
+              break;
+          }
+        }
+      }
 
       this._recursiveRsync(extraWatch, 0);
       return;

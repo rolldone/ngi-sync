@@ -34,19 +34,20 @@ const DevRsyncPullService = DevRsyncPushService.extend<DevRsyncPullServiceInterf
       privateKeyPath: currentConf.privateKey,
       privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
       paths: [],
-      ignores: currentConf.ignores,
+      ignores: currentConf.devsync.ignores,
       base_path: currentConf.remotePath,
       local_path: currentConf.localPath,
       path_mode: currentConf.pathMode,
       jumps: currentConf.jumps,
-      single_sync: currentConf.single_sync || [],
-      mode: props.mode || 'hard',
-      downloads: currentConf.downloads
+      single_sync: currentConf.devsync.single_sync || [],
+      mode: props.mode || 'soft',
+      withoutSyncIgnorePattern: props.withoutSyncIgnorePattern || false,
+      downloads: currentConf.devsync.downloads
     });
     this._syncPull.setOnListener((props: any) => {
       if (callback != null) {
         callback(props.return.e == 1 ? true : false);
-        if(props.return.e == 1){
+        if (props.return.e == 1) {
           this._syncPull = null;
         }
       }

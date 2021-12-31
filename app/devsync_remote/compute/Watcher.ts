@@ -39,7 +39,7 @@ const Watcher = BaseModel.extend<Omit<WatcherInterface, 'model'>>({
 		} = props;
 
 		this._config = config;
-		let downloads = config.downloads;
+		let downloads = config.devsync.downloads;
 		let complateExtraWatchs: {
 			[key: string]: Array<string>
 		} = {};
