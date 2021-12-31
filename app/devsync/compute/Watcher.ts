@@ -158,7 +158,7 @@ export default class Watcher {
 		/* Include double star pattern rule too */
 		for (var key in _extraWatch) {
 			for (var b = 0; b < originIgnore.length; b++) {
-				if (originIgnore[b].includes("**")) {
+				if (originIgnore[b][0] == "*") {
 					_extraWatch[key].push(originIgnore[b].replace(' ',''));
 				}
 			}
