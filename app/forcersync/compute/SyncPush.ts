@@ -5,10 +5,11 @@ import Config, { ConfigInterface } from "./Config";
 import * as upath from "upath";
 import * as child_process from 'child_process';
 import parseGitIgnore from '@root/tool/parse-gitignore'
-import _, { debounce, includes } from 'lodash';
+import _, { debounce, fromPairs, includes } from 'lodash';
 import ignore from 'ignore'
 const micromatch = require('micromatch');
 import { readdirSync, readFileSync, statSync } from "fs";
+import readdirp from 'readdirp';
 import path, { dirname } from "path";
 const isCygwin = require('is-cygwin');
 import { stripAnsi } from '@root/tool/Helpers';
@@ -51,10 +52,10 @@ export interface SyncPushInterface extends BaseModelInterface {
     }>, index?: number, isFile?: boolean): void
   }
   _generatePathMap?: {
-    (): Array<{
+    (): Promise<Array<{
       path: string
       ignores: Array<string>
-    }>
+    }>>
   }
   _stripAnsi?: { (text: string): string }
 }
@@ -357,8 +358,39 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       ]
     }
   },
-  _generatePathMap: function () {
+  _generatePathMap: async function () {
     let _filterPatternRules = this._filterPatternRule();
+
+    // console.log('_filterPatternRules',_filterPatternRules);
+    let newPass = [];
+    for (var a = 0; a < _filterPatternRules.pass.length; a++) {
+      var _filterPassA = _filterPatternRules.pass[a] + "";
+      if (_filterPassA.includes("*")) {
+        _filterPatternRules.pass.splice(a, 1);
+        let _arrPath = _filterPassA.split('/');
+        for (var b = 0; b < _arrPath.length; b++) {
+          if (_arrPath[b].includes("*")) {
+            let _nextArrPath = [];
+            for (var c = b + 1; c < _arrPath.length; c++) {
+              _nextArrPath.push(_arrPath[c]);
+            }
+            let _fileName = upath.parse(_filterPassA);
+            console.log('_fileName', _fileName);
+            let files = await readdirp.promise('.', {
+              directoryFilter: _arrPath[b],
+              type: 'directories',
+              depth: 1
+            });
+            files.map(file => newPass.push(upath.normalize('/' + file.path + '/' + _nextArrPath.join('/'))));
+            break;
+          }
+        }
+      }
+    }
+    _filterPatternRules.pass = [
+      ...newPass,
+      ..._filterPatternRules.pass
+    ];
     let extraWatch: Array<{
       path: string
       ignores: Array<string>
@@ -398,10 +430,12 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       });
 
       while (extraWatch[extraWatch.length - 1].path.includes("*")) {
+        let _fileName = upath.parse(extraWatch[extraWatch.length - 1].path);
+
         let _dirname = upath.dirname(extraWatch[extraWatch.length - 1].path);
         extraWatch[extraWatch.length - 1].path = _dirname;
         extraWatch[extraWatch.length - 1].ignores = ["*", this._removeDuplicate(".sync_temp/" + _filterPatternRules.pass[a], '/')];
-        extraWatch[extraWatch.length - 1].includes[0] = this._removeDuplicate('/' + _filterPatternRules.pass[a],'/'); // '/'+this._replaceAt(this._removeSameString(_filterPatternRules.pass[a], _dirname), '/', '', 0, 1);
+        extraWatch[extraWatch.length - 1].includes[0] = _fileName.base; // '/'+this._replaceAt(this._removeSameString(_filterPatternRules.pass[a], _dirname), '/', '', 0, 1);
         extraWatch[extraWatch.length - 1].includes[1] = "*/";
       }
     }
@@ -544,7 +578,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       let extraWatch: Array<{
         path: string
         ignores: Array<string>
-      }> = this._generatePathMap();
+      }> = await this._generatePathMap();
 
       // Send All data on single_sync sync-config.yaml
       if (this._config.withoutSyncIgnorePattern == true) {
