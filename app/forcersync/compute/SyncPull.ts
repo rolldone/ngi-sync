@@ -161,7 +161,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         path: string
         ignores: Array<string>
         includes?: Array<string>
-      }> = this._generatePathMap();
+      }> = await this._generatePathMap();
 
       // Download All data on single_sync sync-config.yaml
       if (this._config.withoutSyncIgnorePattern == true) {
