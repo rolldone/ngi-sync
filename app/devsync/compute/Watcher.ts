@@ -15,6 +15,7 @@ const workerpool = require('workerpool');
 const pool = workerpool.pool(__dirname + '/TestCache.js');
 import fs, { removeSync } from 'fs-extra';
 import { safeJSON } from "@root/tool/Helpers";
+import readdirp from 'readdirp';
 
 const WATCHER_ACTION = {
 	DELETE_FOLDER: 1
@@ -76,6 +77,10 @@ export default class Watcher {
 		private cli: CliInterface,
 		private base: string = config.localPath
 	) {
+		this.base = base;
+	}
+
+	async initCOntruct(base: string) {
 		let originIgnore: Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
 		originIgnore.push(this.tempFolder);
 		let gitIgnore = Object.assign([], originIgnore);
@@ -84,6 +89,9 @@ export default class Watcher {
 		let onlyPathStringIgnores: Array<string> = [];
 		let onlyFileStringIgnores: Array<string> = [];
 		let onlyRegexIgnores: Array<RegExp> = [];
+
+
+
 		for (var a = 0; a < this.config.devsync.ignores.length; a++) {
 			if (this.config.devsync.ignores[a] instanceof RegExp) {
 				onlyRegexIgnores.push(this.config.devsync.ignores[a] as RegExp);
@@ -132,18 +140,115 @@ export default class Watcher {
 		})();
 
 		/* Define extra watch if get ! on git ignore */
-		let _extraWatch = (() => {
+		let pass = [];
+		for (var a = 0; a < gitIgnore.length; a++) {
+			if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
+				// newExtraWatch[upath.normalizeSafe(base+'/'+this._replaceAt(gitIgnore[a],'!','',0,1))];
+				pass.push(this._replaceAt(gitIgnore[a], '!', '', 0, 1));
+			}
+		}
+
+		let markForIgnore = {};
+		let _markToDelete = [];
+		let _newPass = await (async (pass: Array<string>) => {
+			let newPass = [];
+			for (var a = 0; a < pass.length; a++) {
+				var _filterPassA = pass[a] + "";
+				if (_filterPassA.includes("*")) {
+					let _arrPath = _filterPassA.split('/');
+					for (var b = 0; b < _arrPath.length; b++) {
+						if (_arrPath[b].includes("*")) {
+							markForIgnore[_arrPath[b]] = _arrPath[b];
+							let _nextArrPath = [];
+							for (var c = b + 1; c < _arrPath.length; c++) {
+								_nextArrPath.push(_arrPath[c]);
+							}
+							let _fileName = upath.parse(_filterPassA);
+							// console.log('_fileName', _fileName);
+							let files = await readdirp.promise('.', {
+								directoryFilter: _arrPath[b],
+								type: 'directories',
+								depth: 1
+							});
+							if (files.length > 0) {
+								_markToDelete.push(_filterPassA);
+							}
+							files.map(file => {
+								newPass.push(upath.normalize('/' + file.path + '/' + _nextArrPath.join('/')))
+							});
+							break;
+						}
+					}
+				}
+			}
+			for (var a = 0; a < _markToDelete.length; a++) {
+				for (var b = 0; b < pass.length; b++) {
+					if (pass[b] == _markToDelete[a]) {
+						pass.splice(b, 1);
+						break;
+					}
+				}
+			}
+			pass = [
+				...newPass,
+				...pass
+			];
+			return pass;
+		})(pass);
+
+		/* Define extra watch if get ! on git ignore */
+		let _extraWatch = ((_newPass: Array<string>) => {
+			let define_gitIgnore = _newPass;
 			let newExtraWatch: {
 				[key: string]: Array<string>
 			} = {};
-			for (var a = 0; a < gitIgnore.length; a++) {
-				if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
-					// newExtraWatch[upath.normalizeSafe(base+'/'+this._replaceAt(gitIgnore[a],'!','',0,1))];
-					newExtraWatch[this._replaceAt(gitIgnore[a], '!', '', 0, 1)] = [];
-				}
+			for (var a = 0; a < define_gitIgnore.length; a++) {
+				newExtraWatch[define_gitIgnore[a]] = [];
 			}
 			return newExtraWatch;
-		})();
+		})(_newPass);
+
+		let newIgnores = [];
+		_markToDelete = [];
+		for (var a = 0; a < originIgnore.length; a++) {
+			var _filterIgnores = originIgnore[a] + "";
+			if (_filterIgnores.includes("*") && _filterIgnores[0] == "/") {
+				let _arrPath = _filterIgnores.split('/');
+				for (var b = 0; b < _arrPath.length; b++) {
+					if (_arrPath[b].includes("*") && markForIgnore[_arrPath[b]]) {
+						let _nextArrPath = [];
+						for (var c = b + 1; c < _arrPath.length; c++) {
+							_nextArrPath.push(_arrPath[c]);
+						}
+						let _fileName = upath.parse(_filterIgnores);
+						// console.log('_fileName', _fileName);
+						// console.log('_arrPath[b]',_arrPath[b]);
+						let files = await readdirp.promise('.', {
+							directoryFilter: _arrPath[b],
+							type: 'directories',
+							depth: 1
+						});
+						if (files.length > 0) {
+							_markToDelete.push(originIgnore[a]);
+						}
+						files.map(file => newIgnores.push(upath.normalize('/' + file.path + '/' + _nextArrPath.join('/'))));
+						break;
+					}
+				}
+			}
+		}
+		for (var a = 0; a < _markToDelete.length; a++) {
+			for (var b = 0; b < originIgnore.length; b++) {
+				if (originIgnore[b] == _markToDelete[a]) {
+					originIgnore.splice(b, 1);
+					break;
+				}
+			}
+		}
+		originIgnore = [
+			...newIgnores,
+			...originIgnore
+		];
 
 		/* Get ignore rule again for group ignore special for extraWatch */
 		for (var key in _extraWatch) {
@@ -159,7 +264,7 @@ export default class Watcher {
 		for (var key in _extraWatch) {
 			for (var b = 0; b < originIgnore.length; b++) {
 				if (originIgnore[b][0] == "*") {
-					_extraWatch[key].push(originIgnore[b].replace(' ',''));
+					_extraWatch[key].push(originIgnore[b].replace(' ', ''));
 				}
 			}
 		}
@@ -170,7 +275,9 @@ export default class Watcher {
 		}
 		console.log('-------------------------------------')
 		console.log('-------------------------------------')
+
 		let ignnorelist = [].concat(onlyRegexIgnores).concat(onlyFileStringIgnores).concat(resCHeckGItIgnores);
+
 		/* If safe mode activated */
 		if (this.config.safe_mode == true) {
 			ignnorelist = [];
@@ -306,7 +413,8 @@ export default class Watcher {
 	}
 
 	ready(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return new Promise<void>(async (resolve) => {
+			await this.initCOntruct(this.base);
 			this.files.on("ready", resolve);
 		});
 	}
@@ -351,7 +459,7 @@ export default class Watcher {
 			// this.tasks['Delete Cache Err'] = observatory.add("Delete Cache ERR :: ");
 			// this.tasks['Delete Cache Err'].fail(ex.message);
 			process.stdout.write(chalk.red('Devsync | '));
-			process.stdout.write(ex.message+ '\n');
+			process.stdout.write(ex.message + '\n');
 			return false;
 		}
 	}
@@ -405,7 +513,7 @@ export default class Watcher {
 			if (fileDownoadRecord[upath.normalizeSafe(path)] == true) {
 				delete fileDownoadRecord[upath.normalizeSafe(path)];
 				masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
-				switch(method){
+				switch (method) {
 					case 'add':
 					case 'change':
 						this.setCacheFile(path);
@@ -489,12 +597,12 @@ export default class Watcher {
 
 			process.stdout.write(chalk.red('Devsync | '));
 			process.stdout.write(chalk.red('ADD ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
-			process.stdout.write(chalk.red("You have setting permission cannot add data sync on server"+ '\n'));
+			process.stdout.write(chalk.red("You have setting permission cannot add data sync on server" + '\n'));
 			return;
 		}
 		if (this._sameAddPath == path) {
 			process.stdout.write(chalk.green('Devsync | '));
-			process.stdout.write(chalk.green('Ups get 2x add :: '+path)+'\n');
+			process.stdout.write(chalk.green('Ups get 2x add :: ' + path) + '\n');
 			this._sameAddPath = null;
 		} else {
 			this._sameAddPath = path;
@@ -516,7 +624,7 @@ export default class Watcher {
 
 			process.stdout.write(chalk.red('Devsync | '));
 			process.stdout.write(chalk.red('ADD ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
-			process.stdout.write(chalk.red(err.message+ '\n'));
+			process.stdout.write(chalk.red(err.message + '\n'));
 		});
 	};
 
@@ -529,12 +637,12 @@ export default class Watcher {
 
 			process.stdout.write(chalk.red('Devsync | '));
 			process.stdout.write(chalk.red('CHANGE ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
-			process.stdout.write(chalk.red("You have setting permission cannot update data sync on server"+ '\n'));
+			process.stdout.write(chalk.red("You have setting permission cannot update data sync on server" + '\n'));
 			return;
 		}
 		if (this._sameChangePath == path) {
 			process.stdout.write(chalk.green('Devsync | '));
-			process.stdout.write(chalk.green('Ups get 2x change :: '+path)+'\n');
+			process.stdout.write(chalk.green('Ups get 2x change :: ' + path) + '\n');
 			this._sameChangePath = null;
 		} else {
 			this._sameChangePath = path;
@@ -556,7 +664,7 @@ export default class Watcher {
 
 			process.stdout.write(chalk.red('Devsync | '));
 			process.stdout.write(chalk.red('CHANGE ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
-			process.stdout.write(chalk.red(err.message+ '\n'));
+			process.stdout.write(chalk.red(err.message + '\n'));
 			// this.tasks[this.change.name].fail("Fail").details(err.message);
 		});
 	};
@@ -574,7 +682,7 @@ export default class Watcher {
 
 			process.stdout.write(chalk.red('Devsync | '));
 			process.stdout.write(chalk.red('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
-			process.stdout.write(chalk.red("You have setting permission cannot unlink data sync on server"+ '\n'));
+			process.stdout.write(chalk.red("You have setting permission cannot unlink data sync on server" + '\n'));
 			return;
 		}
 		if (this._sameUnlinkPath == path) {
@@ -590,7 +698,7 @@ export default class Watcher {
 
 			process.stdout.write(chalk.green('Devsync | '));
 			process.stdout.write(chalk.white('UNLINK DONE :: '));
-			process.stdout.write(remote+'\n');
+			process.stdout.write(remote + '\n');
 		}).catch((err) => {
 			/* If first filter getting lost */
 			/* Trap again on this place */
@@ -604,7 +712,7 @@ export default class Watcher {
 
 			process.stdout.write(chalk.red('Devsync | '));
 			process.stdout.write(chalk.red('UNLINK ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
-			process.stdout.write(chalk.red(err.message+ '\n'));
+			process.stdout.write(chalk.red(err.message + '\n'));
 		});
 	};
 
@@ -620,7 +728,7 @@ export default class Watcher {
 
 			process.stdout.write(chalk.red('Devsync | '));
 			process.stdout.write(chalk.red('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
-			process.stdout.write(chalk.red("You have setting permission cannot unlink directory data sync on server"+ '\n'));
+			process.stdout.write(chalk.red("You have setting permission cannot unlink directory data sync on server" + '\n'));
 			return;
 		}
 		this.uploader.unlinkFolder(path, this._getTimeoutSftp(100)).then(remote => {
@@ -630,7 +738,7 @@ export default class Watcher {
 
 			process.stdout.write(chalk.green('Devsync | '));
 			process.stdout.write(chalk.white('UNLINKDIR DONE :: '));
-			process.stdout.write(remote+'\n');
+			process.stdout.write(remote + '\n');
 		}).catch((err) => {
 			this.deleteCacheFile(path, WATCHER_ACTION.DELETE_FOLDER);
 			// this.tasks["unlinkDir-err-" + upath.normalizeTrim(path.replace(this.config.localPath, ""))] = observatory.add('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + "");
@@ -639,7 +747,7 @@ export default class Watcher {
 
 			process.stdout.write(chalk.red('Devsync | '));
 			process.stdout.write(chalk.red('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
-			process.stdout.write(chalk.red(err.message+ '\n'));
+			process.stdout.write(chalk.red(err.message + '\n'));
 		});
 	};
 }
