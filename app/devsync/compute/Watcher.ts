@@ -198,21 +198,58 @@ export default class Watcher {
 
 		/* Define extra watch if get ! on git ignore */
 		let _extraWatch = ((_newPass: Array<string>) => {
-			let gitIgnore = _newPass;
+			let define_gitIgnore = _newPass;
 			let newExtraWatch: {
 				[key: string]: Array<string>
 			} = {};
-			for (var a = 0; a < gitIgnore.length; a++) {
-				newExtraWatch[gitIgnore[a]] = [];
-				if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
-					// newExtraWatch[upath.normalizeSafe(base+'/'+this._replaceAt(gitIgnore[a],'!','',0,1))];
-					// newExtraWatch[this._replaceAt(gitIgnore[a], '!', '', 0, 1)] = [];
-					
-				}
+			for (var a = 0; a < define_gitIgnore.length; a++) {
+				newExtraWatch[define_gitIgnore[a]] = [];
 			}
 			return newExtraWatch;
 		})(_newPass);
-		
+
+		let newIgnores = [];
+		_markToDelete = [];
+		for (var a = 0; a < originIgnore.length; a++) {
+			var _filterIgnores = originIgnore[a] + "";
+			if (_filterIgnores.includes("*") && _filterIgnores[0] == "/") {
+				let _arrPath = _filterIgnores.split('/');
+				for (var b = 0; b < _arrPath.length; b++) {
+					if (_arrPath[b].includes("*") && markForIgnore[_arrPath[b]]) {
+						let _nextArrPath = [];
+						for (var c = b + 1; c < _arrPath.length; c++) {
+							_nextArrPath.push(_arrPath[c]);
+						}
+						let _fileName = upath.parse(_filterIgnores);
+						// console.log('_fileName', _fileName);
+						// console.log('_arrPath[b]',_arrPath[b]);
+						let files = await readdirp.promise('.', {
+							directoryFilter: _arrPath[b],
+							type: 'directories',
+							depth: 1
+						});
+						if (files.length > 0) {
+							_markToDelete.push(originIgnore[a]);
+						}
+						files.map(file => newIgnores.push(upath.normalize('/' + file.path + '/' + _nextArrPath.join('/'))));
+						break;
+					}
+				}
+			}
+		}
+		for (var a = 0; a < _markToDelete.length; a++) {
+			for (var b = 0; b < originIgnore.length; b++) {
+				if (originIgnore[b] == _markToDelete[a]) {
+					originIgnore.splice(b, 1);
+					break;
+				}
+			}
+		}
+		originIgnore = [
+			...newIgnores,
+			...originIgnore
+		];
+
 		/* Get ignore rule again for group ignore special for extraWatch */
 		for (var key in _extraWatch) {
 			for (var a = 0; a < originIgnore.length; a++) {
@@ -238,8 +275,9 @@ export default class Watcher {
 		}
 		console.log('-------------------------------------')
 		console.log('-------------------------------------')
-		
+
 		let ignnorelist = [].concat(onlyRegexIgnores).concat(onlyFileStringIgnores).concat(resCHeckGItIgnores);
+
 		/* If safe mode activated */
 		if (this.config.safe_mode == true) {
 			ignnorelist = [];
