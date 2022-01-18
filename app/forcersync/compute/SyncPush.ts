@@ -362,28 +362,43 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
     let _filterPatternRules = this._filterPatternRule();
 
     // console.log('_filterPatternRules',_filterPatternRules);
+    let _markToDelete = [];
     let newPass = [];
+    let markForIgnore = {};
     for (var a = 0; a < _filterPatternRules.pass.length; a++) {
       var _filterPassA = _filterPatternRules.pass[a] + "";
       if (_filterPassA.includes("*")) {
-        _filterPatternRules.pass.splice(a, 1);
         let _arrPath = _filterPassA.split('/');
         for (var b = 0; b < _arrPath.length; b++) {
           if (_arrPath[b].includes("*")) {
+            markForIgnore[_arrPath[b]] = _arrPath[b];
             let _nextArrPath = [];
             for (var c = b + 1; c < _arrPath.length; c++) {
               _nextArrPath.push(_arrPath[c]);
             }
             let _fileName = upath.parse(_filterPassA);
-            console.log('_fileName', _fileName);
+            // console.log('_fileName', _fileName);
             let files = await readdirp.promise('.', {
               directoryFilter: _arrPath[b],
               type: 'directories',
               depth: 1
             });
-            files.map(file => newPass.push(upath.normalize('/' + file.path + '/' + _nextArrPath.join('/'))));
+            if (files.length > 0) {
+              _markToDelete.push(_filterPassA);
+            }
+            files.map(file => {
+              newPass.push(upath.normalize('/' + file.path + '/' + _nextArrPath.join('/')))
+            });
             break;
           }
+        }
+      }
+    }
+    for (var a = 0; a < _markToDelete.length; a++) {
+      for (var b = 0; b < _filterPatternRules.pass.length; b++) {
+        if (_filterPatternRules.pass[b] == _markToDelete[a]) {
+          _filterPatternRules.pass.splice(b, 1);
+          break;
         }
       }
     }
@@ -391,6 +406,48 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       ...newPass,
       ..._filterPatternRules.pass
     ];
+    let newIgnores = [];
+    _markToDelete = [];
+    for (var a = 0; a < _filterPatternRules.ignores.length; a++) {
+      var _filterIgnores = _filterPatternRules.ignores[a] + "";
+      if (_filterIgnores.includes("*") && _filterIgnores[0] == "/") {
+        let _arrPath = _filterIgnores.split('/');
+        for (var b = 0; b < _arrPath.length; b++) {
+          if (_arrPath[b].includes("*") && markForIgnore[_arrPath[b]]) {
+            let _nextArrPath = [];
+            for (var c = b + 1; c < _arrPath.length; c++) {
+              _nextArrPath.push(_arrPath[c]);
+            }
+            let _fileName = upath.parse(_filterIgnores);
+            // console.log('_fileName', _fileName);
+            // console.log('_arrPath[b]',_arrPath[b]);
+            let files = await readdirp.promise('.', {
+              directoryFilter: _arrPath[b],
+              type: 'directories',
+              depth: 1
+            });
+            if (files.length > 0) {
+              _markToDelete.push(_filterPatternRules.ignores[a]);
+            }
+            files.map(file => newIgnores.push(upath.normalize('/' + file.path + '/' + _nextArrPath.join('/'))));
+            break;
+          }
+        }
+      }
+    }
+    for (var a = 0; a < _markToDelete.length; a++) {
+      for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
+        if (_filterPatternRules.ignores[b] == _markToDelete[a]) {
+          _filterPatternRules.ignores.splice(b, 1);
+          break;
+        }
+      }
+    }
+    _filterPatternRules.ignores = [
+      ...newIgnores,
+      ..._filterPatternRules.ignores
+    ];
+
     let extraWatch: Array<{
       path: string
       ignores: Array<string>
@@ -418,7 +475,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       }
       /* Include double star pattern rule too */
       for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
-        if (_filterPatternRules.ignores[b].includes("**")) {
+        if (_filterPatternRules.ignores[b].includes("**") && _filterPatternRules.ignores[b][0] != '/') {
           newIgnores.push(_filterPatternRules.ignores[b].replace(' ', ''));
         }
       }
@@ -435,8 +492,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
         let _dirname = upath.dirname(extraWatch[extraWatch.length - 1].path);
         extraWatch[extraWatch.length - 1].path = _dirname;
         extraWatch[extraWatch.length - 1].ignores = ["*", this._removeDuplicate(".sync_temp/" + _filterPatternRules.pass[a], '/')];
-        extraWatch[extraWatch.length - 1].includes[0] = _fileName.base; // '/'+this._replaceAt(this._removeSameString(_filterPatternRules.pass[a], _dirname), '/', '', 0, 1);
-        extraWatch[extraWatch.length - 1].includes[1] = "*/";
+        extraWatch[extraWatch.length - 1].includes[0] = _fileName.base;
       }
     }
     return extraWatch;
