@@ -108,7 +108,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         message: "Are you want to pull data from remote target first?",
         default: false,
         when: (answers: any) => {
-          if (answers.target == COMMAND_TARGET.FORCE_SINGLE_SYNC){
+          if (answers.target == COMMAND_TARGET.FORCE_SINGLE_SYNC) {
             return false;
           }
           if (answers.target == COMMAND_TARGET.SAFE_SYNC) {
@@ -310,14 +310,14 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           // this._task['REJECTED'] = null;
           process.stdout.write(chalk.red('Devsync | '));
           process.stdout.write(chalk.red('REJECTED :: '));
-          process.stdout.write(props+'\n');
+          process.stdout.write(props + '\n');
           break;
         case 'REJECTED_DOWNLOAD':
           // this._task['REJECTED_DOWNLOAD'] = observatory.add("Download Failed :: ");
           // this._task['REJECTED_DOWNLOAD'].fail(props);
           process.stdout.write(chalk.red('Devsync | '));
           process.stdout.write(chalk.red('Download Failed :: '));
-          process.stdout.write(props+'\n');
+          process.stdout.write(props + '\n');
           break;
         case 'ONGOING':
           break;
@@ -326,14 +326,14 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           // this._task['DELETED_FOLDER'].done(props);
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('DELETED_FOLDER :: '));
-          process.stdout.write(props+'\n');
+          process.stdout.write(props + '\n');
           break;
         case 'DELETED':
           // this._task['DELETED'] = observatory.add("DELETED :: ");
           // this._task['DELETED'].done(props);
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('DELETED :: '));
-          process.stdout.write(props+'\n');
+          process.stdout.write(props + '\n');
           break;
         case 'DOWNLOADED_DONE':
           // this._task['DOWNLOADED'].done();
@@ -341,7 +341,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           // this._task['DOWNLOADED'] = observatory.add("FINISH :: ");
           // this._task['DOWNLOADED'].done();
           process.stdout.write(chalk.green('Devsync | '));
-          process.stdout.write(chalk.green('FINISH')+'\n');
+          process.stdout.write(chalk.green('FINISH') + '\n');
           break;
         case 'DOWNLOADED':
           // if (this._task['DOWNLOADED'] == null) {
@@ -349,10 +349,10 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           // }
           // this._task['DOWNLOADED'] = observatory.add("DOWNLOADED :: ");
           // this._task['DOWNLOADED'].done(props);
-          
+
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('DOWNLOADED :: '));
-          process.stdout.write(props+'\n');
+          process.stdout.write(props + '\n');
           break;
         case 'TRYING_STOP':
           // if (this._task['STOP_DOWNLOAD'] == null) {
@@ -371,7 +371,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           // this._task['STOP_DOWNLOAD'] = null;
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('TRYING STOP_DOWNLOAD :: '));
-          process.stdout.write('Stop'+'\n');
+          process.stdout.write('Stop' + '\n');
           break;
       }
     });
@@ -385,15 +385,15 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           // this._task['CLIENT_REQUEST'].done();
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('CLIENT_REQUEST :: '));
-          process.stdout.write('Remote success trying request'+'\n');
+          process.stdout.write('Remote success trying request' + '\n');
           break;
         case 'LISTEN_PORT':
           // this._task['LISTEN_PORT'] = observatory.add("Listen Reverse Port :: " + props);// observatory.add(this.eventToWord[event]);
           // this._task['LISTEN_PORT'].done();
-          
+
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('LISTEN_PORT :: '));
-          process.stdout.write('Listen Reverse Port :: '+props+'\n');
+          process.stdout.write('Listen Reverse Port :: ' + props + '\n');
           break;
         case 'ADD':
           this._download.startWaitingDownloads(props).then((data) => { }).catch(err => { });
@@ -496,13 +496,18 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
     });
     /* Define readline nodejs for listen CTRL + R */
-    if(this._readLine == null){
-      this._readLine = rl.createInterface({
-        input: process.stdin,
-        // output : process.stdout,
-        terminal: true
-      });
-    }
+    // if (this._readLine == null) {
+    //   this._readLine = rl.createInterface({
+    //     input: process.stdin,
+    //     // output : process.stdout,
+    //     terminal: true
+    //   });
+    // }
+    this._readLine = rl.createInterface({
+      input: process.stdin,
+      // output : process.stdout,
+      terminal: true
+    });
     /* Register new keypress */
     let remoteFuncKeypress = async (key: any, data: any) => {
       switch (data.sequence) {
@@ -557,7 +562,8 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             this.uploader = null;
 
             /*  */
-            process.stdin.off('keypress', remoteFuncKeypress);
+            process.stdin.end();
+            // process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
             // console.clear();
             this.construct(this._cli);
@@ -652,7 +658,16 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         this._httpEvent.installAgent(() => {
           this._httpEvent.start();
           if (this._currentConf.devsync.script.remote.on_ready != "" && this._currentConf.devsync.script.remote.on_ready != null) {
-            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, () => {
+            return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, (action) => {
+              switch (action) {
+                case 'MSG_ERR':
+                case 'MSG':
+                  break;
+                case 'EXIT':
+                  process.stdout.write(chalk.white('Remote | '));
+                  process.stdout.write("Execute remote command get closed. " + '\n');
+                  break;
+              }
             });
           }
         });

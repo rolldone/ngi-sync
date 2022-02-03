@@ -60,7 +60,7 @@ export default class Uploader {
 		[key: string]: any
 	} = {}
 	_exeHandlePush: Function = null;
-	clientClose():void{
+	clientClose(): void {
 		this.client.end();
 	}
 	async _executeCommand(whatCommand: string, callback?: Function) {
@@ -70,7 +70,7 @@ export default class Uploader {
 			stream.on('close', (code, signal) => {
 				// console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
 				if (callback == null) return;
-				callback();
+				callback('EXIT');
 			}).on('data', (data) => {
 				let _split: Array<string> = data.toString().split(/\n/); // data.split(/\n?\r/);
 				// console.log('raw ', [_split]);
@@ -83,6 +83,9 @@ export default class Uploader {
 						default:
 							process.stdout.write(chalk.green('Remote | '));
 							process.stdout.write(_split[a] + '\n');
+							if (callback != null) {
+								callback('MSG', _split[a]);
+							}
 							break;
 					}
 				}
@@ -100,6 +103,9 @@ export default class Uploader {
 						default:
 							process.stdout.write(chalk.red('Remote | '));
 							process.stdout.write(_split[a] + '\n');
+							if (callback != null) {
+								callback('MSG_ERR', _split[a]);
+							}
 							break;
 					}
 				}
