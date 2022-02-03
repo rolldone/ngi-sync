@@ -32,6 +32,7 @@ export interface HttpEventInterface extends BaseModelInterface {
   start: { (): void }
   stop: { (): void }
   create?: (cli: CliInterface, config: ConfigInterface) => this
+  stopReversePort: { (): void }
   startReversePort: { (shell: string, props: Array<string>): void }
   iniPtyProcess?: { (shell: string, props?: Array<string>): IPty }
   construct?: { (cli: CliInterface, config: ConfigInterface): void }
@@ -282,7 +283,12 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
             let rawSSH = await this._client.getRawSSH2();
             rawSSH.exec('chmod +x ' + remoteFilePath, (err: any, stream: any) => {
               rawSSH.exec('exit', async (err: any, stream: any) => {
-                await this._client.end();
+                try {
+                  await this._client.end();
+                } catch (ex) {
+                  process.stdout.write(chalk.red('Devsync | '));
+                  process.stdout.write(chalk.red(ex + '\n'));
+                }
                 callback();
               });
             })
@@ -419,7 +425,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
       }
     });
 
-    _ptyProcess.on('exit', function (exitCode: any, signal: any) {
+    _ptyProcess.on('exit', (exitCode: any, signal: any) => {
       // console.log(`exiting with  ${signal}`)
       // process.exit();
     });
@@ -427,6 +433,16 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
     _ptyProcess.write(sshCommand + "\r");
 
     return _ptyProcess;
+  },
+  stopReversePort() {
+    try {
+      /* No need readline because not type keyboard mode */
+      this._ptyProcess.write('\x03');
+      this._ptyProcess.write('exit' + '\r')
+      return;
+    } catch (ex) {
+      console.error('startReversePort - ex ', ex);
+    }
   },
   startReversePort(shell, props) {
     try {
