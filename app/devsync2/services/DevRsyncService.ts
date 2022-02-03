@@ -561,8 +561,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             this.uploader.onListener('RESTART', {});
             this.uploader = null;
 
-            /*  */
-            process.stdin.end();
             // process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
             // console.clear();
@@ -570,11 +568,16 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           }
           var closeRemote = () => {
             if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
-              this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, () => {
-                stop();
+              this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_stop, (action) => {
+                switch (action) {
+                  case 'EXEC_ERR':
+                    stop();
+                    break;
+                }
               });
               return true;
             }
+            console.log('vamdkfvamdkfvmkdfvmfv');
             return false;
           }
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {

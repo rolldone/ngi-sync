@@ -64,53 +64,61 @@ export default class Uploader {
 		this.client.end();
 	}
 	async _executeCommand(whatCommand: string, callback?: Function) {
-		let rawSSH = await this.client.getRawSSH2();
-		rawSSH.exec("cd " + this.config.remotePath + " && " + whatCommand, (err: any, stream: any) => {
-			if (err) throw err;
-			stream.on('close', (code, signal) => {
-				// console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
-				if (callback == null) return;
-				callback('EXIT');
-			}).on('data', (data) => {
-				let _split: Array<string> = data.toString().split(/\n/); // data.split(/\n?\r/);
-				// console.log('raw ', [_split]);
-				for (var a = 0; a < _split.length; a++) {
-					switch (_split[a]) {
-						case '':
-						case '\r':
-						case '\u001b[32m\r':
-							break;
-						default:
-							process.stdout.write(chalk.green('Remote | '));
-							process.stdout.write(_split[a] + '\n');
-							if (callback != null) {
-								callback('MSG', _split[a]);
-							}
-							break;
+		try {
+			let rawSSH = await this.client.getRawSSH2();
+			await rawSSH.exec("cd " + this.config.remotePath + " && " + whatCommand, (err: any, stream: any) => {
+				if (err) {
+					callback('EXEC_ERR', err);
+					return;
+				};
+				stream.on('close', (code, signal) => {
+					// console.log('Stream :: close :: code: ' + code + ', signal: ' + signal);
+					if (callback == null) return;
+					callback('EXIT');
+				}).on('data', (data) => {
+					let _split: Array<string> = data.toString().split(/\n/); // data.split(/\n?\r/);
+					// console.log('raw ', [_split]);
+					for (var a = 0; a < _split.length; a++) {
+						switch (_split[a]) {
+							case '':
+							case '\r':
+							case '\u001b[32m\r':
+								break;
+							default:
+								process.stdout.write(chalk.green('Remote | '));
+								process.stdout.write(_split[a] + '\n');
+								if (callback != null) {
+									callback('MSG', _split[a]);
+								}
+								break;
+						}
 					}
-				}
-				// console.log(chalk.green("Remote | "), stripAnsi(data.toString()))
-				// console.log('STDOUT: ' + data);
-			}).stderr.on('data', (data: any) => {
-				let _split: Array<string> = data.toString().split(/\n/); // data.split(/\n?\r/);
-				// console.log('raw ', [_split]);
-				for (var a = 0; a < _split.length; a++) {
-					switch (_split[a]) {
-						case '':
-						case '\r':
-						case '\u001b[32m\r':
-							break;
-						default:
-							process.stdout.write(chalk.red('Remote | '));
-							process.stdout.write(_split[a] + '\n');
-							if (callback != null) {
-								callback('MSG_ERR', _split[a]);
-							}
-							break;
+					// console.log(chalk.green("Remote | "), stripAnsi(data.toString()))
+					// console.log('STDOUT: ' + data);
+				}).stderr.on('data', (data: any) => {
+					let _split: Array<string> = data.toString().split(/\n/); // data.split(/\n?\r/);
+					// console.log('raw ', [_split]);
+					for (var a = 0; a < _split.length; a++) {
+						switch (_split[a]) {
+							case '':
+							case '\r':
+							case '\u001b[32m\r':
+								break;
+							default:
+								process.stdout.write(chalk.red('Remote | '));
+								process.stdout.write(_split[a] + '\n');
+								if (callback != null) {
+									callback('MSG_ERR', _split[a]);
+								}
+								break;
+						}
 					}
-				}
+				});
 			});
-		});
+		} catch (ex) {
+			callback('EXEC_ERR', ex);
+			return;
+		}
 	}
 	_handlePush() {
 		var debounceClose: any = null;
