@@ -575,7 +575,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
                     break;
                 }
               });
-              return true;
+              return false;
             }
             console.log('vamdkfvamdkfvmkdfvmfv');
             return false;
