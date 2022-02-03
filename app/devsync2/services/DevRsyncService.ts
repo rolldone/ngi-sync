@@ -573,15 +573,18 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
                   case 'EXEC_ERR':
                     stop();
                     break;
+                  case 'EXIT':
+                    stop();
+                    break;
                 }
               });
-              return false;
+              return true;
             }
             console.log('vamdkfvamdkfvmkdfvmfv');
             return false;
           }
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {
-            return executeLocalCommand('devrsync', this._currentConf, "exit", (data) => {
+            return executeLocalCommand('devrsync', this._currentConf, "exit", async (data) => {
               if (closeRemote() == false) {
                 stop();
               }
