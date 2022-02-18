@@ -8,6 +8,7 @@ import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { stripAnsi } from "@root/tool/Helpers";
 import { Interface } from "readline";
 const chalk = require('chalk');
+import rl, { ReadLine } from 'readline';
 
 declare var masterData: MasterDataInterface;
 declare var CustomError: { (name: string, message: string): any }
@@ -26,40 +27,41 @@ export default class Uploader {
 	}
 	_startConsole: any
 	_consoleWatch: boolean
+	_consoleStream: any
+	_consoleCache: any
 	async startConsole(readLine: Interface, _consoleWatch = true) {
 		try {
 			this._consoleWatch = _consoleWatch;
+			if (this._consoleWatch == false) {
+				this._consoleStream.unpipe(process.stdout);
+				return;
+			}
 			if (this._startConsole == null) {
+				this._consoleCache = [];
 				this._startConsole = await this.client.getRawSSH2();
 				this._startConsole.shell((err, stream) => {
+					this._consoleStream = stream;
 					stream.on('close', () => {
 						process.stdout.write('Connection closed.')
 						console.log('Stream :: close');
-					}).on('data', (data) => {
-						if (this._consoleWatch == false) return;
-						// pause to prevent more data from coming in
-						process.stdin.pause()
-						process.stdout.write(data)
-						process.stdin.resume()
-					}).stderr.on('data', (data) => {
-						if (this._consoleWatch == false) return;
-						process.stderr.write(data);
 					});
-					readLine.on('line', (d) => {
-						if (this._consoleWatch == false) return;
-						// send data to through the client to the host
-						stream.write(d.trim() + '\n')
+					stream.on('data', (dd: any) => {
+						if (this._consoleCache.length >= 5000) {
+							this._consoleCache.shift();
+						};
+						this._consoleCache.push(dd);
 					})
-					readLine.on('SIGINT', () => {
-						// stop input
-						process.stdin.pause()
-						process.stdout.write('\nEnding session\n')
-						stream.write("\x03");
-						// readLine.close()
-						// close connection
-						// stream.end('exit\n')
-					})
+					process.stdin.setRawMode(true);
+					process.stdin.pipe(stream);
+					stream.pipe(process.stdout);
+					stream.write("cd " + this.config.remotePath + "\r");
 				})
+			} else {
+				for (var i in this._consoleCache) {
+					process.stdout.write(this._consoleCache[i]);
+				}
+				this._consoleStream.pipe(process.stdout);
+				this._consoleStream.write("\r");
 			}
 		} catch (ex) {
 			console.error('ex', ex);

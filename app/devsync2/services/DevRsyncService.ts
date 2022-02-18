@@ -483,17 +483,28 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       switch (data.sequence) {
         case '\u001b1':
           console.clear();
+
           process.stdout.write(chalk.green('Devsync | ') + 'Watch Mode' + '\r');
           this.uploader.startConsole(this._readLine, false);
+          // this._readLine = rl.createInterface({
+          //   input: process.stdin,
+          //   output: process.stdout,
+          //   terminal: true
+          // });
+          this._readLine.resume();
+          // process.stdin.on('keypress', remoteFuncKeypress);
           this._actionMode = "devsync";
           this.watcher.actionMode = this._actionMode;
           break;
         case '\u001b2':
           console.clear();
-          process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
-          this.uploader.startConsole(this._readLine, true);
-          this._actionMode = "console";
-          this.watcher.actionMode = this._actionMode;
+          setTimeout(() => {
+            this._readLine.close();
+            process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
+            this.uploader.startConsole(this._readLine, true);
+            this._actionMode = "console";
+            this.watcher.actionMode = this._actionMode;
+          }, 2000);
           break;
       }
       if (this._actionMode == "console") return;
