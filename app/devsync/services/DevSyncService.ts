@@ -35,6 +35,7 @@ export interface DevSyncServiceInterface extends BaseServiceInterface {
   _readLine?: ReadLine
   _task?: any
   _is_stop?: boolean
+  _actionMode?: string
 }
 
 export const COMMAND_SHORT = {
@@ -364,15 +365,38 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     });
 
     /* Define readline nodejs for listen CTRL + R */
-    if(this._readLine == null){
-      this._readLine = rl.createInterface({
-        input: process.stdin,
-        // output : process.stdout,
-        terminal: true
-      });
-    }
+    // if(this._readLine == null){
+    //   this._readLine = rl.createInterface({
+    //     input: process.stdin,
+    //     // output : process.stdout,
+    //     terminal: true
+    //   });
+    // }
+
+    this._readLine = rl.createInterface({
+      input: process.stdin,
+      output : process.stdout,
+      terminal: true
+    });
 
     let remoteFuncKeypress = async (key: any, data: any) => {
+      switch (data.sequence) {
+        case '\u001b1':
+          console.clear();
+          process.stdout.write(chalk.green('Devsync | ') + 'Watch Mode' + '\r');
+          this.uploader.startConsole(this._readLine, false);
+          this._actionMode = "devsync";
+          this.watcher.actionMode = this._actionMode;
+          break;
+        case '\u001b2':
+          console.clear();
+          process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
+          this.uploader.startConsole(this._readLine, true);
+          this._actionMode = "console";
+          this.watcher.actionMode = this._actionMode;
+          break;
+      }
+      if (this._actionMode == "console") return;
       switch (data.sequence) {
         case '\f':
           console.clear();

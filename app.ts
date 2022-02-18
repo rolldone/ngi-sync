@@ -53,6 +53,15 @@ BaseStart({
       // // case 'forcesftp':
       // //   masterData.saveData('command.forcesftp.index', {});
       //   return;
+      case 'sc':
+        switch (segment1._[1]) {
+          case 'rsync':
+            masterData.saveData('command.forcersync.sc', segment1);
+            return;
+          case 'direct':
+            return masterData.saveData('command.direct.short_command', segment1._[2]);
+        }
+        return;
       case 'devsync2':
         if (segment1._[1] != null) {
           return masterData.saveData('command.devsync2.short_command', segment1._[1]);

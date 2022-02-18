@@ -6,6 +6,7 @@ import { CliInterface } from "../services/CliService";
 import _, { debounce, DebouncedFunc } from 'lodash';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { stripAnsi } from "@root/tool/Helpers";
+import { Interface } from "readline";
 const chalk = require('chalk');
 
 declare var masterData: MasterDataInterface;
@@ -22,6 +23,47 @@ export default class Uploader {
 	onListener: Function
 	setOnListener(func: Function) {
 		this.onListener = func;
+	}
+	_startConsole: any
+	_consoleWatch: boolean
+	async startConsole(readLine: Interface, _consoleWatch = true) {
+		try {
+			this._consoleWatch = _consoleWatch;
+			if (this._startConsole == null) {
+				this._startConsole = await this.client.getRawSSH2();
+				this._startConsole.shell((err, stream) => {
+					stream.on('close', () => {
+						process.stdout.write('Connection closed.')
+						console.log('Stream :: close');
+					}).on('data', (data) => {
+						if (this._consoleWatch == false) return;
+						// pause to prevent more data from coming in
+						process.stdin.pause()
+						process.stdout.write(data)
+						process.stdin.resume()
+					}).stderr.on('data', (data) => {
+						if (this._consoleWatch == false) return;
+						process.stderr.write(data);
+					});
+					readLine.on('line', (d) => {
+						if (this._consoleWatch == false) return;
+						// send data to through the client to the host
+						stream.write(d.trim() + '\n')
+					})
+					readLine.on('SIGINT', () => {
+						// stop input
+						process.stdin.pause()
+						process.stdout.write('\nEnding session\n')
+						stream.write("\x03");
+						// readLine.close()
+						// close connection
+						// stream.end('exit\n')
+					})
+				})
+			}
+		} catch (ex) {
+			console.error('ex', ex);
+		}
 	}
 	async connect(callback: Function) {
 		this.client = new Client();
@@ -85,6 +127,7 @@ export default class Uploader {
 							case '\u001b[32m\r':
 								break;
 							default:
+								if (this._consoleWatch == true) return;
 								process.stdout.write(chalk.green('Remote | '));
 								process.stdout.write(_split[a] + '\n');
 								if (callback != null) {
@@ -93,8 +136,6 @@ export default class Uploader {
 								break;
 						}
 					}
-					// console.log(chalk.green("Remote | "), stripAnsi(data.toString()))
-					// console.log('STDOUT: ' + data);
 				}).stderr.on('data', (data: any) => {
 					let _split: Array<string> = data.toString().split(/\n/); // data.split(/\n?\r/);
 					// console.log('raw ', [_split]);
@@ -105,6 +146,7 @@ export default class Uploader {
 							case '\u001b[32m\r':
 								break;
 							default:
+								if (this._consoleWatch == true) return;
 								process.stdout.write(chalk.red('Remote | '));
 								process.stdout.write(_split[a] + '\n');
 								if (callback != null) {

@@ -31,6 +31,7 @@ export interface SingleSyncServiceInterface extends DevRsyncPushServiceInterface
   _promptAction: { (questions: inquirer.QuestionCollection): void }
   _props?: any
   _config?: ConfigInterface
+  direct?: { (cli: CliInterface, props: any): void }
 }
 const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>({
   returnConfig: function (cli) {
@@ -78,16 +79,16 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
             }
             return false;
           }
-          
+
           return true;
         },
-        choices: ()=>{
-          let singleSyncs = Object.assign([],_config.devsync.single_sync);
-          if(singleSyncs.length > 0){
+        choices: () => {
+          let singleSyncs = Object.assign([], _config.devsync.single_sync);
+          if (singleSyncs.length > 0) {
             singleSyncs.push('----------');
             singleSyncs.push(PROMPT_CHOICE.ALL_ABOVE);
           }
-          return  [
+          return [
             ...singleSyncs,
             PROMPT_CHOICE.ALL_WITH_SYNC_IGNORE_PATTERN,
             // PROMPT_CHOICE.BROWSE_OTHER,
@@ -140,7 +141,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
     let props = this._props;
     inquirer.prompt(questions)['then']((passAnswer: any) => {
 
-      if(passAnswer.rsync_mode == PROMPT_CHOICE.EXIT){
+      if (passAnswer.rsync_mode == PROMPT_CHOICE.EXIT) {
         return masterData.saveData(this._props.from, {});
       }
 
@@ -204,10 +205,10 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
       if (passAnswer.browse_file != null) {
         let fixPath = upath.normalize(passAnswer.browse_file);
         let _lstatSync = lstatSync(fixPath);
-        if(_lstatSync.isDirectory()){
+        if (_lstatSync.isDirectory()) {
           fixPath += '/';
         }
-        fixPath = fixPath.replace(upath.normalize(this._config.localPath+'/'), '');
+        fixPath = fixPath.replace(upath.normalize(this._config.localPath + '/'), '');
         passAnswer.single_sync_list = fixPath;
         delete passAnswer.browse_file;
       }
@@ -244,6 +245,44 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
 
     });
   },
+  direct(_cli, props) {
+    let cli = _cli;
+    let currentConf = this.returnConfig(cli);
+    let _mode = props.mode;
+    let _action = props.action;
+    let _path = props.path;
+    let _with = props.with;
+    if (_path != null) {
+      let _singleSync = this.returnSingleSync(cli, {
+        port: currentConf.port,
+        host: currentConf.host,
+        username: currentConf.username,
+        password: currentConf.password,
+        privateKeyPath: currentConf.privateKey,
+        privateKey: currentConf.privateKey ? readFileSync(currentConf.privateKey).toString() : undefined,
+        paths: [],
+        ignores: currentConf.devsync.ignores,
+        base_path: currentConf.remotePath,
+        local_path: currentConf.localPath,
+        path_mode: currentConf.pathMode,
+        jumps: currentConf.jumps,
+        single_sync: currentConf.devsync.single_sync || [],
+        mode: _mode,
+        downloads: currentConf.devsync.downloads
+      });
+      _singleSync.setOnListener((props: any) => {
+        if (props.action == "exit") {
+          process.exit(1);
+        }
+      })
+      _singleSync.submitPushSelective({
+        option: _action,
+        single_sync_list: _path
+      });
+      return;
+    }
+
+  }
 });
 
 export default SingleSyncService;
