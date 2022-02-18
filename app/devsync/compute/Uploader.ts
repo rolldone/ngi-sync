@@ -44,6 +44,7 @@ export default class Uploader {
 					stream.on('close', () => {
 						process.stdout.write('Connection closed.')
 						console.log('Stream :: close');
+						process.exit(1);
 					});
 					stream.on('data', (dd: any) => {
 						if (this._consoleCache.length >= 5000) {
