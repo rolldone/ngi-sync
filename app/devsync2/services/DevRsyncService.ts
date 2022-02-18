@@ -37,6 +37,7 @@ export interface DevRsyncServiceInterface extends BaseServiceInterface {
   _task?: any
   _download?: DownloadInterface
   _is_stop?: boolean
+  _actionMode?: string
 }
 
 export const COMMAND_SHORT = {
@@ -303,18 +304,14 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     let _pendingTimeoutStopDownload = this._download.startPendingTimeoutStop();
     /*  */
     this._download.setOnListener((action, props) => {
+      if (this._actionMode == "console") return;
       switch (action) {
         case 'REJECTED':
-          // this._task['REJECTED'] = observatory.add("REJECTED :: ");
-          // this._task['REJECTED'].fail(props);
-          // this._task['REJECTED'] = null;
           process.stdout.write(chalk.red('Devsync | '));
           process.stdout.write(chalk.red('REJECTED :: '));
           process.stdout.write(props + '\n');
           break;
         case 'REJECTED_DOWNLOAD':
-          // this._task['REJECTED_DOWNLOAD'] = observatory.add("Download Failed :: ");
-          // this._task['REJECTED_DOWNLOAD'].fail(props);
           process.stdout.write(chalk.red('Devsync | '));
           process.stdout.write(chalk.red('Download Failed :: '));
           process.stdout.write(props + '\n');
@@ -322,53 +319,30 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         case 'ONGOING':
           break;
         case 'DELETED_FOLDER':
-          // this._task['DELETED_FOLDER'] = observatory.add("DELETED_FOLDER :: ");
-          // this._task['DELETED_FOLDER'].done(props);
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('DELETED_FOLDER :: '));
           process.stdout.write(props + '\n');
           break;
         case 'DELETED':
-          // this._task['DELETED'] = observatory.add("DELETED :: ");
-          // this._task['DELETED'].done(props);
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('DELETED :: '));
           process.stdout.write(props + '\n');
           break;
         case 'DOWNLOADED_DONE':
-          // this._task['DOWNLOADED'].done();
-          // this._task['DOWNLOADED'] = null;
-          // this._task['DOWNLOADED'] = observatory.add("FINISH :: ");
-          // this._task['DOWNLOADED'].done();
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('FINISH') + '\n');
           break;
         case 'DOWNLOADED':
-          // if (this._task['DOWNLOADED'] == null) {
-          //   this._task['DOWNLOADED'] = observatory.add("DOWNLOADED :: ");
-          // }
-          // this._task['DOWNLOADED'] = observatory.add("DOWNLOADED :: ");
-          // this._task['DOWNLOADED'].done(props);
-
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('DOWNLOADED :: '));
           process.stdout.write(props + '\n');
           break;
         case 'TRYING_STOP':
-          // if (this._task['STOP_DOWNLOAD'] == null) {
-          //   this._task['STOP_DOWNLOAD'] = observatory.add("TRYING STOP_DOWNLOAD");
-          // }
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('TRYING STOP_DOWNLOAD'));
           process.stdout.write('\n');
           break;
         case 'STOP':
-          // if (this._task['STOP_DOWNLOAD'] == null) {
-          //   this._task['STOP_DOWNLOAD'] = observatory.add("TRYING STOP_DOWNLOAD");
-          // }
-          // this._task['STOP_DOWNLOAD'].status("Stop")
-          // this._task['STOP_DOWNLOAD'].done();
-          // this._task['STOP_DOWNLOAD'] = null;
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('TRYING STOP_DOWNLOAD :: '));
           process.stdout.write('Stop' + '\n');
@@ -377,20 +351,16 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     });
     this._httpEvent = this.returnHttpEvent(this._cli, this._currentConf);
     this._httpEvent.setOnChangeListener(async (action, props) => {
+      if (this._actionMode == "console") return;
       await this._download.startSftp();
       _pendingTimeoutStopDownload();
       switch (action) {
         case 'CLIENT_REQUEST':
-          // this._task['CLIENT_REQUEST'] = observatory.add("Remote success trying request");// observatory.add(this.eventToWord[event]);
-          // this._task['CLIENT_REQUEST'].done();
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('CLIENT_REQUEST :: '));
           process.stdout.write('Remote success trying request' + '\n');
           break;
         case 'LISTEN_PORT':
-          // this._task['LISTEN_PORT'] = observatory.add("Listen Reverse Port :: " + props);// observatory.add(this.eventToWord[event]);
-          // this._task['LISTEN_PORT'].done();
-
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('LISTEN_PORT :: '));
           process.stdout.write('Listen Reverse Port :: ' + props + '\n');
@@ -505,12 +475,31 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     // }
     this._readLine = rl.createInterface({
       input: process.stdin,
-      // output : process.stdout,
+      output: process.stdout,
       terminal: true
     });
     /* Register new keypress */
     let remoteFuncKeypress = async (key: any, data: any) => {
       switch (data.sequence) {
+        case '\u001b1':
+          console.clear();
+          process.stdout.write(chalk.green('Devsync | ') + 'Watch Mode' + '\r');
+          this.uploader.startConsole(this._readLine, false);
+          this._actionMode = "devsync";
+          this.watcher.actionMode = this._actionMode;
+          break;
+        case '\u001b2':
+          console.clear();
+          process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
+          this.uploader.startConsole(this._readLine, true);
+          this._actionMode = "console";
+          this.watcher.actionMode = this._actionMode;
+          break;
+      }
+      if (this._actionMode == "console") return;
+      switch (data.sequence) {
+        case '\u001b3':
+          break;
         case '\f':
           console.clear();
           return;
@@ -580,7 +569,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
               });
               return true;
             }
-            console.log('vamdkfvamdkfvmkdfvmfv');
             return false;
           }
           if (this._currentConf.devsync.script.local.on_ready != "" && this._currentConf.devsync.script.local.on_ready != null) {

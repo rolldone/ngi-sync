@@ -38,6 +38,7 @@ const Cli = BaseRouteCli.extend<BaseRouteInterface>({
     masterData.setOnListener('command.forcersync.index', ForceRsync.binding().index);
     masterData.setOnListener('command.forcersync.pull', ForceRsync.binding().pull);
     masterData.setOnListener('command.forcersync.single_sync', ForceRsync.binding().index);
+    masterData.setOnListener('command.forcersync.sc', ForceRsync.binding().sc);
     masterData.setOnListener('command.recent.open', MainRecent.binding().index);
     masterData.setOnListener('command.recent.retry', MainRecent.binding().retry);
     masterData.setOnListener('command.console.index', MainConsole.binding().index);
