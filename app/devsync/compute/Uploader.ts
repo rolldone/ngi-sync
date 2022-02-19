@@ -7,11 +7,18 @@ import _, { debounce, DebouncedFunc } from 'lodash';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import { stripAnsi } from "@root/tool/Helpers";
 import { Interface } from "readline";
+var size = require('window-size');
 const chalk = require('chalk');
 import rl, { ReadLine } from 'readline';
 
 declare var masterData: MasterDataInterface;
 declare var CustomError: { (name: string, message: string): any }
+
+const _consoleWatchs: any = {}
+const _consoleStreams: any = {}
+const _startConsoles: any = {}
+const _consoleCaches: any = {}
+let _consoleAction = null;
 
 export default class Uploader {
 	client: Client;
@@ -29,40 +36,153 @@ export default class Uploader {
 	_consoleWatch: boolean
 	_consoleStream: any
 	_consoleCache: any
-	async startConsole(readLine: Interface, _consoleWatch = true) {
+	setConsoleAction(whatAction: string) {
+		_consoleAction = whatAction;
+	}
+	async startConsole(_consoleWatch = true, callback?: Function) {
 		try {
 			this._consoleWatch = _consoleWatch;
 			if (this._consoleWatch == false) {
+				if (this._consoleStream == null) return;
 				this._consoleStream.unpipe(process.stdout);
+				process.stdin.unpipe(this._consoleStream);
+				_consoleAction = '--------------';
 				return;
+			} else {
+				_consoleAction = 'basic';
+				if (this._startConsole != null) {
+					for (var i in this._consoleCache) {
+						process.stdout.write(this._consoleCache[i]);
+					}
+					// this._consoleStream.pipe(process.stdout);
+					// this._consoleStream.write("\b");
+					// this._consoleStream.write("\u001b[D");
+					process.stdin.pipe(this._consoleStream);
+					this._consoleStream.write("\u001b[C");
+					process.stdin.setRawMode(true);
+				}
 			}
 			if (this._startConsole == null) {
 				this._consoleCache = [];
 				this._startConsole = await this.client.getRawSSH2();
-				this._startConsole.shell((err, stream) => {
-					this._consoleStream = stream;
+				this._startConsole.shell({
+					rows: process.stdout.rows,
+					cols: process.stdout.columns,
+				}, (err, stream) => {
 					stream.on('close', () => {
+						if (_consoleAction != "basic") return;
 						process.stdout.write('Connection closed.')
 						console.log('Stream :: close');
 						process.exit(1);
 					});
 					stream.on('data', (dd: any) => {
+						if (_consoleAction != "basic") return;
 						if (this._consoleCache.length >= 5000) {
 							this._consoleCache.shift();
 						};
 						this._consoleCache.push(dd);
+						process.stdout.write(dd);
 					})
-					process.stdin.setRawMode(true);
 					process.stdin.pipe(stream);
-					stream.pipe(process.stdout);
+					// stream.pipe(process.stdout);
 					stream.write("cd " + this.config.remotePath + "\r");
+					this._consoleStream = stream;
+					process.stdin.setRawMode(true);
+
+					process.stdout.on('resize', () => {
+						let { width, height } = size.get();
+						stream.setWindow(process.stdout.rows, process.stdout.columns, width, height);
+					});
 				})
+
+			}
+		} catch (ex) {
+			console.error('ex', ex);
+		}
+	}
+
+	async startConsoles(index: number, command: string, _consoleWatch = true, callback: Function = null) {
+		try {
+			_consoleWatchs[index] = _consoleWatch;
+			if (_consoleWatchs[index] == false) {
+				if (_consoleStreams[index] == null) return;
+				_consoleStreams[index].unpipe(process.stdout);
+				process.stdin.unpipe(_consoleStreams[index]);
+				_consoleAction = '--------------';
+				return;
 			} else {
-				for (var i in this._consoleCache) {
-					process.stdout.write(this._consoleCache[i]);
+				_consoleAction = index;
+				if (_startConsoles[index] != null) {
+					for (var i in _consoleCaches[index]) {
+						process.stdout.write(_consoleCaches[index][i]);
+					}
+					process.stdin.pipe(_consoleStreams[index]);
+					_consoleStreams[index].write("\u001b[C");
+					_consoleStreams[index].write("\u001b[C");
+					_consoleStreams[index].write("\u001b[C");
+					process.stdin.setRawMode(true);
+
 				}
-				this._consoleStream.pipe(process.stdout);
-				this._consoleStream.write("\r");
+			}
+			if (_startConsoles[index] == null) {
+				_consoleCaches[index] = [];
+				let theClient = new Client();
+				await theClient.connect({
+					port: this.config.port,
+					host: this.config.host,
+					username: this.config.username,
+					password: this.config.password,
+					// agentForward: true,
+					privateKey: this.config.privateKey ? readFileSync(this.config.privateKey).toString() : undefined,
+					jumps: this.config.jumps,
+					path: this.config.remotePath
+					// debug: true
+				});
+				// console.log(_consoleAction,' and ',index);
+				_startConsoles[index] = await theClient.client;
+				_startConsoles[index].shell({
+					rows: process.stdout.rows,
+					cols: process.stdout.columns,
+				}, (err, stream) => {
+					stream.on('close', () => {
+						// console.log('close',_consoleAction,' and ',index);
+						if (_consoleAction != index) return;
+						// _consoleAction = "---------------------";
+						callback(theClient);
+						process.stdin.end();
+						_startConsoles[index] = null;
+						_consoleStreams[index] = null;
+					});
+					stream.on('data', (dd: any) => {
+						// console.log('data',_consoleAction,' and ',index);
+						if (_consoleAction != index) return;
+						if (_consoleCaches[index].length >= 5000) {
+							_consoleCaches[index].shift();
+						};
+						_consoleCaches[index].push(dd);
+						process.stdout.write(dd);
+					})
+					stream.stderr.on('data', (data) => {
+						// console.log('data',_consoleAction,' and ',index);
+						if (_consoleAction != index) return;
+						if (_consoleCaches[index].length >= 5000) {
+							_consoleCaches[index].shift();
+						};
+						_consoleCaches[index].push(data);
+						process.stdout.write(data);
+					});
+					process.stdin.pipe(stream);
+					// stream.pipe(process.stdout);
+					stream.write("cd " + this.config.remotePath + "\r");
+					stream.write(command + "\r");
+					_consoleStreams[index] = stream;
+					process.stdin.setRawMode(true);
+
+					process.stdout.on('resize', () => {
+						let { width, height } = size.get();
+						stream.setWindow(process.stdout.rows, process.stdout.columns, width, height);
+					});
+				})
 			}
 		} catch (ex) {
 			console.error('ex', ex);
