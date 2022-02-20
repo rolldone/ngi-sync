@@ -5,11 +5,16 @@ import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
 import _, { debounce, DebouncedFunc } from 'lodash';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
-import { stripAnsi } from "@root/tool/Helpers";
-import { Interface } from "readline";
 var size = require('window-size');
 const chalk = require('chalk');
+var pty = require('node-pty');
+var os = require('os');
+import * as child_process from 'child_process';
+var _localRedLine = null;
+import { stripAnsi } from "@root/tool/Helpers";
+import { Interface } from "readline";
 import rl, { ReadLine } from 'readline';
+import { Writable } from "stream";
 
 declare var masterData: MasterDataInterface;
 declare var CustomError: { (name: string, message: string): any }
@@ -18,6 +23,7 @@ const _consoleWatchs: any = {}
 const _consoleStreams: any = {}
 const _startConsoles: any = {}
 const _consoleCaches: any = {}
+const _consoleModes: any = {}
 let _consoleAction = null;
 
 export default class Uploader {
@@ -38,6 +44,9 @@ export default class Uploader {
 	_consoleCache: any
 	setConsoleAction(whatAction: string) {
 		_consoleAction = whatAction;
+	}
+	getConsoleMode(index) {
+		return _consoleModes[index];
 	}
 	async startConsole(_consoleWatch = true, callback?: Function) {
 		try {
@@ -96,6 +105,27 @@ export default class Uploader {
 				})
 
 			}
+			var _keypress = (key, data) => {
+				let isStop = false;
+				for (var a = 0; a < 9; a++) {
+					if (data.sequence == '\u001b' + (a)) {
+						// theClient.write("exit\r");
+						process.stdin.unpipe(this._consoleStream);
+						process.stdin.removeListener("keypress", _keypress);
+						process.stdin.setRawMode(false);
+						callback("switch", data);
+						isStop = true;
+					}
+				}
+				if (isStop == true) {
+					return;
+				}
+				switch (data.sequence) {
+					case '\u0003':
+						return;
+				}
+			}
+			process.stdin.on("keypress", _keypress)
 		} catch (ex) {
 			console.error('ex', ex);
 		}
@@ -103,12 +133,13 @@ export default class Uploader {
 
 	async startConsoles(index: number, command: string, _consoleWatch = true, callback: Function = null) {
 		try {
+			_consoleModes[index] = 'remote';
 			_consoleWatchs[index] = _consoleWatch;
 			if (_consoleWatchs[index] == false) {
 				if (_consoleStreams[index] == null) return;
-				_consoleStreams[index].unpipe(process.stdout);
-				process.stdin.unpipe(_consoleStreams[index]);
-				_consoleAction = '--------------';
+				// _consoleStreams[index].unpipe(process.stdout);
+				// process.stdin.unpipe(_consoleStreams[index]);
+				// _consoleAction = '--------------';
 				return;
 			} else {
 				_consoleAction = index;
@@ -124,6 +155,34 @@ export default class Uploader {
 
 				}
 			}
+
+			var _keypress = (key, data) => {
+				let isStop = false;
+				for (var a = 0; a < 9; a++) {
+					if (data.sequence == '\u001b' + (a)) {
+						// theClient.write("exit\r");
+						if(_consoleStreams[index] == null){
+							console.log("PROIBLEM");
+							return;
+						}
+						_consoleStreams[index].unpipe(process.stdout);
+						process.stdin.unpipe(_consoleStreams[index]);
+						process.stdin.removeListener("keypress", _keypress);
+						process.stdin.setRawMode(false);
+						callback("switch", data);
+						isStop = true;
+					}
+				}
+				if (isStop == true) {
+					return;
+				}
+				switch (data.sequence) {
+					case '\u0003':
+						return;
+				}
+			}
+
+			process.stdin.on("keypress", _keypress)
 			if (_startConsoles[index] == null) {
 				_consoleCaches[index] = [];
 				let theClient = new Client();
@@ -144,15 +203,25 @@ export default class Uploader {
 					rows: process.stdout.rows,
 					cols: process.stdout.columns,
 				}, (err, stream) => {
+
+					_consoleStreams[index] = stream;
 					stream.on('close', () => {
-						// console.log('close',_consoleAction,' and ',index);
+						// console.log('close', _consoleAction, ' and ', index);
 						if (_consoleAction != index) return;
 						// _consoleAction = "---------------------";
-						callback(theClient);
+						theClient.end();
+						_consoleStreams[index].unpipe(process.stdout);
+						process.stdin.unpipe(_consoleStreams[index]);
+						process.stdin.removeListener("keypress", _keypress);
+						process.stdin.setRawMode(false);
 						process.stdin.end();
 						_startConsoles[index] = null;
 						_consoleStreams[index] = null;
+						setTimeout(() => {
+							callback("exit", null);
+						},1000);
 					});
+
 					stream.on('data', (dd: any) => {
 						// console.log('data',_consoleAction,' and ',index);
 						if (_consoleAction != index) return;
@@ -162,6 +231,7 @@ export default class Uploader {
 						_consoleCaches[index].push(dd);
 						process.stdout.write(dd);
 					})
+
 					stream.stderr.on('data', (data) => {
 						// console.log('data',_consoleAction,' and ',index);
 						if (_consoleAction != index) return;
@@ -172,22 +242,227 @@ export default class Uploader {
 						process.stdout.write(data);
 					});
 					process.stdin.pipe(stream);
+					process.stdin.setRawMode(true);
 					// stream.pipe(process.stdout);
 					stream.write("cd " + this.config.remotePath + "\r");
 					stream.write(command + "\r");
-					_consoleStreams[index] = stream;
-					process.stdin.setRawMode(true);
 
 					process.stdout.on('resize', () => {
 						let { width, height } = size.get();
 						stream.setWindow(process.stdout.rows, process.stdout.columns, width, height);
 					});
+
+
 				})
+			} else {
+
 			}
 		} catch (ex) {
 			console.error('ex', ex);
 		}
 	}
+
+	startLocalConsoles(index: number, command: string, _consoleWatch = true, callback: Function = null) {
+		try {
+			_consoleModes[index] = "local";
+			_consoleWatchs[index] = _consoleWatch;
+			if (_consoleWatchs[index] == false) {
+				if (_consoleStreams[index] == null) return;
+				// _consoleStreams[index].unpipe(process.stdout);
+				// process.stdin.unpipe(_consoleStreams[index]);
+				_consoleAction = '--------------';
+				return;
+			} else {
+				_consoleAction = index;
+				if (_consoleStreams[index] != null) {
+					for (var i in _consoleCaches[index]) {
+						process.stdout.write(_consoleCaches[index][i]);
+					}
+					// process.stdin.pipe(_consoleStreams[index]);
+					// _startConsoles[index].resume();
+					_consoleStreams[index].write("\x11");
+					_consoleStreams[index].write("\r");
+					// _consoleStreams[index].write("\u001b[C");
+					// _consoleStreams[index].write("\u001b[C");
+					// process.stdin.setRawMode(true);
+
+				}
+			}
+
+			let theClient = _consoleStreams[index];
+			let _readLine = _startConsoles[index];
+
+			const resizeFunc = function () {
+				let { width, height } = size.get();
+				// _ptyProcess.resize(width, height)
+			}
+
+			if (theClient == null) {
+				_consoleCaches[index] = [];
+				theClient = this.iniPtyProcess([command]);
+				process.stdout.on('resize', resizeFunc);
+			}
+
+			let onData = (data) => {
+				switch (data) {
+					case "exit":
+						return;
+				}
+				if (_consoleAction != index) return;
+				if (_consoleCaches[index].length >= 5000) {
+					_consoleCaches[index].shift();
+				};
+				_consoleCaches[index].push(data);
+				process.stdout.write(data);
+			}
+			theClient.on('data', onData);
+
+			let onExit = (exitCode: any, signal: any) => {
+				// _readLine.close();
+				// theClient.write("exit\r");
+				// process.stdin.unpipe(_startConsoles[index]);
+				// callback();
+				process.stdout.removeListener('resize', resizeFunc);
+				theClient.removeListener('data', onData);
+				theClient.removeListener('exit', onExit);
+				_readLine.close();
+				_readLine.removeAllListeners();
+				process.stdin.removeListener("keypress", _keypress)
+				_startConsoles[index] = null
+				_consoleStreams[index] = null
+				callback("exit", null);
+			};
+			theClient.on('exit', onExit);
+
+			// process.stdin.pipe(theClient);
+
+			_readLine = rl.createInterface({
+				input: process.stdin,
+				terminal: true
+			});
+
+			_readLine.on('line', function (line) {
+
+			}).on('close', function () {
+				console.log("Close Readline Local Console");
+			});
+
+			var _keypress = (key, data) => {
+				let isStop = false;
+				for (var a = 0; a < 9; a++) {
+					if (data.sequence == '\u001b' + (a)) {
+						theClient.write('\x13');
+						theClient.removeListener('data', onData);
+						theClient.removeListener('exit', onExit);
+						_readLine.close();
+						_readLine.removeAllListeners();
+						process.stdin.removeListener("keypress", _keypress)
+						isStop = true;
+						setTimeout(() => {
+							callback("switch", data);
+							// this.startLocalConsoles(index, command, true, callback);
+						}, 1000);
+					}
+				}
+				if (isStop == true) {
+					return;
+				}
+				switch (data.sequence) {
+					case '\u0003':
+						// theClient.write("exit\r");
+						return;
+					// Up and down
+					case '\u001b[A':
+					case '\u001b[B':
+						theClient.write(data.sequence);
+						return;
+				}
+				theClient.write(data.sequence);
+			}
+			process.stdin.on("keypress", _keypress)
+
+			_startConsoles[index] = _readLine;
+			_consoleStreams[index] = theClient;
+
+			// _startConsoles[index].shell({
+			// 	rows: process.stdout.rows,
+			// 	cols: process.stdout.columns,
+			// }, (err, stream) => {
+			// 	let resizeFunc = () => {
+			// 		let { width, height } = size.get();
+			// 		stream.setWindow(process.stdout.rows, process.stdout.columns, width, height);
+			// 	}
+			// 	stream.on('close', () => {
+			// 		// console.log('close',_consoleAction,' and ',index);
+			// 		if (_consoleAction != index) return;
+			// 		// _consoleAction = "---------------------";
+			// 		callback(theClient);
+			// 		process.stdin.end();
+			// 		_startConsoles[index] = null;
+			// 		_consoleStreams[index] = null;
+			// 		process.stdout.removeListener('resize', resizeFunc);
+			// 	});
+			// 	stream.on('data', (dd: any) => {
+			// 		// console.log('data',_consoleAction,' and ',index);
+			// 		if (_consoleAction != index) return;
+			// 		if (_consoleCaches[index].length >= 5000) {
+			// 			_consoleCaches[index].shift();
+			// 		};
+			// 		_consoleCaches[index].push(dd);
+			// 		process.stdout.write(dd);
+			// 	})
+			// 	stream.stderr.on('data', (data) => {
+			// 		// console.log('data',_consoleAction,' and ',index);
+			// 		if (_consoleAction != index) return;
+			// 		if (_consoleCaches[index].length >= 5000) {
+			// 			_consoleCaches[index].shift();
+			// 		};
+			// 		_consoleCaches[index].push(data);
+			// 		process.stdout.write(data);
+			// 	});
+			// 	process.stdin.pipe(stream);
+			// 	// stream.pipe(process.stdout);
+			// 	stream.write("cd " + this.config.remotePath + "\r");
+			// 	stream.write(command + "\r");
+			// 	_consoleStreams[index] = stream;
+			// 	process.stdin.setRawMode(true);
+
+			// 	process.stdout.on('resize', resizeFunc);
+			// })
+		} catch (ex) {
+			console.error('ex', ex);
+		}
+	}
+
+	iniPtyProcess(props = []) {
+		var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+
+		var autoComplete = function completer(line) {
+			const completions = ''.split(' ');
+			const hits = completions.filter((c) => c.startsWith(line));
+			// show all completions if none found
+			// console.log([hits.length ? hits : completions, line]);
+			return [];//[hits.length ? hits : completions, line];
+		}
+		let _ptyProcess = pty.spawn(shell, [], {
+			// name: 'xterm-color',
+			cols: process.stdout.columns,
+			rows: process.stdout.rows,
+			completer: autoComplete,
+			// cwd: process.env.HOME,
+			// env: {
+			// 	/* Fill from parent process.env */
+			// 	...process.env,
+			// 	/* Override for this value */
+			// 	IS_PROCESS: "open_console"
+			// },
+			handleFlowControl: true
+		});
+		_ptyProcess.write('cd ' + this.config.localPath + '\r');
+		_ptyProcess.write(props[0] + '\r');
+		return _ptyProcess;
+	}
+
 	async connect(callback: Function) {
 		this.client = new Client();
 		try {

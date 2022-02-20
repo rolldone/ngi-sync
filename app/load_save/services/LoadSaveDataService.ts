@@ -125,7 +125,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       if (gg.ext == ".yaml") {
         ress[a] = gg.name;
       } else {
-        delete ress[a];
+        ress.splice(a, 1);
       }
     }
     let questions: inquirer.QuestionCollection = [
@@ -153,7 +153,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       if (gg.ext == ".yaml") {
         ress[a] = gg.name;
       } else {
-        delete ress[a];
+        ress.splice(a, 1);
       }
     }
     ress.push("New file");
@@ -184,7 +184,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       if (gg.ext == ".yaml") {
         ress[a] = gg.name;
       } else {
-        delete ress[a];
+        ress.splice(a, 1);
       }
     }
     ress.push("New file");

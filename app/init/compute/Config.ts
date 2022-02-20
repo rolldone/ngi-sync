@@ -58,6 +58,7 @@ export interface ConfigInterface extends BaseModelInterface {
     script: {
       local: {
         on_ready?: string
+        commands?: Array<string>
       }
       remote: {
         on_ready?: string
