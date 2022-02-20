@@ -60,15 +60,18 @@ export default class Uploader {
 			} else {
 				_consoleAction = 'basic';
 				if (this._startConsole != null) {
-					for (var i in this._consoleCache) {
-						process.stdout.write(this._consoleCache[i]);
-					}
-					// this._consoleStream.pipe(process.stdout);
-					// this._consoleStream.write("\b");
-					// this._consoleStream.write("\u001b[D");
-					process.stdin.pipe(this._consoleStream);
-					this._consoleStream.write("\u001b[C");
-					process.stdin.setRawMode(true);
+					console.clear();
+					setTimeout(() => {
+						for (var i in this._consoleCache) {
+							process.stdout.write(this._consoleCache[i]);
+						}
+						// this._consoleStream.pipe(process.stdout);
+						// this._consoleStream.write("\b");
+						// this._consoleStream.write("\u001b[D");
+						process.stdin.pipe(this._consoleStream);
+						this._consoleStream.write("\u001b[C");
+						process.stdin.setRawMode(true);
+					}, 1000);
 				}
 			}
 			if (this._startConsole == null) {
@@ -144,15 +147,17 @@ export default class Uploader {
 			} else {
 				_consoleAction = index;
 				if (_startConsoles[index] != null) {
-					for (var i in _consoleCaches[index]) {
-						process.stdout.write(_consoleCaches[index][i]);
-					}
-					process.stdin.pipe(_consoleStreams[index]);
-					_consoleStreams[index].write("\u001b[C");
-					_consoleStreams[index].write("\u001b[C");
-					_consoleStreams[index].write("\u001b[C");
-					process.stdin.setRawMode(true);
-
+					console.clear();
+					setTimeout(() => {
+						for (var i in _consoleCaches[index]) {
+							process.stdout.write(_consoleCaches[index][i]);
+						}
+						process.stdin.pipe(_consoleStreams[index]);
+						_consoleStreams[index].write("\r");
+						// _consoleStreams[index].write("\u001b[C");
+						// _consoleStreams[index].write("\u001b[C");
+						process.stdin.setRawMode(true);
+					}, 1000);
 				}
 			}
 
@@ -161,7 +166,7 @@ export default class Uploader {
 				for (var a = 0; a < 9; a++) {
 					if (data.sequence == '\u001b' + (a)) {
 						// theClient.write("exit\r");
-						if(_consoleStreams[index] == null){
+						if (_consoleStreams[index] == null) {
 							console.log("PROIBLEM");
 							return;
 						}
@@ -219,7 +224,7 @@ export default class Uploader {
 						_consoleStreams[index] = null;
 						setTimeout(() => {
 							callback("exit", null);
-						},1000);
+						}, 1000);
 					});
 
 					stream.on('data', (dd: any) => {
@@ -274,19 +279,21 @@ export default class Uploader {
 				return;
 			} else {
 				_consoleAction = index;
-				if (_consoleStreams[index] != null) {
-					for (var i in _consoleCaches[index]) {
-						process.stdout.write(_consoleCaches[index][i]);
+				console.clear();
+				setTimeout(() => {
+					if (_consoleStreams[index] != null) {
+						for (var i in _consoleCaches[index]) {
+							process.stdout.write(_consoleCaches[index][i]);
+						}
+						// process.stdin.pipe(_consoleStreams[index]);
+						// _startConsoles[index].resume();
+						_consoleStreams[index].write("\x11");
+						_consoleStreams[index].write("\r");
+						// _consoleStreams[index].write("\u001b[C");
+						// _consoleStreams[index].write("\u001b[C");
+						// process.stdin.setRawMode(true);
 					}
-					// process.stdin.pipe(_consoleStreams[index]);
-					// _startConsoles[index].resume();
-					_consoleStreams[index].write("\x11");
-					_consoleStreams[index].write("\r");
-					// _consoleStreams[index].write("\u001b[C");
-					// _consoleStreams[index].write("\u001b[C");
-					// process.stdin.setRawMode(true);
-
-				}
+				}, 1000);
 			}
 
 			let theClient = _consoleStreams[index];
@@ -316,12 +323,7 @@ export default class Uploader {
 				process.stdout.write(data);
 			}
 			theClient.on('data', onData);
-
 			let onExit = (exitCode: any, signal: any) => {
-				// _readLine.close();
-				// theClient.write("exit\r");
-				// process.stdin.unpipe(_startConsoles[index]);
-				// callback();
 				process.stdout.removeListener('resize', resizeFunc);
 				theClient.removeListener('data', onData);
 				theClient.removeListener('exit', onExit);
@@ -334,16 +336,16 @@ export default class Uploader {
 			};
 			theClient.on('exit', onExit);
 
-			// process.stdin.pipe(theClient);
-
 			_readLine = rl.createInterface({
 				input: process.stdin,
 				terminal: true
 			});
 
-			_readLine.on('line', function (line) {
+			_readLine.on('SIGINT', () => {
+				theClient.write("\u0003");
+			});
 
-			}).on('close', function () {
+			_readLine.on('line', function (line) { }).on('close', function () {
 				console.log("Close Readline Local Console");
 			});
 
@@ -384,51 +386,6 @@ export default class Uploader {
 			_startConsoles[index] = _readLine;
 			_consoleStreams[index] = theClient;
 
-			// _startConsoles[index].shell({
-			// 	rows: process.stdout.rows,
-			// 	cols: process.stdout.columns,
-			// }, (err, stream) => {
-			// 	let resizeFunc = () => {
-			// 		let { width, height } = size.get();
-			// 		stream.setWindow(process.stdout.rows, process.stdout.columns, width, height);
-			// 	}
-			// 	stream.on('close', () => {
-			// 		// console.log('close',_consoleAction,' and ',index);
-			// 		if (_consoleAction != index) return;
-			// 		// _consoleAction = "---------------------";
-			// 		callback(theClient);
-			// 		process.stdin.end();
-			// 		_startConsoles[index] = null;
-			// 		_consoleStreams[index] = null;
-			// 		process.stdout.removeListener('resize', resizeFunc);
-			// 	});
-			// 	stream.on('data', (dd: any) => {
-			// 		// console.log('data',_consoleAction,' and ',index);
-			// 		if (_consoleAction != index) return;
-			// 		if (_consoleCaches[index].length >= 5000) {
-			// 			_consoleCaches[index].shift();
-			// 		};
-			// 		_consoleCaches[index].push(dd);
-			// 		process.stdout.write(dd);
-			// 	})
-			// 	stream.stderr.on('data', (data) => {
-			// 		// console.log('data',_consoleAction,' and ',index);
-			// 		if (_consoleAction != index) return;
-			// 		if (_consoleCaches[index].length >= 5000) {
-			// 			_consoleCaches[index].shift();
-			// 		};
-			// 		_consoleCaches[index].push(data);
-			// 		process.stdout.write(data);
-			// 	});
-			// 	process.stdin.pipe(stream);
-			// 	// stream.pipe(process.stdout);
-			// 	stream.write("cd " + this.config.remotePath + "\r");
-			// 	stream.write(command + "\r");
-			// 	_consoleStreams[index] = stream;
-			// 	process.stdin.setRawMode(true);
-
-			// 	process.stdout.on('resize', resizeFunc);
-			// })
 		} catch (ex) {
 			console.error('ex', ex);
 		}
