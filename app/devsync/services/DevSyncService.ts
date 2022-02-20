@@ -434,7 +434,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       }
       for (var i = 0; i < total_tab; i++) {
         if (data.sequence == '\u001b' + (i + 3)) {
-          this.uploader.setConsoleAction("pending first");
+          this.uploader.setConsoleAction("Pending First");
           let inin = i;
           var execudeCommand = (index: number) => {
             this._readLine.close();
@@ -452,7 +452,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
                 setTimeout(() => {
                   process.stdout.write('Connection closed.')
                   console.log('Stream :: close');
-                  // this._readLine.resume();
                   this._readLine = rl.createInterface({
                     input: process.stdin,
                     output: process.stdout,
