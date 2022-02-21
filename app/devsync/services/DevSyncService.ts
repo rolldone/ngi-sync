@@ -56,6 +56,9 @@ export const COMMAND_TARGET = {
   FORCE_SINGLE_SYNC: COMMAND_SHORT.FORCE_SINGLE_SYNC + ' :: DevSync Single Syncronize - You can download simple file or folder',
 }
 
+
+var cache_command = [];
+
 const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
   returnConfig: function (cli) {
     return Config.create(cli);
@@ -375,26 +378,195 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
     this._readLine = rl.createInterface({
       input: process.stdin,
-      output : process.stdout,
+      output: process.stdout,
       terminal: true
     });
 
+
+    let questions_command = [
+      {
+        type: "rawlist",
+        name: "remote",
+        message: "Remote Console Mode :",
+        choices: [
+          ...this._currentConf.devsync.script.remote.commands || [],
+          "Local Console",
+          'Exit'
+        ]
+      },
+      {
+        type: "rawlist",
+        name: "local",
+        message: "Local Console Mode :",
+        /* Legacy way: with this.async */
+        when: function (input) {
+          // Declare function as asynchronous, and save the done callback
+          if (input.remote == "Local Console") {
+            return true;
+          }
+          return false;
+        },
+        choices: [
+          ...this._currentConf.devsync.script.local.commands || [],
+          "pwd",
+          "git add --renormalize . && git reset",
+          "Back",
+          'Exit'
+        ]
+      }
+    ]
+
     let remoteFuncKeypress = async (key: any, data: any) => {
+      let total_tab = 9;
       switch (data.sequence) {
         case '\u001b1':
           console.clear();
           process.stdout.write(chalk.green('Devsync | ') + 'Watch Mode' + '\r');
-          this.uploader.startConsole(this._readLine, false);
+          // this.uploader._consoleAction = "watch";
+          this.uploader.startConsole(false);
+          for (var i = 0; i < total_tab; i++) {
+            this.uploader.startConsoles(i, cache_command[i], false);
+          }
           this._actionMode = "devsync";
           this.watcher.actionMode = this._actionMode;
+
+          this._readLine = rl.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+            // terminal: true
+          });
+          process.stdin.off('keypress', remoteFuncKeypress);
+          process.stdin.on('keypress', remoteFuncKeypress);
           break;
         case '\u001b2':
           console.clear();
+          this._readLine.close();
           process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
-          this.uploader.startConsole(this._readLine, true);
-          this._actionMode = "console";
-          this.watcher.actionMode = this._actionMode;
+          for (var i = 0; i < total_tab; i++) {
+            this.uploader.startConsoles(i, cache_command[i], false);
+          }
+          setTimeout(() => {
+            this.uploader.startConsole(true, () => { });
+            this._actionMode = "console";
+            this.watcher.actionMode = this._actionMode;
+          }, 1000);
           break;
+      }
+      for (var i = 0; i < total_tab; i++) {
+        if (data.sequence == '\u001b' + (i + 3)) {
+          this.uploader.setConsoleAction("pending first");
+          let inin = i;
+          var excuteLocalCommand = (consolePosition: string, index: number) => {
+            this._readLine.close();
+            process.stdin.removeListener('keypress', remoteFuncKeypress);
+            process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
+            this.uploader.startConsole(false);
+            for (var ib = 0; ib < total_tab; ib++) {
+              if (ib != index) {
+                if (this.uploader.getConsoleMode(ib) == "local") {
+                  this.uploader.startLocalConsoles(ib, cache_command[ib], false);
+                } else {
+                  this.uploader.startConsoles(ib, cache_command[ib], false);
+                }
+              }
+            }
+            setTimeout(() => {
+              switch (consolePosition) {
+                case "remote":
+                  process.stdout.write(chalk.green('Index Running ::  | ') + index + '\r');
+                  this.uploader.startConsoles(index, cache_command[index], true, (action: string, props) => {
+                    switch (action) {
+                      case 'switch':
+                        remoteFuncKeypress(null, props);
+                        break;
+                      case 'exit':
+                        setTimeout(() => {
+                          process.stdout.write('Connection closed.')
+                          console.log('Stream :: close');
+                          // this._readLine.resume();
+                          remoteFuncKeypress(null, {
+                            sequence: "\u001b1"
+                          })
+                        }, 2000)
+                        cache_command[index] = null;
+                        break;
+                    }
+                  });
+                  this._actionMode = "console";
+                  this.watcher.actionMode = this._actionMode;
+                  break;
+                case "local":
+                  process.stdout.write(chalk.green('Index Running ::  | ') + index + '\r');
+                  this.uploader.startLocalConsoles(index, cache_command[index], true, (action?: string, data?: any) => {
+                    switch (action) {
+                      case 'switch':
+                        remoteFuncKeypress(null, data);
+                        break;
+                      case 'exit':
+                        setTimeout(() => {
+                          process.stdout.write('Connection closed.')
+                          console.log('Stream :: close');
+                        }, 2000)
+                        cache_command[index] = null;
+                        remoteFuncKeypress(null, {
+                          sequence: "\u001b1"
+                        });
+                        break;
+                    }
+                  });
+                  this._actionMode = "console";
+                  this.watcher.actionMode = this._actionMode;
+                  break;
+              }
+            }, 1000)
+          }
+          console.clear();
+          process.stdout.write(chalk.green('Console Commands  | ') + cache_command + '\r');
+          if (cache_command[inin] != null) {
+            if (this.uploader.getConsoleMode(inin) == "local") {
+              excuteLocalCommand('local', inin);
+            } else {
+              excuteLocalCommand('remote', inin);
+            }
+            break;
+          }
+          inquirer.prompt(questions_command)['then']((passAnswer: any) => {
+            let _command = passAnswer.local || passAnswer.remote;
+            if (_command == "Exit") {
+              this.uploader.startConsole(false);
+              for (var i = 0; i < total_tab; i++) {
+                if (this.uploader.getConsoleMode(inin) == "local") {
+                  this.uploader.startLocalConsoles(i, cache_command[i], false);
+                } else {
+                  this.uploader.startConsoles(i, cache_command[i], false);
+                }
+              }
+              setTimeout(() => {
+                this._readLine.close();
+                this._readLine = rl.createInterface({
+                  input: process.stdin,
+                  output: process.stdout,
+                  // terminal: true
+                });
+                process.stdin.removeAllListeners("keypress");
+                process.stdin.on('keypress', remoteFuncKeypress);
+                process.stdout.write(chalk.green('Select the number of command again  | \r'));
+              }, 2000);
+              cache_command[inin] = null;
+              return;
+            }
+            if(_command == "Back"){
+              remoteFuncKeypress(null, {
+                sequence: '\u001b' + (inin + 3)
+              });
+              return;
+            }
+            cache_command[inin] = _command;
+            // execudeCommand(inin);
+            excuteLocalCommand(passAnswer.local != null ? "local" : "remote", inin);
+          });
+          break;
+        }
       }
       if (this._actionMode == "console") return;
       switch (data.sequence) {

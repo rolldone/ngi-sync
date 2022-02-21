@@ -58,10 +58,12 @@ export interface ConfigInterface extends BaseModelInterface {
     script: {
       local: {
         on_ready?: string
+        commands?: Array<string>
       }
       remote: {
         on_ready?: string
         on_stop?: string
+        commands?: Array<string>
       }
     }
     trigger_permission: trigger_permission
