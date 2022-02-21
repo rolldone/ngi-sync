@@ -506,15 +506,14 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         },
         choices: [
           ...this._currentConf.devsync.script.local.commands || [],
+          "pwd",
+          "git add --renormalize . && git reset",
           "Back",
           'Exit'
         ]
       }
     ]
-    let remote_commands = [
-      ...this._currentConf.devsync.script.remote.commands,
-      ...this._currentConf.devsync.script.local.commands
-    ] || [];
+    
     /* Register new keypress */
     var remoteFuncKeypress = async (key: any, data: any) => {
       let total_tab = 9;
