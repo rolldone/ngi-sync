@@ -452,8 +452,13 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           }, 1000);
           break;
       }
+      
       for (var i = 0; i < total_tab; i++) {
         if (data.sequence == '\u001b' + (i + 3)) {
+
+          this._readLine.close();
+          process.stdin.removeListener('keypress', remoteFuncKeypress);
+
           this.uploader.setConsoleAction("pending first");
           let inin = i;
           var excuteLocalCommand = (consolePosition: string, index: number) => {
@@ -481,13 +486,13 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
                         break;
                       case 'exit':
                         setTimeout(() => {
-                          process.stdout.write('Connection closed.')
-                          console.log('Stream :: close');
+                          // process.stdout.write('Connection closed.')
+                          // console.log('Stream :: close');
                           // this._readLine.resume();
                           remoteFuncKeypress(null, {
                             sequence: "\u001b1"
                           })
-                        }, 2000)
+                        }, 1000)
                         cache_command[index] = null;
                         break;
                     }
@@ -503,10 +508,10 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
                         remoteFuncKeypress(null, data);
                         break;
                       case 'exit':
-                        setTimeout(() => {
-                          process.stdout.write('Connection closed.')
-                          console.log('Stream :: close');
-                        }, 2000)
+                        // setTimeout(() => {
+                        //   process.stdout.write('Connection closed.')
+                        //   console.log('Stream :: close');
+                        // }, 2000)
                         cache_command[index] = null;
                         remoteFuncKeypress(null, {
                           sequence: "\u001b1"
@@ -542,20 +547,15 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
                 }
               }
               setTimeout(() => {
-                this._readLine.close();
-                this._readLine = rl.createInterface({
-                  input: process.stdin,
-                  output: process.stdout,
-                  // terminal: true
+                // Back to the alt + 1 again
+                remoteFuncKeypress(null, {
+                  sequence: "\u001b1"
                 });
-                process.stdin.removeAllListeners("keypress");
-                process.stdin.on('keypress', remoteFuncKeypress);
-                process.stdout.write(chalk.green('Select the number of command again  | \r'));
-              }, 2000);
+              }, 500);
               cache_command[inin] = null;
               return;
             }
-            if(_command == "Back"){
+            if (_command == "Back") {
               remoteFuncKeypress(null, {
                 sequence: '\u001b' + (inin + 3)
               });
@@ -568,6 +568,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           break;
         }
       }
+
       if (this._actionMode == "console") return;
       switch (data.sequence) {
         case '\f':
