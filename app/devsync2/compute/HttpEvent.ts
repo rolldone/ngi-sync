@@ -255,21 +255,25 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
         // debug: true
       });
 
+      let tarFile = 'ngi-sync-agent-linux.tar.gz';
       let fileName = 'ngi-sync-agent-linux';
       let dirCommand = 'dir';
       switch (this._config.devsync.os_target) {
         case 'windows':
+          tarFile = 'ngi-sync-agent-win.zip';
           fileName = 'ngi-sync-agent-win.exe';
           break;
         case 'darwin':
           dirCommand = 'ls';
+          tarFile = 'ngi-sync-agent-win.';
           fileName = 'ngi-sync-agent-win.app';
           break;
       }
-      let localFilePath = upath.normalizeSafe(path.dirname(require.main.filename) + '/' + fileName);
-      let remoteFilePath = upath.normalizeSafe(this._config.remotePath + '/' + fileName);
+      let localFilePath = upath.normalizeSafe(path.dirname(require.main.filename) + '/' + tarFile);
+      let remoteFilePath = upath.normalizeSafe(this._config.remotePath + '/' + tarFile);
       let exists = await this._client.exists(remoteFilePath);
-      let curretnFileStat = statSync(upath.normalizeSafe(path.dirname(require.main.filename)) + '/' + fileName, {});
+      let curretnFileStat = statSync(upath.normalizeSafe(path.dirname(require.main.filename)) + '/' + tarFile, {});
+      let executeFile = upath.normalizeSafe(this._config.remotePath + '/' + fileName);
 
       let _afterInstall = async () => {
         switch (this._config.devsync.os_target) {
@@ -281,7 +285,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           case 'darwin':
           case 'linux':
             let rawSSH = await this._client.getRawSSH2();
-            rawSSH.exec('chmod +x ' + remoteFilePath, (err: any, stream: any) => {
+            rawSSH.exec('tar -zxf ' + remoteFilePath + " --directory " + this._config.remotePath+ " && cd "+this._config.remotePath+" && chmod +x " + fileName, (err: any, stream: any) => {
               rawSSH.exec('exit', async (err: any, stream: any) => {
                 try {
                   await this._client.end();
@@ -291,7 +295,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
                 }
                 callback();
               });
-            })
+            });
             break;
         }
       }
