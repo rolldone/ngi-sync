@@ -353,20 +353,9 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     });
     this._httpEvent = this.returnHttpEvent(this._cli, this._currentConf);
     this._httpEvent.setOnChangeListener(async (action, props) => {
-      if (this._actionMode == "console") return;
       await this._download.startSftp();
       _pendingTimeoutStopDownload();
       switch (action) {
-        case 'CLIENT_REQUEST':
-          process.stdout.write(chalk.green('Devsync | '));
-          process.stdout.write(chalk.green('CLIENT_REQUEST :: '));
-          process.stdout.write('Remote success trying request' + '\n');
-          break;
-        case 'LISTEN_PORT':
-          process.stdout.write(chalk.green('Devsync | '));
-          process.stdout.write(chalk.green('LISTEN_PORT :: '));
-          process.stdout.write('Listen Reverse Port :: ' + props + '\n');
-          break;
         case 'ADD':
           this._download.startWaitingDownloads(props).then((data) => { }).catch(err => { });
           break;
@@ -380,6 +369,20 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         case 'UNLINK_DIR':
           /* Dont use observatory for delete folder */
           this._download.deleteFolder(props, 5);
+          break;
+      }
+      // PRevent if console is on
+      if (this._actionMode == "console") return;
+      switch (action) {
+        case 'CLIENT_REQUEST':
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('CLIENT_REQUEST :: '));
+          process.stdout.write('Remote success trying request' + '\n');
+          break;
+        case 'LISTEN_PORT':
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('LISTEN_PORT :: '));
+          process.stdout.write('Listen Reverse Port :: ' + props + '\n');
           break;
       }
     })
@@ -481,6 +484,11 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       output: process.stdout,
       // terminal: true
     });
+
+    this._readLine.on('line', function (line) { }).on('close', function () {
+      console.log("Close The Main Readline");
+    });
+
     let questions_command = [
       {
         type: "rawlist",
@@ -513,7 +521,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         ]
       }
     ]
-    
+
     /* Register new keypress */
     var remoteFuncKeypress = async (key: any, data: any) => {
       let total_tab = 9;
@@ -530,8 +538,12 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
               this.uploader.startConsoles(i, cache_command[i], false);
             }
           }
+
           this._actionMode = "devsync";
           this.watcher.actionMode = this._actionMode;
+
+          this._readLine.close();
+          process.stdin.removeListener("keypress", remoteFuncKeypress);
 
           this._readLine = rl.createInterface({
             input: process.stdin,
@@ -569,6 +581,10 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
       for (var i = 0; i < total_tab; i++) {
         if (data.sequence == '\u001b' + (i + 3)) {
+
+          this._readLine.close();
+          process.stdin.removeListener('keypress', remoteFuncKeypress);
+
           this.uploader.setConsoleAction("pending first");
           let inin = i;
           var excuteLocalCommand = (consolePosition: string, index: number) => {
@@ -596,13 +612,13 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
                         break;
                       case 'exit':
                         setTimeout(() => {
-                          process.stdout.write('Connection closed.')
-                          console.log('Stream :: close');
+                          // process.stdout.write('Connection closed.')
+                          // console.log('Stream :: close');
                           // this._readLine.resume();
                           remoteFuncKeypress(null, {
                             sequence: "\u001b1"
                           })
-                        }, 2000)
+                        }, 1000)
                         cache_command[index] = null;
                         break;
                     }
@@ -618,10 +634,10 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
                         remoteFuncKeypress(null, data);
                         break;
                       case 'exit':
-                        setTimeout(() => {
-                          process.stdout.write('Connection closed.')
-                          console.log('Stream :: close');
-                        }, 2000)
+                        // setTimeout(() => {
+                        //   process.stdout.write('Connection closed.')
+                        //   console.log('Stream :: close');
+                        // }, 2000)
                         cache_command[index] = null;
                         remoteFuncKeypress(null, {
                           sequence: "\u001b1"
@@ -657,20 +673,15 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
                 }
               }
               setTimeout(() => {
-                this._readLine.close();
-                this._readLine = rl.createInterface({
-                  input: process.stdin,
-                  output: process.stdout,
-                  // terminal: true
+                // Back to the alt + 1 again
+                remoteFuncKeypress(null, {
+                  sequence: "\u001b1"
                 });
-                process.stdin.removeAllListeners("keypress");
-                process.stdin.on('keypress', remoteFuncKeypress);
-                process.stdout.write(chalk.green('Select the number of command again  | \r'));
-              }, 2000);
+              }, 500);
               cache_command[inin] = null;
               return;
             }
-            if(_command == "Back"){
+            if (_command == "Back") {
               remoteFuncKeypress(null, {
                 sequence: '\u001b' + (inin + 3)
               });
