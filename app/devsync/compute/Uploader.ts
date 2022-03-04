@@ -1,5 +1,5 @@
 import * as upath from "upath";
-import { readFileSync, statSync } from "fs";
+import { appendFile, fstat, readFileSync, statSync, writeFile } from "fs";
 import Client from "@root/tool/ssh2-sftp-client";
 import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
@@ -10,6 +10,7 @@ const chalk = require('chalk');
 var pty = require('node-pty');
 var os = require('os');
 import rl, { ReadLine } from 'readline';
+
 
 declare var masterData: MasterDataInterface;
 declare var CustomError: { (name: string, message: string): any }
@@ -212,6 +213,14 @@ export default class Uploader {
 					cols: process.stdout.columns,
 				}, (err, stream) => {
 
+					let is_streamed = false;
+					let _xs_split = [];
+					if (command.includes(">>> ")) {
+						_xs_split = command.split(">>> ");
+						command = _xs_split[0];
+						is_streamed = true;
+					}
+
 					_consoleStreams[index] = stream;
 					stream.on('close', () => {
 						// console.log('close', _consoleAction, ' and ', index);
@@ -231,6 +240,9 @@ export default class Uploader {
 
 					stream.on('data', (dd: any) => {
 						// console.log('data',_consoleAction,' and ',index);
+						if(is_streamed == true){
+							appendFile(upath.normalizeSafe(this.config.localPath + "/" + _xs_split[1]), dd.toString(), (err) => { });
+						}
 						if (_consoleAction != index) return;
 						if (_consoleCaches[index].length >= 5000) {
 							_consoleCaches[index].shift();
@@ -252,6 +264,7 @@ export default class Uploader {
 					process.stdin.setRawMode(true);
 					// stream.pipe(process.stdout);
 					stream.write("cd " + this.config.remotePath + "\r");
+
 					stream.write(command + "\r");
 
 					process.stdout.on('resize', () => {
@@ -291,7 +304,10 @@ export default class Uploader {
 						// _startConsoles[index].resume();
 						_consoleStreams[index].write("\x11");
 						// _consoleStreams[index].write("\r");
-						_consoleStreams[index].write("");
+
+						// For node 14++ get problem is just empty command
+						// _consoleStreams[index].write("");
+
 						// _consoleStreams[index].write("\u001b[C");
 						// _consoleStreams[index].write("\u001b[C");
 						// process.stdin.setRawMode(true);
@@ -307,13 +323,23 @@ export default class Uploader {
 				// _ptyProcess.resize(width, height)
 			}
 
+			let is_streamed = false;
+			let _xs_split = [];
+			if (command.includes(">>> ")) {
+				_xs_split = command.split(">>> ");
+				command = _xs_split[0];
+				is_streamed = true;
+			}
+
 			if (theClient == null) {
 				_consoleCaches[index] = [];
 				theClient = this.iniPtyProcess([command]);
 				process.stdout.on('resize', resizeFunc);
 			}
-
 			let onData = (data) => {
+				if(is_streamed == true){
+					appendFile(upath.normalizeSafe(this.config.localPath + "/" + _xs_split[1]), data.toString(), (err) => { });
+				}
 				switch (data) {
 					case "exit":
 						return;
