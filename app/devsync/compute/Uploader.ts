@@ -139,6 +139,7 @@ export default class Uploader {
 			_consoleModes[index] = 'remote';
 			_consoleWatchs[index] = _consoleWatch;
 			if (_consoleWatchs[index] == false) {
+				_consoleAction = -1;
 				if (_consoleStreams[index] == null) return;
 				// _consoleStreams[index].unpipe(process.stdout);
 				// process.stdin.unpipe(_consoleStreams[index]);
@@ -239,11 +240,12 @@ export default class Uploader {
 					});
 
 					stream.on('data', (dd: any) => {
-						// console.log('data',_consoleAction,' and ',index);
 						if(is_streamed == true){
 							appendFile(upath.normalizeSafe(this.config.localPath + "/" + _xs_split[1]), dd.toString(), (err) => { });
 						}
 						if (_consoleAction != index) return;
+						// console.log('data',_consoleAction,' and ',index);
+	
 						if (_consoleCaches[index].length >= 5000) {
 							_consoleCaches[index].shift();
 						};
