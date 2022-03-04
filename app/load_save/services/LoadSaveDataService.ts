@@ -245,6 +245,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       let { target_load } = this._completeData;
       let whatFileName = target_load;
       let _config = this._config;
+      whatFileName = upath.basename(whatFileName,".yaml");
       let bodyData: any = readFileSync(this._baseAppPathFolder + '/.sync_collections/' + whatFileName + '.yaml');
       bodyData = YAML.parse(bodyData.toString()) as any;
       writeFileSync(this._config._filename, YAML.stringify(bodyData, null), 'utf8');
