@@ -268,10 +268,10 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           fileName = 'ngi-sync-agent-win.app';
           break;
       }
-      let localFilePath = upath.normalizeSafe(path.join(__dirname,"") + '/' + tarFile);
+      let localFilePath = upath.normalizeSafe(path.join(__dirname, "") + '/' + tarFile);
       let remoteFilePath = upath.normalizeSafe(this._config.remotePath + '/' + tarFile);
       let exists = await this._client.exists(remoteFilePath);
-      let curretnFileStat = statSync(upath.normalizeSafe(path.join(__dirname,"")) + '/' + tarFile, {});
+      let curretnFileStat = statSync(upath.normalizeSafe(path.join(__dirname, "")) + '/' + tarFile, {});
       let executeFile = upath.normalizeSafe(this._config.remotePath + '/' + fileName);
 
       let _afterInstall = async () => {
@@ -283,20 +283,47 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           default:
           case 'darwin':
           case 'linux':
-            let rawSSH = await this._client.getRawSSH2();
-            rawSSH.exec('tar -zxf ' + remoteFilePath + " --directory " + this._config.remotePath+ " && cd "+this._config.remotePath+" && chmod +x " + fileName, (err: any, stream: any) => {
-              rawSSH.exec('exit', async (err: any, stream: any) => {
-                try {
-                  await this._client.end();
-                } catch (ex) {
-                  process.stdout.write(chalk.red('Devsync | '));
-                  process.stdout.write(chalk.red(ex + '\n'));
-                }
-                callback();
-              });
-            });
+            await this._client.end();
+            callback();
+            // chmod not working because file still extrating cannot waiting so just use node-pty for handle it
+            // let rawSSH = await this._client.getRawSSH2();
+            // rawSSH.exec("cd " + this._config.remotePath + " && chmod +x " + fileName, async (err: any, stream: any) => {
+            //   rawSSH.exec('exit', async (err: any, stream: any) => {
+            //     try {
+            //       await this._client.end();
+            //     } catch (ex) {
+            //       process.stdout.write(chalk.red('Devsync | '));
+            //       process.stdout.write(chalk.red(ex + '\n'));
+            //     }
+            //     callback();
+            //   });
+            // });
             break;
         }
+      }
+
+      let _extract = () => {
+        return new Promise(async (resolve: any, reject: any) => {
+          try {
+            switch (this._config.devsync.os_target) {
+              case 'windows':
+                resolve();
+                break;
+              default:
+              case 'darwin':
+              case 'linux':
+                let rawSSH = await this._client.getRawSSH2();
+                rawSSH.exec('tar -zxf ' + remoteFilePath + " --directory " + this._config.remotePath, async (err: any, stream: any) => {
+                  process.stdout.write(chalk.green('Devsync | '));
+                  process.stdout.write(chalk.green('Install Agent :: Extrating.' + '\n'));
+                  resolve();
+                });
+                break;
+            }
+          } catch (ex) {
+
+          }
+        })
       }
 
       let _install = async () => {
@@ -312,6 +339,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
             await this._client.chmod(path.dirname(localFilePath), this._config.pathMode);
           } catch (ex) { }
           await this._client.put(localFilePath, remoteFilePath);
+          await _extract();
           _afterInstall();
         } catch (ex) {
           console.log('_install - err ', ex);
@@ -389,7 +417,33 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
     _ptyProcess.on('data', (data: string) => {
       /* No need readline because not type keyboard mode */
       // process.stdout.write(data);
+      let startRemote = () => {
+        if (isLoginFinish == false) {
+          _ptyProcess.write(`cd ${this._config.remotePath} \r`);
+          switch (this._config.devsync.os_target) {
+            case 'windows':
+              _ptyProcess.write(`ngi-sync-agent-win.exe devsync_remote ${this._randomPort}` + "\r");
+              break;
+            case 'darwin':
+            case 'linux':
+            default:
+              _ptyProcess.write("chmod +x ngi-sync-agent-linux" + '\r');
+              _ptyProcess.write(`./ngi-sync-agent-linux devsync_remote ${this._randomPort}` + "\r");
+              break;
+          }
+          isLoginFinish = true;
+        }
+      }
       switch (true) {
+        case data.includes("Permission denied"):
+        case data.includes('Text file busy'):
+          process.stdout.write(chalk.green('Devsync | '));
+          process.stdout.write(chalk.green('Install Agent :: Still Extrating.' + '\n'));
+          setTimeout(() => {
+            isLoginFinish = false;
+            startRemote();
+          }, 2000);
+          break;
         case data.includes('Are you sure you want to continue connecting'):
           _ptyProcess.write('yes\r')
           break;
@@ -405,20 +459,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           _ptyProcess.write('exit' + '\r')
           break;
         case data.includes(`${this._config.username}@`):
-          if (isLoginFinish == false) {
-            _ptyProcess.write(`cd ${this._config.remotePath} \r`);
-            switch (this._config.devsync.os_target) {
-              case 'windows':
-                _ptyProcess.write(`ngi-sync-agent-win.exe devsync_remote ${this._randomPort}` + "\r");
-                break;
-              case 'darwin':
-              case 'linux':
-              default:
-                _ptyProcess.write(`./ngi-sync-agent-linux devsync_remote ${this._randomPort}` + "\r");
-                break;
-            }
-            isLoginFinish = true;
-          }
+          startRemote();
           break;
         case data.includes('Connection reset'):
         case data.includes('ngi-sync: command not found'):
