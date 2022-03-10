@@ -465,12 +465,21 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       includes: []
     });
 
+    // console.log('_filterPatternRules.ignores', _filterPatternRules.ignores);
     for (var a = 0; a < _filterPatternRules.pass.length; a++) {
       let newIgnores = [];
+      let _markToDelete = [];
       for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
         if (_filterPatternRules.ignores[b].includes(_filterPatternRules.pass[a])) {
           newIgnores.push(_filterPatternRules.ignores[b].replace(_filterPatternRules.pass[a], '').replace(' ', ''));
-          _filterPatternRules.ignores.splice(b, 1);
+          _markToDelete.push(_filterPatternRules.ignores[b]);
+        }
+      }
+      for (var a1 = 0; a1 < _markToDelete.length; a1++) {
+        for (var b = 0; b < _filterPatternRules.ignores.length; b++) {
+          if (_filterPatternRules.ignores[b] == _markToDelete[a1]) {
+            _filterPatternRules.ignores.splice(b, 1);
+          }
         }
       }
       /* Include double star pattern rule too */
