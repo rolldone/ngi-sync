@@ -241,7 +241,6 @@ export default class Uploader {
 					stream.on('close', () => {
 						// console.log('close', _consoleAction, ' and ', index);
 						if (_consoleAction != index) return;
-						theClient.end();
 						_consoleStreams[index].unpipe(process.stdout);
 						process.stdin.setRawMode(false);
 						process.stdin.unpipe(_consoleStreams[index]);
