@@ -110,7 +110,7 @@ export default class Uploader {
 			}
 			var _keypress = (key: string, data: any) => {
 				let isStop = false;
-				for (var a = 0; a < 9; a++) {
+				for (var a = 1; a <= 9; a++) {
 					if (data.sequence == '\u001b' + (a)) {
 						// theClient.write("exit\r");
 						process.stdin.unpipe(this._consoleStream);
@@ -119,6 +119,9 @@ export default class Uploader {
 						callback("switch", data);
 						isStop = true;
 					}
+				}
+				if (data.sequence == '\u001b0') {
+					this._consoleStream.write("exit\r");
 				}
 				if (isStop == true) {
 					return;
@@ -155,29 +158,45 @@ export default class Uploader {
 						}
 						process.stdin.pipe(_consoleStreams[index]);
 						process.stdin.setRawMode(true);
+						_consoleStreams[index].write("\n");
 					}
 				}
 			}
-
+			let timesCloseClick = 0;
 			let _keypress = (key: string, data: any) => {
 				let isStop = false;
-				for (var a = 0; a < 9; a++) {
+				for (var a = 1; a <= 9; a++) {
 					if (data.sequence == '\u001b' + (a)) {
 						// theClient.write("exit\r");
 						if (_consoleStreams[index] == null) {
-							console.log("PROIBLEM");
+							console.log("PROBLEM");
 							return;
 						}
 						// _consoleStreams[index].unpipe(process.stdout);
+						process.stdin.setRawMode(false);
 						process.stdin.unpipe(_consoleStreams[index]);
 						process.stdin.removeListener("keypress", _keypress);
-						// process.stdin.setRawMode(false);
 						console.clear();
 						setTimeout(() => {
 							callback("switch", data);
 						}, 1000);
 						isStop = true;
 					}
+				}
+				if (data.sequence == '\u001b0') {
+					timesCloseClick += 1;
+					if (timesCloseClick == 1) {
+						_consoleStreams[index].write("\x03");
+					}
+					if (timesCloseClick >= 2) {
+						_consoleStreams[index].write("\x03");
+						process.stdin.setRawMode(false);
+						process.stdin.unpipe(_consoleStreams[index]);
+						process.stdin.removeListener("keypress", _keypress);
+						_startConsoles[index].end();
+					}
+				} else {
+					timesCloseClick = 0;
 				}
 				if (isStop == true) {
 					return;
@@ -224,6 +243,7 @@ export default class Uploader {
 						if (_consoleAction != index) return;
 						theClient.end();
 						_consoleStreams[index].unpipe(process.stdout);
+						process.stdin.setRawMode(false);
 						process.stdin.unpipe(_consoleStreams[index]);
 						process.stdin.removeListener("keypress", _keypress);
 						_startConsoles[index] = null;
@@ -295,6 +315,7 @@ export default class Uploader {
 							process.stdout.write(_consoleCaches[index][i]);
 						}
 						_consoleStreams[index].write("\x11");
+						_consoleStreams[index].write("\n");
 					}
 				}
 			}
@@ -361,9 +382,10 @@ export default class Uploader {
 				console.log("Close Readline Local Console");
 			});
 
+			let timesCloseClick = 0;
 			let _keypress = (key: string, data: any) => {
 				let isStop = false;
-				for (var a = 0; a < 9; a++) {
+				for (var a = 1; a <= 9; a++) {
 					if (data.sequence == '\u001b' + (a)) {
 						theClient.write('\x13');
 						theClient.removeListener('data', onData);
@@ -373,6 +395,26 @@ export default class Uploader {
 						isStop = true;
 						callback("switch", data);
 					}
+				}
+				if (data.sequence == '\u001b0') {
+					timesCloseClick += 1;
+					if (timesCloseClick == 1) {
+						theClient.write("\x03");
+					}
+					if (timesCloseClick >= 2) {
+						theClient.write("\x03");
+						theClient.write("exit\r");
+						process.stdout.removeListener('resize', resizeFunc);
+						theClient.removeListener('data', onData);
+						theClient.removeListener('exit', onExit);
+						_readLine.close();
+						process.stdin.removeListener("keypress", _keypress)
+						_startConsoles[index] = null
+						_consoleStreams[index] = null
+						callback("exit", null);
+					}
+				} else {
+					timesCloseClick = 0;
 				}
 				if (isStop == true) {
 					return;
