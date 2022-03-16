@@ -162,7 +162,7 @@ export default class Uploader {
 					}
 				}
 			}
-
+			let timesCloseClick = 0;
 			let _keypress = (key: string, data: any) => {
 				let isStop = false;
 				for (var a = 1; a <= 9; a++) {
@@ -184,10 +184,19 @@ export default class Uploader {
 					}
 				}
 				if (data.sequence == '\u001b0') {
-					process.stdin.setRawMode(false);
-					process.stdin.unpipe(_consoleStreams[index]);
-					process.stdin.removeListener("keypress", _keypress);
-					_startConsoles[index].end();
+					timesCloseClick += 1;
+					if (timesCloseClick == 1) {
+						_consoleStreams[index].write("\x03");
+					}
+					if (timesCloseClick >= 2) {
+						_consoleStreams[index].write("\x03");
+						process.stdin.setRawMode(false);
+						process.stdin.unpipe(_consoleStreams[index]);
+						process.stdin.removeListener("keypress", _keypress);
+						_startConsoles[index].end();
+					}
+				} else {
+					timesCloseClick = 0;
 				}
 				if (isStop == true) {
 					return;
@@ -373,6 +382,7 @@ export default class Uploader {
 				console.log("Close Readline Local Console");
 			});
 
+			let timesCloseClick = 0;
 			let _keypress = (key: string, data: any) => {
 				let isStop = false;
 				for (var a = 1; a <= 9; a++) {
@@ -387,15 +397,24 @@ export default class Uploader {
 					}
 				}
 				if (data.sequence == '\u001b0') {
-					theClient.write("exit\r");
-					process.stdout.removeListener('resize', resizeFunc);
-					theClient.removeListener('data', onData);
-					theClient.removeListener('exit', onExit);
-					_readLine.close();
-					process.stdin.removeListener("keypress", _keypress)
-					_startConsoles[index] = null
-					_consoleStreams[index] = null
-					callback("exit", null);
+					timesCloseClick += 1;
+					if (timesCloseClick == 1) {
+						theClient.write("\x03");
+					}
+					if (timesCloseClick >= 2) {
+						theClient.write("\x03");
+						theClient.write("exit\r");
+						process.stdout.removeListener('resize', resizeFunc);
+						theClient.removeListener('data', onData);
+						theClient.removeListener('exit', onExit);
+						_readLine.close();
+						process.stdin.removeListener("keypress", _keypress)
+						_startConsoles[index] = null
+						_consoleStreams[index] = null
+						callback("exit", null);
+					}
+				} else {
+					timesCloseClick = 0;
 				}
 				if (isStop == true) {
 					return;
