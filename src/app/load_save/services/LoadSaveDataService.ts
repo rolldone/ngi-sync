@@ -228,14 +228,15 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       let _fileName = _config._filename;
       let bodyData: any = readFileSync(_fileName);
       bodyData = YAML.parse(bodyData.toString()) as any;
-      bodyData.saved_file_name = whatFileName + '.yaml';
-      writeFileSync(this._baseAppPathFolder + '/.sync_collections/' + bodyData.saved_file_name, YAML.stringify(bodyData, null), 'utf8');
+      bodyData.saved_file_name = whatFileName+'.yaml';
+      whatFileName = upath.basename(whatFileName,".yaml");
+      writeFileSync(this._baseAppPathFolder + '/.sync_collections/' + whatFileName+'.yaml', YAML.stringify(bodyData, null), 'utf8');
       /* Add sync_ignore can self by owner ngi-sync */
       if (existsSync(".sync_ignore")) {
         let syncIgnoreData = readFileSync(".sync_ignore").toString();
         writeFileSync(this._baseAppPathFolder + '/.sync_collections/' + whatFileName + ".sync_ignore", syncIgnoreData, 'utf8');
       }
-      console.log(`${this._baseAppPathFolder + '/.sync_collections/' + bodyData.saved_file_name} is created!`);
+      console.log(`${this._baseAppPathFolder + '/.sync_collections/' + whatFileName+'.yaml'} is created!`);
     } catch (ex) {
       console.error('createNewSave - ex ', ex);
     }
@@ -262,12 +263,13 @@ export default BaseService.extend<LoadSaveServiceInterface>({
   deleteDataSave: function () {
     try {
       let { target_delete } = this._completeData;
-      unlinkSync(this._baseAppPathFolder + '/.sync_collections/' + target_delete + '.yaml');
+      let whatFileName = upath.basename(target_delete,".yaml");
+      unlinkSync(this._baseAppPathFolder + '/.sync_collections/' + whatFileName + '.yaml');
       /* Delete sync_ignore can self by owner ngi-sync */
-      if (existsSync(this._baseAppPathFolder + "/.sync_collections/" + target_delete + ".sync_ignore")) {
-        unlinkSync(this._baseAppPathFolder + '/.sync_collections/' + target_delete + ".sync_ignore");
+      if (existsSync(this._baseAppPathFolder + "/.sync_collections/" + whatFileName + ".sync_ignore")) {
+        unlinkSync(this._baseAppPathFolder + '/.sync_collections/' + whatFileName + ".sync_ignore");
       }
-      console.log(`${this._baseAppPathFolder + '/.sync_collections/' + target_delete + '.yaml'} is deleted!`);
+      console.log(`${this._baseAppPathFolder + '/.sync_collections/' + whatFileName + '.yaml'} is deleted!`);
     } catch (ex) {
       console.error('deleteDataSave - ex ', ex);
     }
