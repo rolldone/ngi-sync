@@ -86,7 +86,7 @@ export default class Uploader {
 					});
 					stream.on('data', (dd: any) => {
 						if (_consoleAction != "basic") return;
-						if (this._consoleCache.length >= 5000) {
+						if (this._consoleCache.length >= 2000) {
 							this._consoleCache.shift();
 						};
 						this._consoleCache.push(dd);
@@ -108,6 +108,7 @@ export default class Uploader {
 				})
 
 			}
+			let _localRecordText = "";
 			var _keypress = (key: string, data: any) => {
 				let isStop = false;
 				for (var a = 1; a <= 9; a++) {
@@ -129,7 +130,14 @@ export default class Uploader {
 				switch (data.sequence) {
 					case '\u0003':
 						return;
+					case '\r':
+						if (_localRecordText.includes("clear")) {
+							this._consoleCache = [];
+						}
+						_localRecordText = "";
+						break;
 				}
+				_localRecordText += data.sequence;
 			}
 			process.stdin.on("keypress", _keypress)
 		} catch (ex) {
@@ -163,6 +171,7 @@ export default class Uploader {
 				}
 			}
 			let timesCloseClick = 0;
+			let _localRecordText = "";
 			let _keypress = (key: string, data: any) => {
 				let isStop = false;
 				for (var a = 1; a <= 9; a++) {
@@ -204,7 +213,14 @@ export default class Uploader {
 				switch (data.sequence) {
 					case '\u0003':
 						return;
+					case '\r':
+						if (_localRecordText.includes("clear")) {
+							_consoleCaches[index] = [];
+						}
+						_localRecordText = "";
+						break;
 				}
+				_localRecordText += data.sequence;
 			}
 			process.stdin.on("keypress", _keypress)
 
@@ -259,7 +275,7 @@ export default class Uploader {
 						if (_consoleAction != index) return;
 						// console.log('data',_consoleAction,' and ',index);
 
-						if (_consoleCaches[index].length >= 5000) {
+						if (_consoleCaches[index].length >= 2000) {
 							_consoleCaches[index].shift();
 						};
 						_consoleCaches[index].push(dd);
@@ -269,7 +285,7 @@ export default class Uploader {
 					stream.stderr.on('data', (data: any) => {
 						// console.log('data',_consoleAction,' and ',index);
 						if (_consoleAction != index) return;
-						if (_consoleCaches[index].length >= 5000) {
+						if (_consoleCaches[index].length >= 2000) {
 							_consoleCaches[index].shift();
 						};
 						_consoleCaches[index].push(data);
@@ -349,7 +365,7 @@ export default class Uploader {
 						return;
 				}
 				if (_consoleAction != index) return;
-				if (_consoleCaches[index].length >= 5000) {
+				if (_consoleCaches[index].length >= 2000) {
 					_consoleCaches[index].shift();
 				};
 				_consoleCaches[index].push(data);
@@ -382,6 +398,7 @@ export default class Uploader {
 			});
 
 			let timesCloseClick = 0;
+			let _localRecordText = "";
 			let _keypress = (key: string, data: any) => {
 				let isStop = false;
 				for (var a = 1; a <= 9; a++) {
@@ -418,6 +435,7 @@ export default class Uploader {
 				if (isStop == true) {
 					return;
 				}
+
 				switch (data.sequence) {
 					case '\u0003':
 						// theClient.write("exit\r");
@@ -427,7 +445,14 @@ export default class Uploader {
 					case '\u001b[B':
 						theClient.write(data.sequence);
 						return;
+					case '\r':
+						if (_localRecordText.includes("clear")) {
+							_consoleCaches[index] = [];
+						}
+						_localRecordText = "";
+						break;
 				}
+				_localRecordText += data.sequence;
 				theClient.write(data.sequence);
 			}
 			process.stdin.on("keypress", _keypress)

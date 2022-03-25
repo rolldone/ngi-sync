@@ -425,7 +425,11 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           // this.uploader._consoleAction = "watch";
           this.uploader.startConsole(false);
           for (var i = 0; i < total_tab; i++) {
-            this.uploader.startConsoles(i, cache_command[i], false);
+            if (this.uploader.getConsoleMode(i) == "local") {
+              this.uploader.startLocalConsoles(i, cache_command[i], false);
+            } else if (this.uploader.getConsoleMode(i) == "remote") {
+              this.uploader.startConsoles(i, cache_command[i], false);
+            }
           }
           this._actionMode = "devsync";
           this.watcher.actionMode = this._actionMode;
@@ -441,12 +445,25 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         case '\u001b2':
           console.clear();
           this._readLine.close();
+          process.stdin.removeListener('keypress', remoteFuncKeypress);
           process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
           for (var i = 0; i < total_tab; i++) {
-            this.uploader.startConsoles(i, cache_command[i], false);
+            if (this.uploader.getConsoleMode(i) == "local") {
+              this.uploader.startLocalConsoles(i, cache_command[i], false);
+            } else if (this.uploader.getConsoleMode(i) == "remote") {
+              this.uploader.startConsoles(i, cache_command[i], false);
+            }
           }
           setTimeout(() => {
-            this.uploader.startConsole(true, () => { });
+            this.uploader.startConsole(true, (action: string, props: any) => {
+              switch (action) {
+                case 'switch':
+                  remoteFuncKeypress(null, props);
+                  break;
+                case 'exit':
+                  break;
+              }
+            });
             this._actionMode = "console";
             this.watcher.actionMode = this._actionMode;
           }, 1000);
@@ -466,11 +483,12 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             process.stdin.removeListener('keypress', remoteFuncKeypress);
             process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
             this.uploader.startConsole(false);
+            // console.log('adalah :: ', index, " :: ", this.uploader.getConsoleMode(index), " position :: ", consolePosition);
             for (var ib = 0; ib < total_tab; ib++) {
               if (ib != index) {
                 if (this.uploader.getConsoleMode(ib) == "local") {
                   this.uploader.startLocalConsoles(ib, cache_command[ib], false);
-                } else {
+                } else if (this.uploader.getConsoleMode(ib) == "remote") {
                   this.uploader.startConsoles(ib, cache_command[ib], false);
                 }
               }
@@ -530,7 +548,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           if (cache_command[inin] != null) {
             if (this.uploader.getConsoleMode(inin) == "local") {
               excuteLocalCommand('local', inin);
-            } else {
+            } else if (this.uploader.getConsoleMode(inin) == "remote") {
               excuteLocalCommand('remote', inin);
             }
             break;
@@ -542,7 +560,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
               for (var i = 0; i < total_tab; i++) {
                 if (this.uploader.getConsoleMode(inin) == "local") {
                   this.uploader.startLocalConsoles(i, cache_command[i], false);
-                } else {
+                } else if (this.uploader.getConsoleMode(inin) == "remote") {
                   this.uploader.startConsoles(i, cache_command[i], false);
                 }
               }
