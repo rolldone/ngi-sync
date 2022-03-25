@@ -131,7 +131,7 @@ export default class Uploader {
 					case '\u0003':
 						return;
 					case '\r':
-						if (_localRecordText == "clear") {
+						if (_localRecordText.includes("clear")) {
 							this._consoleCache = [];
 						}
 						_localRecordText = "";
@@ -214,7 +214,7 @@ export default class Uploader {
 					case '\u0003':
 						return;
 					case '\r':
-						if (_localRecordText == "clear") {
+						if (_localRecordText.includes("clear")) {
 							_consoleCaches[index] = [];
 						}
 						_localRecordText = "";
@@ -446,7 +446,7 @@ export default class Uploader {
 						theClient.write(data.sequence);
 						return;
 					case '\r':
-						if (_localRecordText == "clear") {
+						if (_localRecordText.includes("clear")) {
 							_consoleCaches[index] = [];
 						}
 						_localRecordText = "";
