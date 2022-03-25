@@ -2,7 +2,7 @@ import BaseService from "@root/base/BaseService";
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import Config, { ConfigInterface } from "../compute/Config";
 import { CliInterface } from "./CliService";
-import inquirer  from "inquirer";
+import inquirer from "inquirer";
 import Watcher from "../compute/Watcher";
 import { Uploader } from "../compute/Uploader";
 import path from 'path';
@@ -533,7 +533,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           for (var i = 0; i < total_tab; i++) {
             if (this.uploader.getConsoleMode(i) == "local") {
               this.uploader.startLocalConsoles(i, cache_command[i], false);
-            } else {
+            } else if (this.uploader.getConsoleMode(i) == "remote") {
               this.uploader.startConsoles(i, cache_command[i], false);
             }
           }
@@ -559,7 +559,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           for (var i = 0; i < total_tab; i++) {
             if (this.uploader.getConsoleMode(i) == "local") {
               this.uploader.startLocalConsoles(i, cache_command[i], false);
-            } else {
+            } else if (this.uploader.getConsoleMode(i) == "remote") {
               this.uploader.startConsoles(i, cache_command[i], false);
             }
           }
@@ -591,11 +591,12 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             process.stdin.removeListener('keypress', remoteFuncKeypress);
             process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
             this.uploader.startConsole(false);
+            // console.log('adalah :: ', this.uploader.getConsoleMode(index));
             for (var ib = 0; ib < total_tab; ib++) {
               if (ib != index) {
                 if (this.uploader.getConsoleMode(ib) == "local") {
                   this.uploader.startLocalConsoles(ib, cache_command[ib], false);
-                } else {
+                } else if (this.uploader.getConsoleMode(ib) == "remote") {
                   this.uploader.startConsoles(ib, cache_command[ib], false);
                 }
               }
@@ -655,7 +656,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           if (cache_command[inin] != null) {
             if (this.uploader.getConsoleMode(inin) == "local") {
               excuteLocalCommand('local', inin);
-            } else {
+            } else if (this.uploader.getConsoleMode(inin) == "remote") {
               excuteLocalCommand('remote', inin);
             }
             break;
@@ -667,7 +668,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
               for (var i = 0; i < total_tab; i++) {
                 if (this.uploader.getConsoleMode(inin) == "local") {
                   this.uploader.startLocalConsoles(i, cache_command[i], false);
-                } else {
+                } else if (this.uploader.getConsoleMode(inin) == "remote") {
                   this.uploader.startConsoles(i, cache_command[i], false);
                 }
               }
@@ -758,8 +759,11 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
 
             // process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
-            // console.clear();
-            this.construct(this._cli);
+            console.clear();
+            process.stdout.write(chalk.green('Remote | ') + 'Restarting...' + '\r');
+            setTimeout(() => {
+              this.construct(this._cli);
+            }, 3000);
           }
           var closeRemote = () => {
             if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
