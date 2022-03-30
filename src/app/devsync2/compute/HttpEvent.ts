@@ -454,6 +454,8 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
         case data.includes('total size'):
           _ptyProcess.write('exit' + '\r')
           break;
+        case data.includes('WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!'):
+        case data.includes('Someone could be eavesdropping on you right now (man-in-the-middle attack)!'):
         case data.includes('No such file or directory'):
         case data.includes('rsync error:'):
           _ptyProcess.write('exit' + '\r')
