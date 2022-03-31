@@ -475,15 +475,12 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
       for (var i = 0; i < total_tab; i++) {
         if (data.sequence == '\u001b' + (i + 3)) {
-
           this._readLine.close();
           process.stdin.removeListener('keypress', remoteFuncKeypress);
-
+          console.clear();
           this.uploader.setConsoleAction("pending first");
           let inin = i;
           var excuteLocalCommand = (consolePosition: string, index: number) => {
-            this._readLine.close();
-            process.stdin.removeListener('keypress', remoteFuncKeypress);
             process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
             this.uploader.startConsole(false);
             // console.log('adalah :: ', index, " :: ", this.uploader.getConsoleMode(index), " position :: ", consolePosition);
@@ -506,14 +503,15 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
                         remoteFuncKeypress(null, props);
                         break;
                       case 'exit':
-                        setTimeout(() => {
-                          // process.stdout.write('Connection closed.')
-                          // console.log('Stream :: close');
-                          // this._readLine.resume();
-                          remoteFuncKeypress(null, {
-                            sequence: "\u001b1"
-                          })
-                        }, 1000)
+                        // setTimeout(() => {
+                        //   // process.stdout.write('Connection closed.')
+                        //   // console.log('Stream :: close');
+                        //   // this._readLine.resume();
+                          
+                        // }, 1000)
+                        remoteFuncKeypress(null, {
+                          sequence: "\u001b1"
+                        })
                         cache_command[index] = null;
                         break;
                     }
@@ -625,14 +623,11 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         case '\x12':
           this._is_stop = true;
           let stop = async () => {
+            this._readLine.close();
+            this._readLine.removeAllListeners();
             _startWatchingWithTimeOut(true);
             syncPull.stopSubmitWatch();
             syncPull = null;
-
-            /* Close readline */
-            // this._readLine.close();
-            // this._readLine = null;
-
 
             await this.watcher.close();
             this.watcher = null;
@@ -643,8 +638,10 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
             process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
+            console.clear();
+            process.stdout.write(chalk.green('Remote | ') + 'Restarting...' + '\r');
+            
             setTimeout(() => {
-              console.clear();
               this.construct(this._cli);
             }, 3000);
           }
