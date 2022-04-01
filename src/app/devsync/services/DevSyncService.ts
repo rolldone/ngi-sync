@@ -426,6 +426,9 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           if(this.uploader == null){
             this.uploader = new Uploader(currentConf, this._cli);
           }
+          if (this.watcher == null) {
+            this.watcher = new Watcher(this.uploader, currentConf, this._cli);
+          }
           this.uploader.startConsole(false);
           for (var i = 0; i < total_tab; i++) {
             if (this.uploader.getConsoleMode(i) == "local") {
