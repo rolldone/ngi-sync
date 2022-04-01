@@ -533,6 +533,9 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           if (this.uploader == null) {
             this.uploader = new Uploader(currentConf, this._cli);
           }
+          if (this.watcher == null) {
+            this.watcher = new Watcher(this.uploader, currentConf, this._cli);
+          }
           this.uploader.startConsole(false);
           for (var i = 0; i < total_tab; i++) {
             if (this.uploader.getConsoleMode(i) == "local") {
@@ -734,7 +737,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
               this._httpEvent.stop();
               this._httpEvent = null;
             }
-            
+
             /* Stop download */
             _pendingTimeoutStopDownload(true);
             if (this._download != null) {
