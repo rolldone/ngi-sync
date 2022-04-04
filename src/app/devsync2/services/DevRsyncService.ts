@@ -212,19 +212,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         });
         break;
       case COMMAND_SHORT.FORCE_SINGLE_SYNC:
-        // let questions: inquirer.QuestionCollection = [
-        //   {
-        //     type: 'default',
-        //     name: "Enter again " + String.fromCodePoint(0x00002386)
-        //   }
-        // ];
-        // inquirer.prompt(questions)['then']((asnwers)=>{
-        //   /* Call manual rsync single sync. This module can send data per folder inside project */
-        //   masterData.saveData('command.forcersync.single_sync', {
-        //     action: 'single_sync_nested_prompt',
-        //     from: 'command.devsync2.index'
-        //   });
-        // })
         masterData.saveData('command.forcersync.single_sync', {
           action: 'single_sync_nested_prompt',
           from: 'command.devsync2.index'
@@ -470,14 +457,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
     });
     /* Define readline nodejs for listen CTRL + R */
-    // if (this._readLine == null) {
-    //   this._readLine = rl.createInterface({
-    //     input: process.stdin,
-    //     // output : process.stdout,
-    //     terminal: true
-    //   });
-    // }
-
     this._readLine = rl.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -528,11 +507,11 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         case '\u001b1':
           console.clear();
           process.stdout.write(chalk.green('Devsync | ') + 'Watch Mode' + '\r');
-          // this.uploader._consoleAction = "watch";
           // Check if the uploader suddenly null
           if (this.uploader == null) {
             this.uploader = new Uploader(currentConf, this._cli);
           }
+          // Check if the watcher suddenly null
           if (this.watcher == null) {
             this.watcher = new Watcher(this.uploader, currentConf, this._cli);
           }
@@ -633,10 +612,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
                         remoteFuncKeypress(null, data);
                         break;
                       case 'exit':
-                        // setTimeout(() => {
-                        //   process.stdout.write('Connection closed.')
-                        //   console.log('Stream :: close');
-                        // }, 2000)
                         cache_command[index] = null;
                         remoteFuncKeypress(null, {
                           sequence: "\u001b1"

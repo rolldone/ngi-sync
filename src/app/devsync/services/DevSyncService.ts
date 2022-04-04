@@ -368,14 +368,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     });
 
     /* Define readline nodejs for listen CTRL + R */
-    // if(this._readLine == null){
-    //   this._readLine = rl.createInterface({
-    //     input: process.stdin,
-    //     // output : process.stdout,
-    //     terminal: true
-    //   });
-    // }
-
     this._readLine = rl.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -506,12 +498,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
                         remoteFuncKeypress(null, props);
                         break;
                       case 'exit':
-                        // setTimeout(() => {
-                        //   // process.stdout.write('Connection closed.')
-                        //   // console.log('Stream :: close');
-                        //   // this._readLine.resume();
-                          
-                        // }, 1000)
                         remoteFuncKeypress(null, {
                           sequence: "\u001b1"
                         })
@@ -530,10 +516,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
                         remoteFuncKeypress(null, data);
                         break;
                       case 'exit':
-                        // setTimeout(() => {
-                        //   process.stdout.write('Connection closed.')
-                        //   console.log('Stream :: close');
-                        // }, 2000)
                         cache_command[index] = null;
                         remoteFuncKeypress(null, {
                           sequence: "\u001b1"
