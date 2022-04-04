@@ -66,7 +66,7 @@ export default class Uploader {
 						// this._consoleStream.write("\u001b[D");
 						process.stdin.pipe(this._consoleStream);
 						// this._consoleStream.write("\u001b[C");
-						this._consoleStream.write("\r");
+						// this._consoleStream.write("\r");
 						process.stdin.setRawMode(true);
 					}, 1000);
 				}
@@ -165,8 +165,8 @@ export default class Uploader {
 							process.stdout.write(_consoleCaches[index][i]);
 						}
 						process.stdin.pipe(_consoleStreams[index]);
+						// _consoleStreams[index].write("\r");
 						process.stdin.setRawMode(true);
-						_consoleStreams[index].write("\n");
 					}
 				}
 			}
@@ -195,14 +195,17 @@ export default class Uploader {
 				if (data.sequence == '\u001b0') {
 					timesCloseClick += 1;
 					if (timesCloseClick == 1) {
+						if (_consoleStreams[index] == null) return;
 						_consoleStreams[index].write("\x03");
 					}
 					if (timesCloseClick >= 2) {
-						_consoleStreams[index].write("\x03");
+						if (_consoleStreams[index] != null) {
+							_consoleStreams[index].write("\x03");
+						_startConsoles[index].end();
+						};
 						process.stdin.setRawMode(false);
 						process.stdin.unpipe(_consoleStreams[index]);
 						process.stdin.removeListener("keypress", _keypress);
-						_startConsoles[index].end();
 					}
 				} else {
 					timesCloseClick = 0;
@@ -336,7 +339,7 @@ export default class Uploader {
 							process.stdout.write(_consoleCaches[index][i]);
 						}
 						_consoleStreams[index].write("\x11");
-						_consoleStreams[index].write("\n");
+						// _consoleStreams[index].write("\r");
 					}
 				}
 			}
