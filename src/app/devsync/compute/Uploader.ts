@@ -66,7 +66,7 @@ export default class Uploader {
 						// this._consoleStream.write("\u001b[D");
 						process.stdin.pipe(this._consoleStream);
 						// this._consoleStream.write("\u001b[C");
-						this._consoleStream.write("\r");
+						// this._consoleStream.write("\r");
 						process.stdin.setRawMode(true);
 					}, 1000);
 				}
@@ -165,8 +165,8 @@ export default class Uploader {
 							process.stdout.write(_consoleCaches[index][i]);
 						}
 						process.stdin.pipe(_consoleStreams[index]);
+						// _consoleStreams[index].write("\r");
 						process.stdin.setRawMode(true);
-						_consoleStreams[index].write("\n");
 					}
 				}
 			}
@@ -195,14 +195,17 @@ export default class Uploader {
 				if (data.sequence == '\u001b0') {
 					timesCloseClick += 1;
 					if (timesCloseClick == 1) {
+						if (_consoleStreams[index] == null) return;
 						_consoleStreams[index].write("\x03");
 					}
 					if (timesCloseClick >= 2) {
-						_consoleStreams[index].write("\x03");
+						if (_consoleStreams[index] != null) {
+							_consoleStreams[index].write("\x03");
+						_startConsoles[index].end();
+						};
 						process.stdin.setRawMode(false);
 						process.stdin.unpipe(_consoleStreams[index]);
 						process.stdin.removeListener("keypress", _keypress);
-						_startConsoles[index].end();
 					}
 				} else {
 					timesCloseClick = 0;
@@ -222,8 +225,8 @@ export default class Uploader {
 				}
 				_localRecordText += data.sequence;
 			}
-			process.stdin.on("keypress", _keypress)
 
+			process.stdin.on("keypress", _keypress)
 			if (_startConsoles[index] == null) {
 				_consoleCaches[index] = [];
 				let theClient = new Client();
@@ -255,21 +258,23 @@ export default class Uploader {
 
 					_consoleStreams[index] = stream;
 					stream.on('close', () => {
-						// console.log('close', _consoleAction, ' and ', index);
-						if (_consoleAction != index) return;
-						_consoleStreams[index].unpipe(process.stdout);
-						process.stdin.setRawMode(false);
-						process.stdin.unpipe(_consoleStreams[index]);
-						process.stdin.removeListener("keypress", _keypress);
-						_startConsoles[index] = null;
-						_consoleStreams[index] = null;
+						// This method not working on startLocalConsole
 						setTimeout(() => {
+							// console.log('close', _consoleAction, ' and ', index);
+							if (_consoleAction != index) return;
+							_consoleStreams[index].unpipe(process.stdout);
+							process.stdin.setRawMode(false);
+							process.stdin.unpipe(_consoleStreams[index]);
+							process.stdin.removeListener("keypress", _keypress);
+							_startConsoles[index] = null;
+							_consoleStreams[index] = null;
 							callback("exit", null);
 						}, 1000);
 					});
 
 					stream.on('data', (dd: any) => {
 						if (is_streamed == true) {
+							// Watch the console and write it into your file
 							appendFile(upath.normalizeSafe(this.config.localPath + "/" + _xs_split[1]), dd.toString(), (err) => { });
 						}
 						if (_consoleAction != index) return;
@@ -278,6 +283,7 @@ export default class Uploader {
 						if (_consoleCaches[index].length >= 2000) {
 							_consoleCaches[index].shift();
 						};
+
 						_consoleCaches[index].push(dd);
 						process.stdout.write(dd);
 					})
@@ -289,6 +295,7 @@ export default class Uploader {
 							_consoleCaches[index].shift();
 						};
 						_consoleCaches[index].push(data);
+
 						process.stdout.write(data);
 					});
 					process.stdin.pipe(stream);
@@ -319,7 +326,9 @@ export default class Uploader {
 				_consoleAction = '--------------';
 				if (_consoleStreams[index] == null) {
 					return;
-				};
+				} else {
+					// _startConsoles[index].close();
+				}
 				return;
 			} else {
 				_consoleAction = index;
@@ -330,7 +339,7 @@ export default class Uploader {
 							process.stdout.write(_consoleCaches[index][i]);
 						}
 						_consoleStreams[index].write("\x11");
-						_consoleStreams[index].write("\n");
+						// _consoleStreams[index].write("\r");
 					}
 				}
 			}
@@ -373,14 +382,7 @@ export default class Uploader {
 			}
 			theClient.on('data', onData);
 			let onExit = (exitCode: any, signal: any) => {
-				process.stdout.removeListener('resize', resizeFunc);
-				theClient.removeListener('data', onData);
-				theClient.removeListener('exit', onExit);
-				_readLine.close();
-				process.stdin.removeListener("keypress", _keypress)
-				_startConsoles[index] = null
-				_consoleStreams[index] = null
-				callback("exit", null);
+				_readLine.write("038vdfnvjfqnvwdjfvnjfdvnjvn\r");
 			};
 			theClient.on('exit', onExit);
 
@@ -393,7 +395,21 @@ export default class Uploader {
 				theClient.write("\u0003");
 			});
 
-			_readLine.on('line', function (line: string) { }).on('close', function () {
+			_readLine.on('line', function (line: string) {
+				if (line == "038vdfnvjfqnvwdjfvnjfdvnjvn") {
+					// Is MUST get from _readline.write 
+					// And dont close the readline, it will freezee on parent nav
+					// try enable you will see the effect
+					// _readLine.close();
+					process.stdout.removeListener('resize', resizeFunc);
+					theClient.removeListener('data', onData);
+					theClient.removeListener('exit', onExit);
+					process.stdin.removeListener("keypress", _keypress)
+					_startConsoles[index] = null
+					_consoleStreams[index] = null
+					callback("exit", null);
+				}
+			}).on('close', function () {
 				console.log("Close Readline Local Console");
 			});
 
@@ -445,6 +461,7 @@ export default class Uploader {
 					case '\u001b[B':
 						theClient.write(data.sequence);
 						return;
+						break;
 					case '\r':
 						if (_localRecordText.includes("clear")) {
 							_consoleCaches[index] = [];

@@ -21,6 +21,9 @@ process.on('SIGINT', (props: any, props2: any) => {
   }
 });
 
+/* Set unlimited max listener callback function */
+process.setMaxListeners(0);
+
 BaseStart({
   port: null,
   init: [
