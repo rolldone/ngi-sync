@@ -212,19 +212,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         });
         break;
       case COMMAND_SHORT.FORCE_SINGLE_SYNC:
-        // let questions: inquirer.QuestionCollection = [
-        //   {
-        //     type: 'default',
-        //     name: "Enter again " + String.fromCodePoint(0x00002386)
-        //   }
-        // ];
-        // inquirer.prompt(questions)['then']((asnwers)=>{
-        //   /* Call manual rsync single sync. This module can send data per folder inside project */
-        //   masterData.saveData('command.forcersync.single_sync', {
-        //     action: 'single_sync_nested_prompt',
-        //     from: 'command.devsync2.index'
-        //   });
-        // })
         masterData.saveData('command.forcersync.single_sync', {
           action: 'single_sync_nested_prompt',
           from: 'command.devsync2.index'
@@ -470,14 +457,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
     });
     /* Define readline nodejs for listen CTRL + R */
-    // if (this._readLine == null) {
-    //   this._readLine = rl.createInterface({
-    //     input: process.stdin,
-    //     // output : process.stdout,
-    //     terminal: true
-    //   });
-    // }
-
     this._readLine = rl.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -528,7 +507,14 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         case '\u001b1':
           console.clear();
           process.stdout.write(chalk.green('Devsync | ') + 'Watch Mode' + '\r');
-          // this.uploader._consoleAction = "watch";
+          // Check if the uploader suddenly null
+          if (this.uploader == null) {
+            this.uploader = new Uploader(currentConf, this._cli);
+          }
+          // Check if the watcher suddenly null
+          if (this.watcher == null) {
+            this.watcher = new Watcher(this.uploader, currentConf, this._cli);
+          }
           this.uploader.startConsole(false);
           for (var i = 0; i < total_tab; i++) {
             if (this.uploader.getConsoleMode(i) == "local") {
@@ -580,15 +566,12 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
       for (var i = 0; i < total_tab; i++) {
         if (data.sequence == '\u001b' + (i + 3)) {
-
           this._readLine.close();
           process.stdin.removeListener('keypress', remoteFuncKeypress);
-
+          console.clear();
           this.uploader.setConsoleAction("pending first");
           let inin = i;
           var excuteLocalCommand = (consolePosition: string, index: number) => {
-            this._readLine.close();
-            process.stdin.removeListener('keypress', remoteFuncKeypress);
             process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
             this.uploader.startConsole(false);
             // console.log('adalah :: ', this.uploader.getConsoleMode(index));
@@ -611,14 +594,9 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
                         remoteFuncKeypress(null, props);
                         break;
                       case 'exit':
-                        setTimeout(() => {
-                          // process.stdout.write('Connection closed.')
-                          // console.log('Stream :: close');
-                          // this._readLine.resume();
-                          remoteFuncKeypress(null, {
-                            sequence: "\u001b1"
-                          })
-                        }, 1000)
+                        remoteFuncKeypress(null, {
+                          sequence: "\u001b1"
+                        })
                         cache_command[index] = null;
                         break;
                     }
@@ -634,10 +612,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
                         remoteFuncKeypress(null, data);
                         break;
                       case 'exit':
-                        // setTimeout(() => {
-                        //   process.stdout.write('Connection closed.')
-                        //   console.log('Stream :: close');
-                        // }, 2000)
                         cache_command[index] = null;
                         remoteFuncKeypress(null, {
                           sequence: "\u001b1"
@@ -651,7 +625,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
               }
             }, 1000)
           }
-          console.clear();
           process.stdout.write(chalk.green('Console Commands  | ') + cache_command + '\r');
           if (cache_command[inin] != null) {
             if (this.uploader.getConsoleMode(inin) == "local") {
@@ -659,38 +632,39 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             } else if (this.uploader.getConsoleMode(inin) == "remote") {
               excuteLocalCommand('remote', inin);
             }
-            break;
-          }
-          inquirer.prompt(questions_command)['then']((passAnswer: any) => {
-            let _command = passAnswer.local || passAnswer.remote;
-            if (_command == "Exit") {
-              this.uploader.startConsole(false);
-              for (var i = 0; i < total_tab; i++) {
-                if (this.uploader.getConsoleMode(inin) == "local") {
-                  this.uploader.startLocalConsoles(i, cache_command[i], false);
-                } else if (this.uploader.getConsoleMode(inin) == "remote") {
-                  this.uploader.startConsoles(i, cache_command[i], false);
+            // break;
+          } else {
+            inquirer.prompt(questions_command)['then']((passAnswer: any) => {
+              let _command = passAnswer.local || passAnswer.remote;
+              if (_command == "Exit") {
+                this.uploader.startConsole(false);
+                for (var i = 0; i < total_tab; i++) {
+                  if (this.uploader.getConsoleMode(inin) == "local") {
+                    this.uploader.startLocalConsoles(i, cache_command[i], false);
+                  } else if (this.uploader.getConsoleMode(inin) == "remote") {
+                    this.uploader.startConsoles(i, cache_command[i], false);
+                  }
                 }
+                setTimeout(() => {
+                  // Back to the alt + 1 again
+                  remoteFuncKeypress(null, {
+                    sequence: "\u001b1"
+                  });
+                }, 500);
+                cache_command[inin] = null;
+                return;
               }
-              setTimeout(() => {
-                // Back to the alt + 1 again
+              if (_command == "Back") {
                 remoteFuncKeypress(null, {
-                  sequence: "\u001b1"
+                  sequence: '\u001b' + (inin + 3)
                 });
-              }, 500);
-              cache_command[inin] = null;
-              return;
-            }
-            if (_command == "Back") {
-              remoteFuncKeypress(null, {
-                sequence: '\u001b' + (inin + 3)
-              });
-              return;
-            }
-            cache_command[inin] = _command;
-            // execudeCommand(inin);
-            excuteLocalCommand(passAnswer.local != null ? "local" : "remote", inin);
-          });
+                return;
+              }
+              cache_command[inin] = _command;
+              // execudeCommand(inin);
+              excuteLocalCommand(passAnswer.local != null ? "local" : "remote", inin);
+            });
+          }
           break;
         }
       }
@@ -732,21 +706,20 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           let stop = async () => {
             this._readLine.close();
             this._readLine.removeAllListeners();
+
             /* Stop httpEvent */
             if (this._httpEvent != null) {
               this._httpEvent.stop();
               this._httpEvent = null;
             }
+
             /* Stop download */
             _pendingTimeoutStopDownload(true);
             if (this._download != null) {
               this._download.stop(this._download.status.SILENT);
               this._download = null;
             }
-            /* Close readline */
-            // this._readLine.close();
-            // this._readLine = null;
-            /* Waiting process watcher and uploader closed */
+
             process.stdin.off('keypress', remoteFuncKeypress);
             await this.watcher.close();
             this.watcher = null;

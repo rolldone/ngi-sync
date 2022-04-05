@@ -368,14 +368,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     });
 
     /* Define readline nodejs for listen CTRL + R */
-    // if(this._readLine == null){
-    //   this._readLine = rl.createInterface({
-    //     input: process.stdin,
-    //     // output : process.stdout,
-    //     terminal: true
-    //   });
-    // }
-
     this._readLine = rl.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -423,6 +415,12 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           console.clear();
           process.stdout.write(chalk.green('Devsync | ') + 'Watch Mode' + '\r');
           // this.uploader._consoleAction = "watch";
+          if(this.uploader == null){
+            this.uploader = new Uploader(currentConf, this._cli);
+          }
+          if (this.watcher == null) {
+            this.watcher = new Watcher(this.uploader, currentConf, this._cli);
+          }
           this.uploader.startConsole(false);
           for (var i = 0; i < total_tab; i++) {
             if (this.uploader.getConsoleMode(i) == "local") {
@@ -472,15 +470,12 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
       for (var i = 0; i < total_tab; i++) {
         if (data.sequence == '\u001b' + (i + 3)) {
-
           this._readLine.close();
           process.stdin.removeListener('keypress', remoteFuncKeypress);
-
+          console.clear();
           this.uploader.setConsoleAction("pending first");
           let inin = i;
           var excuteLocalCommand = (consolePosition: string, index: number) => {
-            this._readLine.close();
-            process.stdin.removeListener('keypress', remoteFuncKeypress);
             process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
             this.uploader.startConsole(false);
             // console.log('adalah :: ', index, " :: ", this.uploader.getConsoleMode(index), " position :: ", consolePosition);
@@ -503,14 +498,9 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
                         remoteFuncKeypress(null, props);
                         break;
                       case 'exit':
-                        setTimeout(() => {
-                          // process.stdout.write('Connection closed.')
-                          // console.log('Stream :: close');
-                          // this._readLine.resume();
-                          remoteFuncKeypress(null, {
-                            sequence: "\u001b1"
-                          })
-                        }, 1000)
+                        remoteFuncKeypress(null, {
+                          sequence: "\u001b1"
+                        })
                         cache_command[index] = null;
                         break;
                     }
@@ -526,10 +516,6 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
                         remoteFuncKeypress(null, data);
                         break;
                       case 'exit':
-                        // setTimeout(() => {
-                        //   process.stdout.write('Connection closed.')
-                        //   console.log('Stream :: close');
-                        // }, 2000)
                         cache_command[index] = null;
                         remoteFuncKeypress(null, {
                           sequence: "\u001b1"
@@ -622,14 +608,11 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         case '\x12':
           this._is_stop = true;
           let stop = async () => {
+            this._readLine.close();
+            this._readLine.removeAllListeners();
             _startWatchingWithTimeOut(true);
             syncPull.stopSubmitWatch();
             syncPull = null;
-
-            /* Close readline */
-            // this._readLine.close();
-            // this._readLine = null;
-
 
             await this.watcher.close();
             this.watcher = null;
@@ -640,8 +623,10 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
             process.stdin.off('keypress', remoteFuncKeypress);
             this.task.done();
+            console.clear();
+            process.stdout.write(chalk.green('Remote | ') + 'Restarting...' + '\r');
+            
             setTimeout(() => {
-              console.clear();
               this.construct(this._cli);
             }, 3000);
           }
