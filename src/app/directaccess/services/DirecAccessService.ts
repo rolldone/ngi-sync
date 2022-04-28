@@ -2,7 +2,7 @@ import BaseService from "@root/base/BaseService";
 import Config, { ConfigInterface } from "../compute/Config";
 import DirectAccess, { DirectAccessInterface, DirectAccessType } from "../compute/DirectAccess";
 import { CliInterface } from "./CliService";
-import inquirer  from "inquirer";
+import inquirer from "inquirer";
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import * as child_process from 'child_process';
 declare var masterData: MasterDataInterface;
@@ -23,6 +23,7 @@ export interface DirectAccessServiceInterface extends BaseServiceInterface {
   _checkIsCygwin: Function,
   shortCommand?: { (direct_access: Array<any>, props: any): void }
   _executeCommand?: { (direct_access_item: any): void }
+  _is_direct?: Boolean
 }
 const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
   returnDirectAccess: function (config) {
@@ -80,6 +81,7 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     });
 
     if (extra_command != null) {
+      this._is_direct = true;
       return this.shortCommand(_directAccess.ssh_commands, extra_command);
     }
 
@@ -124,7 +126,7 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
       }
       if (passAnswer.target == "Restart") {
         /* Clear persistent config first  */
-        masterData.saveData('data.config',null);
+        masterData.saveData('data.config', null);
         masterData.saveData('command.direct.retry', {});
         return;
       }
@@ -133,9 +135,12 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
   },
   _executeCommand: function (direct_access_item) {
     let _direcAccess = this.returnDirectAccess(this._config);
-    _direcAccess.setOnListener(function (props: any) {
+    _direcAccess.setOnListener((props: any) => {
       switch (props.action) {
         case 'exit':
+          if (this._is_direct == true) {
+            return process.exit();
+          }
           masterData.saveData('command.direct.retry', {});
           break;
       }
