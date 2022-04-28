@@ -273,7 +273,7 @@ const SingleSyncService = DevRsyncPullService.extend<SingleSyncServiceInterface>
       });
       _singleSync.setOnListener((props: any) => {
         if (props.action == "exit") {
-          process.exit(1);
+          process.exit();
         }
       })
       _singleSync.submitPushSelective({
