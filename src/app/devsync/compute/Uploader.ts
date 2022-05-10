@@ -10,6 +10,7 @@ const chalk = require('chalk');
 var pty = require('node-pty');
 var os = require('os');
 import rl, { ReadLine } from 'readline';
+import { stripAnsi } from "@root/tool/Helpers";
 
 
 declare var masterData: MasterDataInterface;
@@ -24,7 +25,9 @@ let _consoleAction: any = null;
 
 export default class Uploader {
 	client: Client;
-
+	_stripAnsi(text: string): string {
+		return stripAnsi(text);
+	}
 	constructor(public config: ConfigInterface, private cli: CliInterface) {
 	}
 	_pendingQueue: {
@@ -89,8 +92,10 @@ export default class Uploader {
 						if (this._consoleCache.length >= 2000) {
 							this._consoleCache.shift();
 						};
-						this._consoleCache.push(dd);
-						process.stdout.write(dd);
+						this._consoleCache.push(dd.toString().replace(//g,""));
+						process.stdout.write(dd.toString().replace(//g,""));
+
+						// appendFile(upath.normalizeSafe(this.config.localPath + "/" + "command.log"), dd.toString().replace(//g,""), (err) => { });
 					})
 					// stream.pipe(process.stdout);
 					stream.write("cd " + this.config.remotePath + "\r");
@@ -137,7 +142,7 @@ export default class Uploader {
 						_localRecordText = "";
 						break;
 				}
-				_localRecordText += data.sequence;
+				_localRecordText += data.sequence.toString("utf8");
 			}
 			process.stdin.on("keypress", _keypress)
 		} catch (ex) {
@@ -201,7 +206,7 @@ export default class Uploader {
 					if (timesCloseClick >= 2) {
 						if (_consoleStreams[index] != null) {
 							_consoleStreams[index].write("\x03");
-						_startConsoles[index].end();
+							_startConsoles[index].end();
 						};
 						process.stdin.setRawMode(false);
 						process.stdin.unpipe(_consoleStreams[index]);
@@ -223,7 +228,7 @@ export default class Uploader {
 						_localRecordText = "";
 						break;
 				}
-				_localRecordText += data.sequence;
+				_localRecordText += data.sequence.toString("utf8");
 			}
 
 			process.stdin.on("keypress", _keypress)
@@ -275,7 +280,7 @@ export default class Uploader {
 					stream.on('data', (dd: any) => {
 						if (is_streamed == true) {
 							// Watch the console and write it into your file
-							appendFile(upath.normalizeSafe(this.config.localPath + "/" + _xs_split[1]), dd.toString(), (err) => { });
+							appendFile(upath.normalizeSafe(this.config.localPath + "/" + _xs_split[1]), this._stripAnsi(dd.toString()), (err) => { });
 						}
 						if (_consoleAction != index) return;
 						// console.log('data',_consoleAction,' and ',index);
@@ -284,8 +289,8 @@ export default class Uploader {
 							_consoleCaches[index].shift();
 						};
 
-						_consoleCaches[index].push(dd);
-						process.stdout.write(dd);
+						_consoleCaches[index].push(dd.toString('utf8').replace(//g,""));
+						process.stdout.write(dd.toString('utf8').replace(//g,""));
 					})
 
 					stream.stderr.on('data', (data: any) => {
@@ -294,9 +299,9 @@ export default class Uploader {
 						if (_consoleCaches[index].length >= 2000) {
 							_consoleCaches[index].shift();
 						};
-						_consoleCaches[index].push(data);
+						_consoleCaches[index].push(data.toString().replace(//g,""));
 
-						process.stdout.write(data);
+						process.stdout.write(data.toString().replace(//g,""));
 					});
 					process.stdin.pipe(stream);
 					process.stdin.setRawMode(true);
@@ -367,7 +372,7 @@ export default class Uploader {
 			}
 			let onData = (data: any) => {
 				if (is_streamed == true) {
-					appendFile(upath.normalizeSafe(this.config.localPath + "/" + _xs_split[1]), data.toString(), (err) => { });
+					appendFile(upath.normalizeSafe(this.config.localPath + "/" + _xs_split[1]), this._stripAnsi(data.toString()), (err) => { });
 				}
 				switch (data) {
 					case "exit":
