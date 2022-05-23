@@ -44,11 +44,12 @@ export default BaseService.extend<OpenConsoleServiceInterface>({
     return _i;
   },
   iniPtyProcess: function (shell, props = []) {
+    console.log("process.cwd ::: ", process.cwd());
     let _ptyProcess = pty.spawn(shell, props, {
       name: 'xterm-color',
       cols: size.width,
       rows: size.height,
-      cwd: process.env.HOME,
+      cwd: process.cwd(),
       env: {
         ...process.env,
         /* Override this value always from parent */
