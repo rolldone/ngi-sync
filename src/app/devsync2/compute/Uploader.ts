@@ -95,6 +95,7 @@ export class Uploader extends DevSyncUploader {
 						try {
 							await this.client.mkdir(upath.dirname(remote), true);
 							await this.client.chmod(upath.dirname(remote), 0o775)
+							this.client.client.removeAllListeners('error');
 						} catch (ex) {
 
 						}
@@ -131,6 +132,7 @@ export class Uploader extends DevSyncUploader {
 							reject(err.message);
 							next();
 						})
+						this.client.client.removeAllListeners('error');
 						break;
 					case 'delete_folder':
 						this.client.rmdir(remote, true).then(() => {
@@ -141,6 +143,7 @@ export class Uploader extends DevSyncUploader {
 							deleteQueueFunc();
 							reject(err.message);
 						})
+						this.client.client.removeAllListeners('error');
 						break;
 				}
 

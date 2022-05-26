@@ -697,6 +697,7 @@ export default class Uploader {
 						try {
 							await this.client.mkdir(upath.dirname(remote), true)
 							await this.client.chmod(upath.dirname(remote), 0o775)
+							this.client.client.removeAllListeners('error');
 						} catch (ex) { }
 
 						deleteQueueFunc();
@@ -750,6 +751,7 @@ export default class Uploader {
 							reject(err.message);
 							next();
 						})
+						this.client.client.removeAllListeners('error');
 						break;
 					case 'delete_folder':
 						this.client.rmdir(remote, true).then(() => {
@@ -760,6 +762,7 @@ export default class Uploader {
 							deleteQueueFunc();
 							reject(err.message);
 						})
+						this.client.client.removeAllListeners('error');
 						break;
 				}
 			}, _debouncePendingOut);
