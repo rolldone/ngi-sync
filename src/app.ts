@@ -23,6 +23,7 @@ process.on('SIGINT', (props: any, props2: any) => {
 
 /* Set unlimited max listener callback function */
 process.setMaxListeners(0);
+process.on('warning', e => console.warn(e.stack));
 
 BaseStart({
   port: null,

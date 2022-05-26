@@ -19,7 +19,7 @@ var configPubSub = {
   //
   // the maximum amount of listeners that can be assigned to an event, default 10.
   //
-  maxListeners: 100,
+  maxListeners: 99999999999,
 
   //
   // show event name in memory leak message when more than maximum amount of listeners is assigned, default false

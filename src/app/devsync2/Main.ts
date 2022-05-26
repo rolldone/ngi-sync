@@ -1,6 +1,6 @@
 import BaseController from "@root/base/BaseController";
 import CliService, { CliInterface } from "./services/CliService";
-import DevRsyncService, { DevRsyncServiceInterface } from "./services/DevRsyncService";
+import DevRsyncService, { DevRsyncServiceInterface } from "./services/DevSync2Service";
 
 export interface MainControllerInterface extends BaseControllerInterface {
   index: { (): void }
