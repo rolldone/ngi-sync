@@ -340,38 +340,47 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     });
     this._httpEvent = this.returnHttpEvent(this._cli, this._currentConf);
     this._httpEvent.setOnChangeListener(async (action, props) => {
+      process.stdout.write(chalk.green('Ngi-sync Agent | '));
+      process.stdout.write(chalk.green('Action :: ') + action + " - " + props + '\n');
       await this._download.startSftp();
-      _pendingTimeoutStopDownload();
-      switch (action) {
-        case 'ADD':
-          this._download.startWaitingDownloads(props).then((data) => { }).catch(err => { });
-          break;
-        case 'CHANGE':
-          this._download.startWaitingDownloads(props).then((data) => { }).catch(err => { });
-          break;
-        case 'UNLINK':
-          /* Dont use observatory for delete file */
-          this._download.deleteFile(props);
-          break;
-        case 'UNLINK_DIR':
-          /* Dont use observatory for delete folder */
-          this._download.deleteFolder(props, 5);
-          break;
+      let _pendingWaitingONSftp = () => {
+        if (this._download._client == null) {
+          setTimeout(_pendingWaitingONSftp, 3000);
+          return;
+        }
+        _pendingTimeoutStopDownload();
+        switch (action) {
+          case 'ADD':
+            this._download.startWaitingDownloads(props).then((data) => { }).catch(err => { });
+            break;
+          case 'CHANGE':
+            this._download.startWaitingDownloads(props).then((data) => { }).catch(err => { });
+            break;
+          case 'UNLINK':
+            /* Dont use observatory for delete file */
+            this._download.deleteFile(props);
+            break;
+          case 'UNLINK_DIR':
+            /* Dont use observatory for delete folder */
+            this._download.deleteFolder(props, 5);
+            break;
+        }
+        // PRevent if console is on
+        if (this._actionMode == "console") return;
+        switch (action) {
+          case 'CLIENT_REQUEST':
+            process.stdout.write(chalk.green('Devsync | '));
+            process.stdout.write(chalk.green('CLIENT_REQUEST :: '));
+            process.stdout.write('Remote success trying request' + '\n');
+            break;
+          case 'LISTEN_PORT':
+            process.stdout.write(chalk.green('Devsync | '));
+            process.stdout.write(chalk.green('LISTEN_PORT :: '));
+            process.stdout.write('Listen Reverse Port :: ' + props + '\n');
+            break;
+        }
       }
-      // PRevent if console is on
-      if (this._actionMode == "console") return;
-      switch (action) {
-        case 'CLIENT_REQUEST':
-          process.stdout.write(chalk.green('Devsync | '));
-          process.stdout.write(chalk.green('CLIENT_REQUEST :: '));
-          process.stdout.write('Remote success trying request' + '\n');
-          break;
-        case 'LISTEN_PORT':
-          process.stdout.write(chalk.green('Devsync | '));
-          process.stdout.write(chalk.green('LISTEN_PORT :: '));
-          process.stdout.write('Listen Reverse Port :: ' + props + '\n');
-          break;
-      }
+      setTimeout(_pendingWaitingONSftp, 1000);
     })
     this.uploader = new Uploader(currentConf, this._cli);
     // Are we running app locally via node?
