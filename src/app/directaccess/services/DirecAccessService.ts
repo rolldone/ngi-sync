@@ -7,7 +7,7 @@ import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import * as child_process from 'child_process';
 declare var masterData: MasterDataInterface;
 
-const GIT_CLEAN_UP = 'Git clean up : git add --renormalize . && git reset';
+const GIT_CLEAN_UP = 'Git clean up : git config core.filemode false && git config core.autocrlf true && git add --renormalize . && git reset';
 const RUN_DEVSYNC2 = 'Open Devsync2';
 const RUN_DEVSYNC = 'Open Devsync';
 const OPEN_CONSOLE = 'Open Console';
@@ -77,7 +77,7 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     _directAccess.ssh_commands.push({
       access_name: GIT_CLEAN_UP,
       key: 'clean',
-      command: 'git add --renormalize . && git reset'
+      command: 'git config core.filemode false && git config core.autocrlf true && git add --renormalize . && git reset'
     });
 
     if (extra_command != null) {
