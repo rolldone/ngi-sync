@@ -438,7 +438,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
       _pendingStop = debounce(() => {
         this.onListener('TRYING_STOP', '');
         this.stop();
-      }, 10000);//300000
+      }, 300000);
       _pendingStop();
     }
     this._pendingTimeoutStop = _stop;
