@@ -205,11 +205,11 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
             theClient.close();
             theClient = this.returnClient({
               ...this._sshConfig,
-              path: fromFilePath
+              path: upath.normalizeSafe(fromFilePath)
             });
 
             if (err) {
-              console.log('fromFilePath -> ', fromFilePath);
+              console.log('fromFilePath -> ', upath.normalizeSafe(fromFilePath));
               console.log('theLocalPath -> ', pathJoin("", theLocalPath));
               console.log('error -> ', err);
               this._onListener({
