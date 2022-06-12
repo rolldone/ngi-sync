@@ -32,7 +32,7 @@ var deletedRemainingRecord = function () {
 			pendingDelete.cancel();
 		}
 		pendingDelete = _.debounce(function (remainingObject) {
-			for(var lastFileName in lastRecord) {
+			for (var lastFileName in lastRecord) {
 				if (remainingObject[lastFileName] == null) {
 					let theDelete = {
 						host: config.host,
@@ -46,7 +46,9 @@ var deletedRemainingRecord = function () {
 				delete lastRecord[lastFileName];
 			};
 			lastRecord = remainingObject;
-			self._event.emit('done');
+			if (self._event != null) {
+				self._event.emit('done');
+			}
 		}, 5000);
 		pendingDelete(passObject);
 	}
@@ -56,18 +58,18 @@ var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileO
 	let self = this;
 	var config = self._config;
 	var event = self._event;
-	
+
 	/* Check is have pattern a file */
 	// console.log('fileOrdFolder',fileOrdFolder);
-	if(fileOrdFolder[Object.keys(fileOrdFolder).length - 1] != "/"){
+	if (fileOrdFolder[Object.keys(fileOrdFolder).length - 1] != "/") {
 		let getFolder = path.dirname(fileOrdFolder);
 		sftp.readdir(getFolder, function (err, objList) {
-			if(err){
-				console.log('RECURSIVEDOWNLOAD :: Folder ',getFolder);
+			if (err) {
+				console.log('RECURSIVEDOWNLOAD :: Folder ', getFolder);
 				event.emit('error', err.message || err);
 				return;
 			}
-			for(var a = 0;a<objList.length;a++){
+			for (var a = 0; a < objList.length; a++) {
 				let fileObj = objList[a];
 				// console.log('filObj',fileObj);
 				let theFileName = removeDuplicate(getFolder + '/' + fileObj.filename, '/');
@@ -79,7 +81,7 @@ var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileO
 						// recursiveDownload.call(self, baseObjList, newEntryObjList, sftp, theFileName);
 						self._deleteRemainingRecord.call(self, newEntryObjList);
 					} else {
-						if(fileObj.filename == path.basename(fileOrdFolder,'')){
+						if (fileObj.filename == path.basename(fileOrdFolder, '')) {
 							event.emit("upload", {
 								host: config.host,
 								user: config.username,
@@ -89,7 +91,7 @@ var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileO
 							});
 							/* Call again remaining queue for continue process loop request */
 							self._deleteRemainingRecord.call(self, newEntryObjList);
-							
+
 						}
 					}
 				});
@@ -102,10 +104,9 @@ var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileO
 	let folder = fileOrdFolder
 	sftp.readdir(folder, function (err, objList) {
 		if (err) {
-			console.log('RECURSIVEDOWNLOAD :: Folder ',folder);
+			console.log('RECURSIVEDOWNLOAD :: Folder ', folder);
 			event.emit('error', err.message || err);
 		} else {
-
 			objList.forEach(function (fileObj) {
 				let theFileName = removeDuplicate(folder + '/' + fileObj.filename, '/');
 				sftp.readdir(theFileName, function (err, objList) {
@@ -141,17 +142,22 @@ var recursiveDownload = function (baseObjList = {}, newEntryObjList, sftp, fileO
 	});
 }
 
+let fileWatcher = null;
+let _mainCon = null;
+let event = null;
+
 export default function (config) {
 	let self = {};
 	self._config = config;
 	self._deleteRemainingRecord = deletedRemainingRecord();
-	var event = new EventEmitter();
+	event = new EventEmitter();
 	self._event = event;
-	var fileWatcher = null;
-	var _mainCon = null;
 	event.on("stop", function () {
 		_mainCon.end();
+		_mainCon = null;
 		event.emit("close", "SFTP watcher stopped");
+		event.removeAllListeners("done");
+		self._event = event = null;
 	});
 	if (!config.host && !config.username) {
 		//return "Invalid input";
@@ -168,6 +174,7 @@ export default function (config) {
 			}
 			var theSavedJob = {};
 			event.on('done', function () {
+				if(_mainCon == null) return;
 				/* Call again, get recursive */
 				new job(theSavedJob);
 			})
@@ -261,8 +268,8 @@ export default function (config) {
 			recurSive(0);
 			return event
 		}
-		if(config.privateKey != null){
-			if(config.password != null){
+		if (config.privateKey != null) {
+			if (config.password != null) {
 				config.passphrase = config.password;
 			}
 		}
