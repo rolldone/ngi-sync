@@ -485,16 +485,21 @@ export default class Watcher {
 					return;
 			}
 
-			// This is for devsync catch if get changed and dont let upload if same
-			let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
-			if (fileEditFromServer[upath.normalizeSafe(path)] != null) {
-				if (fileEditFromServer[upath.normalizeSafe(path)] == true) {
-					masterData.updateData('file_edit_from_server', {
-						[upath.normalizeSafe(path)]: false
-					});
-					this.deleteCacheFile(path);
-					return;
-				}
+			switch (method) {
+				case 'add':
+				case 'change':
+					// This is for devsync catch if get changed and dont let upload if same
+					let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
+					if (fileEditFromServer[upath.normalizeSafe(path)] != null) {
+						if (fileEditFromServer[upath.normalizeSafe(path)] == true) {
+							masterData.updateData('file_edit_from_server', {
+								[upath.normalizeSafe(path)]: false
+							});
+							this.deleteCacheFile(path);
+							return;
+						}
+					}
+					break;
 			}
 
 			// This is for devsync2 

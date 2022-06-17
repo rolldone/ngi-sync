@@ -151,6 +151,7 @@ export default function (config) {
 	self._config = config;
 	self._deleteRemainingRecord = deletedRemainingRecord();
 	event = new EventEmitter();
+	event.setMaxListeners(0);
 	self._event = event;
 	event.on("stop", function () {
 		_mainCon.end();
