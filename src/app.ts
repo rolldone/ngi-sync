@@ -6,6 +6,7 @@ import bootstrap from './bootstrap';
 import { MasterDataInterface } from './bootstrap/StartMasterData';
 import { Cli } from './routes/v1';
 import os from 'os';
+import path from "path";
 
 declare var masterData: MasterDataInterface;
 
@@ -41,6 +42,7 @@ BaseStart({
     if (os.platform() != "win32") {
       process.env.IS_PROCESS = "open_console";
     }
+    console.log("process.execPath :: ", path.dirname(process.execPath));
     /* Server is ready! */
     /* You can create some programatic code here */
     let segment1: minimist.ParsedArgs = minimist(process.argv.slice(2), {});
