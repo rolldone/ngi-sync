@@ -120,6 +120,10 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
   },
   stopSubmitWatch: function () {
     this._event.emit('stop');
+    this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
+    this._tasks['sftp-watcher'].done("Stopped");
+    this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
+    this._tasks['sftp-watcher'].done("Push enter for start watch again.");
     // this._event = null;
   },
   submitWatch: function () {
@@ -165,10 +169,7 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
       console.log(data.toString())
     });
     event.on("close", (data: any) => {
-      this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
-      this._tasks['sftp-watcher'].done("Stopped");
-      this._tasks['sftp-watcher'] = observatory.add("SFTP-WATCHER :: ");
-      this._tasks['sftp-watcher'].done("Push enter for start watch again.");
+
     });
     event.on("error", (data: any) => {
       console.log('error', data.toString())
@@ -205,11 +206,11 @@ const SyncPull = BaseModel.extend<Omit<SyncPullInterface, 'model'>>({
             theClient.close();
             theClient = this.returnClient({
               ...this._sshConfig,
-              path: fromFilePath
+              path: upath.normalizeSafe(fromFilePath)
             });
 
             if (err) {
-              console.log('fromFilePath -> ', fromFilePath);
+              console.log('fromFilePath -> ', upath.normalizeSafe(fromFilePath));
               console.log('theLocalPath -> ', pathJoin("", theLocalPath));
               console.log('error -> ', err);
               this._onListener({
