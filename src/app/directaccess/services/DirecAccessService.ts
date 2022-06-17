@@ -56,9 +56,12 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     await this._config.ready();
     let arrayQuestions = [];
     let _directAccess: DirectAccessType = this._config.direct_access as any;
+    
+    // If you are in not on sync-config area return null
     if (_directAccess == null) {
       return;
     }
+    
     _directAccess.ssh_commands.push({
       access_name: OPEN_CONSOLE,
       key: 'console',

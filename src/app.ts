@@ -42,7 +42,9 @@ BaseStart({
     if (os.platform() != "win32") {
       process.env.IS_PROCESS = "open_console";
     }
-    console.log("process.execPath :: ", path.dirname(process.execPath));
+    console.log("process.execPath :: ", process.execPath);
+    console.log("process.execPath dirname :: ", path.dirname(process.execPath));
+    console.log("process.execPath basename :: ", path.basename(process.execPath));
     /* Server is ready! */
     /* You can create some programatic code here */
     let segment1: minimist.ParsedArgs = minimist(process.argv.slice(2), {});
