@@ -11,7 +11,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npx webpack --watch",
     "build": "npx webpack --config webpack.config.prod.js",
-    "compile": "pkg ."
+    "compile-win": "pkg . --targets node14-win-x64",
+    "compile-linux": "pkg . --targets node14-linux"
   },
   "pkg": {
     "scripts": [
@@ -19,8 +20,7 @@
       "node_modules/node-pty/**/*.js"
     ],
     "assets": [
-      "dist/example.yaml",
-      "dist/ngi-sync-agent-linux.tar.gz"
+      "dist/example.yaml"
     ],
     "targets": [
       "node14-win-x64",
