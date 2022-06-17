@@ -6,6 +6,7 @@ var pty = require('node-pty');
 import rl, { ReadLine } from 'readline';
 import { CliInterface } from "./CliService";
 import Config, { ConfigInterface } from "../compute/Config";
+import path from "path";
 var size = require('window-size');
 
 export interface OpenConsoleServiceInterface extends BaseServiceInterface {
@@ -18,7 +19,7 @@ export interface OpenConsoleServiceInterface extends BaseServiceInterface {
   _currentConf?: ConfigInterface
 }
 
-export default BaseService.extend<OpenConsoleServiceInterface>({
+const OpenConsoleService = BaseService.extend<OpenConsoleServiceInterface>({
   returnConfig: function (cli) {
     return Config.create(cli)
   },
@@ -73,7 +74,10 @@ export default BaseService.extend<OpenConsoleServiceInterface>({
       _ptyProcess.resize(width, height)
     });
 
-    _ptyProcess.write('ngi-sync\r');
+    let execPathFileName = path.basename(process.execPath);
+    console.log("execPathFileName :: ",execPathFileName);
+    execPathFileName = execPathFileName == "node" ? "ngi-sync" : process.execPath;
+    _ptyProcess.write(`${execPathFileName}\r`);
 
     return _ptyProcess;
   },
@@ -124,3 +128,5 @@ export default BaseService.extend<OpenConsoleServiceInterface>({
 
   }
 });
+
+export default OpenConsoleService;
