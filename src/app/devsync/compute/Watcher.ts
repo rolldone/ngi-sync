@@ -485,6 +485,24 @@ export default class Watcher {
 					return;
 			}
 
+			switch (method) {
+				case 'add':
+				case 'change':
+					// This is for devsync catch if get changed and dont let upload if same
+					let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
+					if (fileEditFromServer[upath.normalizeSafe(path)] != null) {
+						if (fileEditFromServer[upath.normalizeSafe(path)] == true) {
+							masterData.updateData('file_edit_from_server', {
+								[upath.normalizeSafe(path)]: false
+							});
+							this.deleteCacheFile(path);
+							return;
+						}
+					}
+					break;
+			}
+
+			// This is for devsync2 
 			let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
 			if (fileDownoadRecord[upath.normalizeSafe(path)] == true) {
 				delete fileDownoadRecord[upath.normalizeSafe(path)];

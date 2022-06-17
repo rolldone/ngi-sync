@@ -415,7 +415,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           console.clear();
           process.stdout.write(chalk.green('Devsync | ') + 'Watch Mode' + '\r');
           // this.uploader._consoleAction = "watch";
-          if(this.uploader == null){
+          if (this.uploader == null) {
             this.uploader = new Uploader(currentConf, this._cli);
           }
           if (this.watcher == null) {
@@ -455,6 +455,9 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           setTimeout(() => {
             this.uploader.startConsole(true, (action: string, props: any) => {
               switch (action) {
+                case 'ENTER_LISTENER':
+                  _startWatchingWithTimeOut();
+                  break;
                 case 'switch':
                   remoteFuncKeypress(null, props);
                   break;
@@ -494,6 +497,9 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
                   process.stdout.write(chalk.green('Index Running ::  | ') + index + '\r');
                   this.uploader.startConsoles(index, cache_command[index], true, (action: string, props: any) => {
                     switch (action) {
+                      case 'ENTER_LISTENER':
+                        _startWatchingWithTimeOut();
+                        break;
                       case 'switch':
                         remoteFuncKeypress(null, props);
                         break;
@@ -625,7 +631,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             this.task.done();
             console.clear();
             process.stdout.write(chalk.green('Remote | ') + 'Restarting...' + '\r');
-            
+
             setTimeout(() => {
               this.construct(this._cli);
             }, 3000);
@@ -715,8 +721,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         this._cli.workspace();
 
         if (this._currentConf.devsync.script.remote.on_ready != "" && this._currentConf.devsync.script.remote.on_ready != null) {
-          return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, () => {
-          });
+          return this.uploader._executeCommand(this._currentConf.devsync.script.remote.on_ready, (action) => { });
         }
       });
     }

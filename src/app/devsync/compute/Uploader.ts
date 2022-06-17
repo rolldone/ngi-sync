@@ -92,8 +92,8 @@ export default class Uploader {
 						if (this._consoleCache.length >= 2000) {
 							this._consoleCache.shift();
 						};
-						this._consoleCache.push(dd.toString().replace(//g,""));
-						process.stdout.write(dd.toString().replace(//g,""));
+						this._consoleCache.push(dd.toString().replace(//g, ""));
+						process.stdout.write(dd.toString().replace(//g, ""));
 
 						// appendFile(upath.normalizeSafe(this.config.localPath + "/" + "command.log"), dd.toString().replace(//g,""), (err) => { });
 					})
@@ -131,6 +131,11 @@ export default class Uploader {
 				}
 				if (isStop == true) {
 					return;
+				}
+				switch (data.sequence) {
+					case '\r':
+						callback('ENTER_LISTENER');
+						break;
 				}
 				switch (data.sequence) {
 					case '\u0003':
@@ -218,6 +223,13 @@ export default class Uploader {
 				if (isStop == true) {
 					return;
 				}
+
+				switch (data.sequence) {
+					case '\r':
+						callback('ENTER_LISTENER');
+						break;
+				}
+				
 				switch (data.sequence) {
 					case '\u0003':
 						return;
@@ -289,8 +301,8 @@ export default class Uploader {
 							_consoleCaches[index].shift();
 						};
 
-						_consoleCaches[index].push(dd.toString('utf8').replace(//g,""));
-						process.stdout.write(dd.toString('utf8').replace(//g,""));
+						_consoleCaches[index].push(dd.toString('utf8').replace(//g, ""));
+						process.stdout.write(dd.toString('utf8').replace(//g, ""));
 					})
 
 					stream.stderr.on('data', (data: any) => {
@@ -299,9 +311,9 @@ export default class Uploader {
 						if (_consoleCaches[index].length >= 2000) {
 							_consoleCaches[index].shift();
 						};
-						_consoleCaches[index].push(data.toString().replace(//g,""));
+						_consoleCaches[index].push(data.toString().replace(//g, ""));
 
-						process.stdout.write(data.toString().replace(//g,""));
+						process.stdout.write(data.toString().replace(//g, ""));
 					});
 					process.stdin.pipe(stream);
 					process.stdin.setRawMode(true);
@@ -635,7 +647,7 @@ export default class Uploader {
 					})
 				} else {
 					this.onListener('UPLOADED', {
-						return: 'Last Upload: ' + whatFile// 'Sync is done!'
+						return: 'Last Synchronize: ' + whatFile// 'Sync is done!'
 					})
 				}
 			}, 3000 /* 10000 */);
@@ -697,6 +709,7 @@ export default class Uploader {
 						try {
 							await this.client.mkdir(upath.dirname(remote), true)
 							await this.client.chmod(upath.dirname(remote), 0o775)
+							this.client.client.removeAllListeners('error');
 						} catch (ex) { }
 
 						deleteQueueFunc();
@@ -750,6 +763,7 @@ export default class Uploader {
 							reject(err.message);
 							next();
 						})
+						this.client.client.removeAllListeners('error');
 						break;
 					case 'delete_folder':
 						this.client.rmdir(remote, true).then(() => {
@@ -760,6 +774,7 @@ export default class Uploader {
 							deleteQueueFunc();
 							reject(err.message);
 						})
+						this.client.client.removeAllListeners('error');
 						break;
 				}
 			}, _debouncePendingOut);

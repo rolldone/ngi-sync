@@ -342,7 +342,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
 
         /* DONT UNTIL SWITCH BETWEEN FILE_UPLOAD_RECORD and FILE_DOWNLOAD_RECORD */
         /* For this case FILE_UPLOAD_RECORD must first than FILE_DOWNLOAD_RECORD */
-        
+
         /* This is use for prevent download from remote. */
         let fileuploaedRecord = masterData.getData('FILE_UPLOAD_RECORD', {}) as any;
         if (fileuploaedRecord[upath.normalizeSafe(path)] == true) {
@@ -350,7 +350,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
           masterData.saveData('FILE_UPLOAD_RECORD', fileuploaedRecord);
           return;
         }
-        
+
         /* This is use for prevent upload to remote. */
         /* Is use on watcher */
         let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
