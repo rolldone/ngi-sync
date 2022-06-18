@@ -268,10 +268,12 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           fileName = 'ngi-sync-agent-win.app';
           break;
       }
-      let localFilePath = upath.normalizeSafe(path.join(__dirname, "") + '/' + tarFile);
+      const isLocal = typeof process.pkg === 'undefined';
+
+      let localFilePath = isLocal ? upath.normalizeSafe(path.join(__dirname, "") + '/' + tarFile) : path.dirname(process.execPath) + `/${tarFile}`;
       let remoteFilePath = upath.normalizeSafe(this._config.remotePath + '/' + tarFile);
       let exists = await this._client.exists(remoteFilePath);
-      let curretnFileStat = statSync(upath.normalizeSafe(path.join(__dirname, "")) + '/' + tarFile, {});
+      let curretnFileStat = statSync(isLocal ? upath.normalizeSafe(path.join(__dirname, "")) + '/' + tarFile : path.dirname(process.execPath) + `/${tarFile}`, {});
       let executeFile = upath.normalizeSafe(this._config.remotePath + '/' + fileName);
 
       let _afterInstall = async () => {
