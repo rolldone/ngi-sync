@@ -1,5 +1,10 @@
 ---
 reset_cache: true
+sync_collection:
+  src: /where/the/sync/collections/path
+  files:
+    - docker-compose.yaml
+    - .env
 project_name: Workspaces Digital Ocean
 username: root
 privateKey: C:/Users/test/.ssh/id_rsa_no_password

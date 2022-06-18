@@ -215,9 +215,8 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
               /* This is use for prevent upload to remote. */
               /* Is use on watcher */
               let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
-              fileDownoadRecord[fileName] = true;
+              fileDownoadRecord[upath.normalize(fileName)] = true;
               masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
-
               let firstKey = Object.keys(this._pendingQueue)[entry.queue_no];
               if (firstKey == null) {
                 firstKey = Object.keys(this._pendingQueue)[0];
@@ -268,7 +267,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
     /* This is use for prevent upload to local_path. */
     /* Is use on watcher */
     let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
-    fileDownoadRecord[local_path] = true;
+    fileDownoadRecord[upath.normalize(local_path)] = true;
     masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
 
     /* Delete cache file if exist */
@@ -300,7 +299,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
     /* This is use for prevent upload to local_path. */
     /* Is use on watcher */
     let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
-    fileDownoadRecord[local_path] = true;
+    fileDownoadRecord[upath.normalize(local_path)] = true;
     masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
 
     /* Delete cache file if exist */
@@ -354,7 +353,7 @@ const Download = BaseModel.extend<Omit<DownloadInterface, 'model'>>({
         /* This is use for prevent upload to remote. */
         /* Is use on watcher */
         let fileDownoadRecord = masterData.getData('FILE_DOWNLOAD_RECORD', {}) as any;
-        fileDownoadRecord[local_path] = true;
+        fileDownoadRecord[upath.normalize(local_path)] = true;
         masterData.saveData('FILE_DOWNLOAD_RECORD', fileDownoadRecord);
 
 
