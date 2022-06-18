@@ -347,11 +347,8 @@ const Config = BaseModel.extend<ConfigInterface>({
       ["reset_cache", "sync_collection", "sync_config_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
         "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission", "devsync"].forEach(prop => {
           if (prop == 'localPath') {
-            if (self[prop] == null) {
-              self[prop] = ".";
-            }
             if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
-              self[prop] = ".";
+              self[prop] = upath.normalizeSafe(path.resolve(self._config[prop] || self[prop]));
             } else {
               self[prop] = upath.normalizeSafe(self._config[prop] || self[prop]);
             }
