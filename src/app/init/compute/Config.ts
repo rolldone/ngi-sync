@@ -8,6 +8,7 @@ const { parse } = require("jsonplus");
 import YAML from 'yaml'
 import os from 'os';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
+import filendir from 'filendir';
 
 export const CONFIG_FILE_NAME = "sync-config.yaml";
 export type trigger_permission = {
@@ -21,10 +22,16 @@ export interface ConfigInterface extends BaseModelInterface {
   ready?: { (): Promise<void> }
   _fetch?: { (): void | boolean }
   _expand?: { (): void }
+  _reconstruction?: { (): void | boolean }
 
   _filename?: string;
   _config?: ConfigInterface;
   _originConfig?: any
+
+  sync_collection?: {
+    src: string
+    files: Array<string>
+  }
 
   // properties
   mode?: string
@@ -189,13 +196,89 @@ const Config = BaseModel.extend<ConfigInterface>({
     });
   },
   _loadConfig: function () {
-    let result = this._fetch();
+    let result = this._reconstruction();
+    /* If get error return it */
+    if (result == false) return;
+    result = this._fetch();
     /* If get error return it */
     if (result == false) return;
     this._expand();
     let dataConfig = masterData.getData('data.config', null);
     if (dataConfig == null) {
       masterData.saveData('data.config', this);
+    }
+  },
+  _reconstruction: function () {
+    try {
+      if (existsSync(this._filename)) {
+        let configraw;
+        if (configraw = readFileSync(this._filename)) {
+          let testStringValue = "";
+          
+          try {
+            this._config = YAML.parse(configraw.toString()) as any;
+            this._originConfig = Object.assign({}, this._config);
+            let newObject = this._config as any;
+            testStringValue = JSON.stringify(this._config);
+            let match = testStringValue.match(/=[^=|'|"|\\| ]+/g);
+            match = uniq(match);
+            for (var a = 0; a < match.length; a++) {
+              match[a] = match[a].replace('=', '');
+            }
+
+            this._config = JSON.parse(testStringValue);
+          } catch (e) {
+            console.log('Could not parse DB file. Make sure JSON is correct');
+            console.log(' ', e);
+            return false;
+          }
+        } else {
+          this.cli.usage("Cannot read config file. Make sure you have permissions", EXIT_CODE.INVALID_ARGUMENT);
+          return false;
+        }
+      } else {
+        this.cli.usage("Config file not found", EXIT_CODE.INVALID_ARGUMENT);
+        return false;
+      }
+
+      let self: {
+        [key: string]: any
+      } = {
+        ...this,
+        ...this._config
+      };
+      
+      let _overrideSyncConfig = {};
+      
+      ["reset_cache", "sync_collection", "sync_config_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
+        "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission", "devsync"].forEach(prop => {
+          if (prop == 'localPath') {
+            if (self[prop] == null) {
+              self[prop] = ".";
+            }
+            if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
+              self[prop] = ".";
+            } else {
+              self[prop] = upath.normalizeSafe(self._config[prop] || self[prop]);
+            }
+          } else if (prop == "sync_collection") {
+            if (self[prop] == null) {
+              self[prop] = {}
+            }
+            self[prop].src = self[prop].src == null ? upath.normalize(os.homedir() + "/sync_collections") : upath.normalize(self[prop].src);
+            self[prop].files = self[prop].files == null ? [] : self[prop].files;
+          } else {
+            self[prop] = self._config[prop] || self[prop];
+          }
+          if (self[prop] != null) {
+            _overrideSyncConfig[prop] = self[prop];
+          }
+        });
+
+      // Override the sync-config if getting new and replace old version
+      filendir.writeFileSync(path.resolve("", "sync-config.yaml"), YAML.stringify(_overrideSyncConfig, null), "utf8");
+    } catch (ex) {
+      console.log('_expand -> ex ', ex);
     }
   },
   _fetch: function () {
@@ -260,11 +343,15 @@ const Config = BaseModel.extend<ConfigInterface>({
       let self: {
         [key: string]: any
       } = this;
-      ["reset_cache", "saved_file_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
+      
+      ["reset_cache", "sync_collection", "sync_config_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
         "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission", "devsync"].forEach(prop => {
           if (prop == 'localPath') {
+            if (self[prop] == null) {
+              self[prop] = ".";
+            }
             if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
-              self[prop] = upath.normalizeSafe(path.resolve(self._config[prop] || self[prop]));
+              self[prop] = ".";
             } else {
               self[prop] = upath.normalizeSafe(self._config[prop] || self[prop]);
             }
@@ -272,6 +359,7 @@ const Config = BaseModel.extend<ConfigInterface>({
             self[prop] = self._config[prop] || self[prop];
           }
         });
+
     } catch (ex) {
       console.log('_expand -> ex ', ex);
     }
