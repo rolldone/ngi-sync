@@ -30,7 +30,7 @@ export const ACTION = {
 
 declare var masterData: MasterDataInterface;
 
-export default BaseService.extend<OpenRecentServiceInterface>({
+const OpenRecentService = BaseService.extend<OpenRecentServiceInterface>({
   /* To store data */
   _realdData: {},
   /* To display data */
@@ -131,3 +131,5 @@ export default BaseService.extend<OpenRecentServiceInterface>({
     }
   },
 });
+
+export default OpenRecentService;
