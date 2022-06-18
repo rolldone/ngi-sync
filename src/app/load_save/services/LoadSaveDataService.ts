@@ -299,6 +299,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       let bodyData: any = readFileSync(upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/sync-config.yaml'));
       bodyData = YAML.parse(bodyData.toString()) as any;
       bodyData.sync_config_name = whatSyncName;
+      bodyData.sync_collection.src = this._sync_collection_src;
       writeFileSync(this._config._filename, YAML.stringify(bodyData, null), 'utf8');
       /* Add sync_ignore can self by owner ngi-sync */
       if (existsSync(upath.normalize(this._sync_collection_src + "/" + whatSyncName + "/.sync_ignore"))) {
