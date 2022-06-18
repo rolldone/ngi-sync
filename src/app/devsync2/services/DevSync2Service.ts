@@ -11,6 +11,7 @@ import rl, { ReadLine } from 'readline';
 import HttpEvent, { HttpEventInterface } from "../compute/HttpEvent";
 import Download, { DownloadInterface } from "../compute/Download";
 import { executeLocalCommand, stripAnsi } from "@root/tool/Helpers";
+import upath from 'upath';
 const observatory = require("observatory");
 const notifier = require('node-notifier');
 const chalk = require('chalk');
@@ -298,24 +299,24 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         case 'REJECTED':
           process.stdout.write(chalk.red('Devsync | '));
           process.stdout.write(chalk.red('REJECTED :: '));
-          process.stdout.write(props + '\n');
+          process.stdout.write(upath.normalize(props) + '\n');
           break;
         case 'REJECTED_DOWNLOAD':
           process.stdout.write(chalk.red('Devsync | '));
           process.stdout.write(chalk.red('Download Failed :: '));
-          process.stdout.write(props + '\n');
+          process.stdout.write(upath.normalize(props) + '\n');
           break;
         case 'ONGOING':
           break;
         case 'DELETED_FOLDER':
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('DELETED_FOLDER :: '));
-          process.stdout.write(props + '\n');
+          process.stdout.write(upath.normalize(props) + '\n');
           break;
         case 'DELETED':
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('DELETED :: '));
-          process.stdout.write(props + '\n');
+          process.stdout.write(upath.normalize(props) + '\n');
           break;
         case 'DOWNLOADED_DONE':
           process.stdout.write(chalk.green('Devsync | '));
@@ -324,7 +325,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         case 'DOWNLOADED':
           process.stdout.write(chalk.green('Devsync | '));
           process.stdout.write(chalk.green('DOWNLOADED :: '));
-          process.stdout.write(props + '\n');
+          process.stdout.write(upath.normalize(props) + '\n');
           break;
         case 'TRYING_STOP':
           process.stdout.write(chalk.green('Devsync | '));
