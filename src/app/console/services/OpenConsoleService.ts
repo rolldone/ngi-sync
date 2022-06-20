@@ -7,6 +7,7 @@ import rl, { ReadLine } from 'readline';
 import { CliInterface } from "./CliService";
 import Config, { ConfigInterface } from "../compute/Config";
 import path from "path";
+import upath from 'upath';
 var size = require('window-size');
 
 export interface OpenConsoleServiceInterface extends BaseServiceInterface {
@@ -76,7 +77,7 @@ const OpenConsoleService = BaseService.extend<OpenConsoleServiceInterface>({
 
     let execPathFileName = path.basename(process.execPath);
     execPathFileName = (execPathFileName == "node" || execPathFileName == "node.exe") ? "ngi-sync" : process.execPath;
-    _ptyProcess.write(`${execPathFileName}\r`);
+    _ptyProcess.write(`${upath.normalize(execPathFileName)}\r`);
 
     return _ptyProcess;
   },
