@@ -17,6 +17,10 @@ export type trigger_permission = {
   change: boolean
   add: boolean
 }
+
+const SYNC_CONFIG_FIELD = ["reset_cache", "sync_collection", "sync_config_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
+  "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission", "devsync"];
+
 export interface ConfigInterface extends BaseModelInterface {
   reset_cache?: boolean
   ready?: { (): Promise<void> }
@@ -214,7 +218,7 @@ const Config = BaseModel.extend<ConfigInterface>({
         let configraw;
         if (configraw = readFileSync(this._filename)) {
           let testStringValue = "";
-          
+
           try {
             this._config = YAML.parse(configraw.toString()) as any;
             this._originConfig = Object.assign({}, this._config);
@@ -247,33 +251,34 @@ const Config = BaseModel.extend<ConfigInterface>({
         ...this,
         ...this._config
       };
-      
+
       let _overrideSyncConfig = {};
-      
-      ["reset_cache", "sync_collection", "sync_config_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
-        "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission", "devsync"].forEach(prop => {
-          if (prop == 'localPath') {
-            if (self[prop] == null) {
-              self[prop] = ".";
-            }
-            if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
-              self[prop] = ".";
-            } else {
-              self[prop] = upath.normalizeSafe(self._config[prop] || self[prop]);
-            }
-          } else if (prop == "sync_collection") {
-            if (self[prop] == null) {
-              self[prop] = {}
-            }
-            self[prop].src = self[prop].src == null ? upath.normalize(os.homedir() + "/sync_collections") : upath.normalize(self[prop].src);
-            self[prop].files = self[prop].files == null ? [] : self[prop].files;
+
+      SYNC_CONFIG_FIELD.forEach(prop => {
+        if (prop == 'localPath') {
+          if (self[prop] == null) {
+            self[prop] = ".";
+          }
+          if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
+            self[prop] = ".";
           } else {
-            self[prop] = self._config[prop] || self[prop];
+            self[prop] = upath.normalizeSafe(self._config[prop] || self[prop]);
           }
-          if (self[prop] != null) {
-            _overrideSyncConfig[prop] = self[prop];
+        } else if (prop == "size_limit") {
+          self[prop] = self[prop] == null ? 5 : self[prop];
+        } else if (prop == "sync_collection") {
+          if (self[prop] == null) {
+            self[prop] = {}
           }
-        });
+          self[prop].src = self[prop].src == null ? upath.normalize(os.homedir() + "/sync_collections") : upath.normalize(self[prop].src);
+          self[prop].files = self[prop].files == null ? [] : self[prop].files;
+        } else {
+          self[prop] = self._config[prop] || self[prop];
+        }
+        if (self[prop] != null) {
+          _overrideSyncConfig[prop] = self[prop];
+        }
+      });
 
       // Override the sync-config if getting new and replace old version
       filendir.writeFileSync(path.resolve("", "sync-config.yaml"), YAML.stringify(_overrideSyncConfig, null), "utf8");
@@ -343,19 +348,18 @@ const Config = BaseModel.extend<ConfigInterface>({
       let self: {
         [key: string]: any
       } = this;
-      
-      ["reset_cache", "sync_collection", "sync_config_name", "mode", "host", "port", "project_name", "username", "password", "pathMode", "size_limit",
-        "localPath", "remotePath", "ignores", "privateKey", "downloads", "jumps", "backup", "direct_access", "single_sync", "trigger_permission", "devsync"].forEach(prop => {
-          if (prop == 'localPath') {
-            if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
-              self[prop] = upath.normalizeSafe(path.resolve(self._config[prop] || self[prop]));
-            } else {
-              self[prop] = upath.normalizeSafe(self._config[prop] || self[prop]);
-            }
+
+      SYNC_CONFIG_FIELD.forEach(prop => {
+        if (prop == 'localPath') {
+          if (upath.isAbsolute(self._config[prop] || self[prop]) == false) {
+            self[prop] = upath.normalizeSafe(path.resolve(self._config[prop] || self[prop]));
           } else {
-            self[prop] = self._config[prop] || self[prop];
+            self[prop] = upath.normalizeSafe(self._config[prop] || self[prop]);
           }
-        });
+        } else {
+          self[prop] = self._config[prop] || self[prop];
+        }
+      });
 
     } catch (ex) {
       console.log('_expand -> ex ', ex);
