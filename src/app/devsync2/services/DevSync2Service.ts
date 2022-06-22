@@ -342,7 +342,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     this._httpEvent = this.returnHttpEvent(this._cli, this._currentConf);
     this._httpEvent.setOnChangeListener(async (action, props) => {
       process.stdout.write(chalk.green('Ngi-sync Agent | '));
-      process.stdout.write(chalk.green('Action :: ') + action + " - " + props + '\n');
+      process.stdout.write(chalk.green('Action :: ') + action + " - " + (props || "HTTP") + '\n');
       await this._download.startSftp();
       let _pendingWaitingONSftp = () => {
         if (this._download._client == null) {
@@ -372,7 +372,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           case 'CLIENT_REQUEST':
             process.stdout.write(chalk.green('Devsync | '));
             process.stdout.write(chalk.green('CLIENT_REQUEST :: '));
-            process.stdout.write('Remote success trying request' + '\n');
+            process.stdout.write('Access the host is success' + '\n');
             break;
           case 'LISTEN_PORT':
             process.stdout.write(chalk.green('Devsync | '));
