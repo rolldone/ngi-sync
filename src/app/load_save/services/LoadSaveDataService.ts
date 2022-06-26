@@ -47,21 +47,28 @@ export default BaseService.extend<LoadSaveServiceInterface>({
     return existsSync(path);
   },
   construct: function (cli, action) {
-    this._config = this.returnConfig(cli);
-    /* Display project folder base path */
-    if (this._existConfig(this._config._filename) == false) {
-      process.exit();
-    }
+    try {
+      this._config = this.returnConfig(cli);
+      /* Display project folder base path */
+      if (this._existConfig(this._config._filename) == false) {
+        process.exit();
+      }
 
-    this._sync_collection_src = this._config.sync_collection.src;
-    let test: any = existsSync(upath.normalizeSafe(this._sync_collection_src));
-    if (test == false) {
-      mkdirSync(upath.normalizeSafe(this._sync_collection_src));
+      this._sync_collection_src = this._config.sync_collection.src;
+      let test: any = existsSync(upath.normalizeSafe(this._sync_collection_src));
+
+      if (test == false) {
+        mkdirSync(upath.normalizeSafe(this._sync_collection_src));
+      }
+      if (action == "auto_save") {
+        return this.autoSave();
+      }
+      this.defaultPrompt();
+    } catch (ex) {
+      console.clear();
+      console.log(ex);
+      process.exit(0);
     }
-    if (action == "auto_save") {
-      return this.autoSave();
-    }
-    this.defaultPrompt();
   },
   defaultPrompt() {
     let questions: inquirer.QuestionCollection = [
