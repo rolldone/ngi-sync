@@ -67,6 +67,7 @@
     "dotenv": "^8.2.0",
     "eventemitter2": "^6.4.4",
     "filendir": "^2.0.1",
+    "folder-encrypt": "^1.1.7",
     "gulp": "^4.0.2",
     "ignore": "^5.1.8",
     "inquirer": "^8.2.0",
