@@ -12,7 +12,7 @@ import { CliInterface } from "../services/CliService";
 var size = require('window-size');
 import os from 'os';
 import { ConfigInterface } from "./Config";
-import { fstatSync, readFileSync, Stats, statSync, writeFileSync } from "fs";
+import { existsSync, fstatSync, readFileSync, Stats, statSync, writeFileSync } from "fs";
 import parseGitIgnore from '@root/tool/parse-gitignore'
 import ignore from 'ignore'
 import { uniq } from "lodash";
@@ -336,7 +336,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           try {
             // await this._client.delete(remoteFilePath);
             await this._client.mkdir(path.dirname(remoteFilePath));
-          } catch (ex) { 
+          } catch (ex) {
             console.log(ex);
           }
           try {
@@ -371,14 +371,19 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
   generateSSHConfig() {
     let _direct_access: DirectAccessType = this._config.direct_access as any;
     let _configFilePath = upath.normalizeSafe(os.homedir() + '/.ssh/config');
-
+    let _privateKey = null;
+    if (existsSync(upath.normalize(process.cwd() + "/" + this._config.privateKey)) == true) {
+      _privateKey = upath.normalize(process.cwd() + "/" + this._config.privateKey);
+    } else {
+      _privateKey = this._config.privateKey
+    }
     /* Persisten ssh_config */
     let ssh_confi = {
       Host: "temp_reverse_port_ssh",
       HostName: this._config.host,
       User: this._config.username,
       Port: this._config.port,
-      IdentityFile: this._config.privateKey,
+      IdentityFile: _privateKey,
       RequestTTY: "force",
       StrictHostKeyChecking: "no"
     }
