@@ -32,6 +32,12 @@ export class Uploader extends DevSyncUploader {
 			debounceClose();
 		}
 		return (entry: any, first_time_out: number) => {
+
+			if (this.client == null) {
+				this._pendingQueue = {};
+				return;
+			}
+			
 			this._orders[entry.queue_no] = Object.create({
 				...entry,
 				queue_no: entry.queue_no
@@ -39,9 +45,15 @@ export class Uploader extends DevSyncUploader {
 			if (this._pendingUpload[entry.path] != null) {
 				this._pendingUpload[entry.path].cancel();
 			}
+
 			/* Mengikuti kelipatan concurent */
 			let _debouncePendingOut = first_time_out == null ? (100 * (entry.queue_no == 0 ? 1 : entry.queue_no + 1)) : first_time_out;
 			this._pendingUpload[entry.path] = debounce(async (entry: any) => {
+
+				if (this.client == null) {
+					return;
+				}
+
 				let deleteQueueFunc = () => {
 					this._pendingUpload[entry.path] = null;
 					delete this._pendingUpload[entry.path];
