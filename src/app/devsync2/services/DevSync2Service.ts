@@ -736,6 +736,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
 
             /* Restart the syncronize */
             if (this.uploader != null) {
+              this.uploader.clientClose();
               this.uploader.onListener('RESTART', {});
               this.uploader = null;
             }
@@ -746,7 +747,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             process.stdout.write(chalk.green('Remote | ') + 'Restarting...' + '\r');
             setTimeout(() => {
               this.construct(this._cli);
-            }, 3000);
+            }, 1000);
           }
           var closeRemote = () => {
             if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
