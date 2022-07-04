@@ -624,6 +624,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             this.watcher = null;
 
             /* Restart the syncronize */
+            this.uploader.clientClose();
             this.uploader.onListener('RESTART', {});
             this.uploader = null;
 
@@ -634,7 +635,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
             setTimeout(() => {
               this.construct(this._cli);
-            }, 3000);
+            }, 1000);
           }
           var closeRemote = () => {
             if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
