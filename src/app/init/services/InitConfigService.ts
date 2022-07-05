@@ -46,6 +46,7 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
       test = YAML.parse(readFileSync(upath.normalizeSafe(basePathFolder + '/example.yaml'), 'utf8'));
       test.sync_collection.src = sync_collection_src || upath.normalize(homedir() + "/sync_collections");
     }
+    // console.log("test.sync_collection.src :: ",test.sync_collection.src);
     if (existsSync(path.resolve('sync-config.yaml')) == false) {
       writeFileSync(CONFIG_FILE_NAME, YAML.stringify(test, null), 'utf8');
       if (silent == false) {
@@ -59,6 +60,8 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
         console.log('---------------------------------------------------')
         console.log('  Replace xxx_sync-config.yaml to sync-config.yaml');
         console.log('---------------------------------------------------')
+      }else{
+        writeFileSync(CONFIG_FILE_NAME, YAML.stringify(test, null), 'utf8');
       }
     }
     if (existsSync('.sync_ignore') == false) {
@@ -96,7 +99,7 @@ const InitConfigService = BaseService.extend<InitConfigInterface>({
             this.generateTemplate(true, upath.normalize(answers.path));
             setTimeout(() => {
               masterData.saveData('command.load_save.data', {});
-            }, 1000);
+            }, 3000);
           })
           return;
       }
