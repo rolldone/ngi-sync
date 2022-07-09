@@ -280,6 +280,10 @@ const Config = BaseModel.extend<ConfigInterface>({
         }
       });
 
+      _overrideSyncConfig = {
+        ...this._config,
+        ..._overrideSyncConfig,
+      }
       // Override the sync-config if getting new and replace old version
       filendir.writeFileSync(path.resolve("", "sync-config.yaml"), YAML.stringify(_overrideSyncConfig, null), "utf8");
     } catch (ex) {
