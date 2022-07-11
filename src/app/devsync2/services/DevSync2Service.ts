@@ -747,7 +747,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
             process.stdout.write(chalk.green('Remote | ') + 'Restarting...' + '\r');
             setTimeout(() => {
               this.construct(this._cli);
-            }, 1000);
+            }, 2000);
           }
           var closeRemote = () => {
             if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {

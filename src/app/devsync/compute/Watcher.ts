@@ -116,7 +116,8 @@ export default class Watcher {
 
 		gitIgnore = [
 			...gitIgnore,
-			...defaultIgnores
+			...defaultIgnores,
+			this.config.privateKey
 		]
 
 		let resCHeckGItIgnores = (() => {

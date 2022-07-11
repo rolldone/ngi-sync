@@ -1,7 +1,7 @@
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import { CliInterface, EXIT_CODE } from "../services/CliService";
 import path, { join as pathJoin } from "path";
-import { readFileSync, existsSync, statSync, createReadStream } from "fs";
+import { readFileSync, existsSync, statSync, createReadStream, chmod, chmodSync } from "fs";
 import { String, uniq } from "lodash";
 import upath from 'upath';
 const { parse } = require("jsonplus");
@@ -189,6 +189,8 @@ const Config = BaseModel.extend<ConfigInterface>({
       }
       /** @type {boolean} */
       let hasPasspharse = await this._hasPassphrase(this._config.privateKey);
+      chmodSync(this._config.privateKey, 0o400);
+      // console.log(this._config.privateKey);
       if (hasPasspharse == true) {
         this.cli.read("Enter Passphrase to connect : ", true).then(answer => {
           this.password = this._config.password = answer;
