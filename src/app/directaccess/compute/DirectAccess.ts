@@ -1,7 +1,7 @@
 import { ConfigInterface } from "@root/app/init/compute/Config";
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import SSHConfig, { SSHConfigInterface } from "@root/tool/ssh-config";
-import { readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import upath from 'upath';
 import os from 'os';
 import * as child_process from 'child_process';
@@ -33,6 +33,8 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
     /* Manage the ssh_config from .ssh home dir */
     this._ssh_config = SSHConfig.parse(readFileSync(_configFilePath).toString());
 
+
+
     /* Loop every ssh_config collection from .ssh home dir */
     for (var a = 0; a < _direct_access.ssh_configs.length; a++) {
       var sshSection = this._ssh_config.find({ Host: _direct_access.ssh_configs[a].Host })
@@ -44,6 +46,14 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
 
     /* Insert the curent new config */
     for (var a = 0; a < _direct_access.ssh_configs.length; a++) {
+      // If the IdentityFile is a relative convert to absolute path
+      if (existsSync(upath.normalize(process.cwd() + "/" + _direct_access.ssh_configs[a].IdentityFile)) == true) {
+        _direct_access.ssh_configs[a].IdentityFile = upath.normalize(process.cwd() + "/" + _direct_access.ssh_configs[a].IdentityFile);
+      } else { }
+      if (os.platform() == "win32") {
+        child_process.execSync(`Icacls "${_direct_access.ssh_configs[a].IdentityFile}" /Inheritance:r`)
+        child_process.execSync(`Icacls "${_direct_access.ssh_configs[a].IdentityFile}" /Grant:r "%Username%":"(R)"`)
+      }
       this._ssh_config.append(_direct_access.ssh_configs[a]);
     }
 
