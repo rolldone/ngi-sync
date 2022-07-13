@@ -9,6 +9,7 @@ import YAML from 'yaml'
 import os from 'os';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import filendir from 'filendir';
+import { execSync } from "child_process";
 
 export const CONFIG_FILE_NAME = "sync-config.yaml";
 export type trigger_permission = {
@@ -189,7 +190,12 @@ const Config = BaseModel.extend<ConfigInterface>({
       }
       /** @type {boolean} */
       let hasPasspharse = await this._hasPassphrase(this._config.privateKey);
-      chmodSync(this._config.privateKey, 0o400);
+      if (os.platform() == "win32") {
+          execSync(`Icacls "${this._config.privateKey}" /Inheritance:r`)
+          execSync(`Icacls "${this._config.privateKey}" /Grant:r "%Username%":"(R)"`)
+      }else{
+        chmodSync(this._config.privateKey, 0o400);
+      }
       // console.log(this._config.privateKey);
       if (hasPasspharse == true) {
         this.cli.read("Enter Passphrase to connect : ", true).then(answer => {
