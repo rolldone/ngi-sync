@@ -1,7 +1,7 @@
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import { CliInterface, EXIT_CODE } from "../services/CliService";
 import path, { join as pathJoin } from "path";
-import { readFileSync, existsSync, statSync, createReadStream } from "fs";
+import { readFileSync, existsSync, statSync, createReadStream, chmod, chmodSync } from "fs";
 import { String, uniq } from "lodash";
 import upath from 'upath';
 const { parse } = require("jsonplus");
@@ -9,6 +9,7 @@ import YAML from 'yaml'
 import os from 'os';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import filendir from 'filendir';
+import { execSync } from "child_process";
 
 export const CONFIG_FILE_NAME = "sync-config.yaml";
 export type trigger_permission = {
@@ -189,6 +190,14 @@ const Config = BaseModel.extend<ConfigInterface>({
       }
       /** @type {boolean} */
       let hasPasspharse = await this._hasPassphrase(this._config.privateKey);
+      if (os.platform() == "win32") {
+          execSync(`Icacls "${this._config.privateKey}" /Inheritance:r`)
+          execSync(`Icacls "${this._config.privateKey}" /Grant:r "%username%":"(F)"`)
+          // Source :: https://stackoverflow.com/questions/2928738/how-to-grant-permission-to-users-for-a-directory-using-command-line-in-windows
+      }else{
+        chmodSync(this._config.privateKey, 0o400);
+      }
+      // console.log(this._config.privateKey);
       if (hasPasspharse == true) {
         this.cli.read("Enter Passphrase to connect : ", true).then(answer => {
           this.password = this._config.password = answer;
@@ -280,6 +289,10 @@ const Config = BaseModel.extend<ConfigInterface>({
         }
       });
 
+      _overrideSyncConfig = {
+        ...this._config,
+        ..._overrideSyncConfig,
+      }
       // Override the sync-config if getting new and replace old version
       filendir.writeFileSync(path.resolve("", "sync-config.yaml"), YAML.stringify(_overrideSyncConfig, null), "utf8");
     } catch (ex) {
