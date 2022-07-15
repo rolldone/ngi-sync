@@ -192,7 +192,8 @@ const Config = BaseModel.extend<ConfigInterface>({
       let hasPasspharse = await this._hasPassphrase(this._config.privateKey);
       if (os.platform() == "win32") {
           execSync(`Icacls "${this._config.privateKey}" /Inheritance:r`)
-          execSync(`Icacls "${this._config.privateKey}" /Grant:r "%Username%":"(R)"`)
+          execSync(`Icacls "${this._config.privateKey}" /Grant:r "%username%":"(F)"`)
+          // Source :: https://stackoverflow.com/questions/2928738/how-to-grant-permission-to-users-for-a-directory-using-command-line-in-windows
       }else{
         chmodSync(this._config.privateKey, 0o400);
       }
