@@ -52,7 +52,8 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
       } else { }
       if (os.platform() == "win32") {
         child_process.execSync(`Icacls "${_direct_access.ssh_configs[a].IdentityFile}" /Inheritance:r`)
-        child_process.execSync(`Icacls "${_direct_access.ssh_configs[a].IdentityFile}" /Grant:r "%Username%":"(R)"`)
+        child_process.execSync(`Icacls "${_direct_access.ssh_configs[a].IdentityFile}" /Grant:r "%username%":"(F)"`)
+        // Source : https://stackoverflow.com/questions/2928738/how-to-grant-permission-to-users-for-a-directory-using-command-line-in-windows
       }
       this._ssh_config.append(_direct_access.ssh_configs[a]);
     }
