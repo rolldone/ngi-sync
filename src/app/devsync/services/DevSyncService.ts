@@ -58,6 +58,8 @@ export const COMMAND_TARGET = {
 
 
 var cache_command: Array<string> = [];
+var questions_command = null;
+var _readLine: ReadLine = null;
 
 const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
   returnConfig: function (cli) {
@@ -368,14 +370,14 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     });
 
     /* Define readline nodejs for listen CTRL + R */
-    this._readLine = rl.createInterface({
+    _readLine = rl.createInterface({
       input: process.stdin,
       output: process.stdout,
       terminal: true
     });
 
 
-    let questions_command = [
+    questions_command = [
       {
         type: "rawlist",
         name: "remote",
@@ -408,6 +410,10 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
       }
     ]
 
+    masterData.setOnListener("listen_from_outside", async (val) => {
+      this.construct(this._cli);
+    })
+
     let remoteFuncKeypress = async (key: any, data: any) => {
       let total_tab = 9;
       switch (data.sequence) {
@@ -432,7 +438,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           this._actionMode = "devsync";
           this.watcher.actionMode = this._actionMode;
 
-          this._readLine = rl.createInterface({
+          _readLine = rl.createInterface({
             input: process.stdin,
             output: process.stdout,
             // terminal: true
@@ -442,7 +448,10 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           break;
         case '\u001b2':
           console.clear();
-          this._readLine.close();
+          try {
+            _readLine.close();
+            _readLine = null;
+          } catch (ex) { }
           process.stdin.removeListener('keypress', remoteFuncKeypress);
           process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
           for (var i = 0; i < total_tab; i++) {
@@ -473,7 +482,10 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
 
       for (var i = 0; i < total_tab; i++) {
         if (data.sequence == '\u001b' + (i + 3)) {
-          this._readLine.close();
+          try {
+            _readLine.close();
+            _readLine = null;
+          } catch (ex) { }
           process.stdin.removeListener('keypress', remoteFuncKeypress);
           console.clear();
           this.uploader.setConsoleAction("pending first");
@@ -614,28 +626,42 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         case '\x12':
           this._is_stop = true;
           let stop = async () => {
-            this._readLine.close();
-            this._readLine.removeAllListeners();
+            try {
+              _readLine.close();
+              _readLine = null;
+            } catch (ex) { }
             _startWatchingWithTimeOut(true);
-            syncPull.stopSubmitWatch();
-            syncPull = null;
+
+            try {
+              if (syncPull != null) {
+                syncPull.stopSubmitWatch();
+              }
+              syncPull = null;
+            } catch (ex) {
+              console.log("syncPull - ex :: ", ex);
+            }
 
             await this.watcher.close();
             this.watcher = null;
 
             /* Restart the syncronize */
-            this.uploader.clientClose();
-            this.uploader.onListener('RESTART', {});
-            this.uploader = null;
+            try {
+              if (this.uploader != null) {
+                this.uploader.clientClose();
+                this.uploader.onListener('RESTART', {});
+              }
+              this.uploader = null;
+            } catch (ex) {
+              console.log("this.uploader - ex :: ", ex);
+            }
 
             process.stdin.off('keypress', remoteFuncKeypress);
+            process.stdin.removeAllListeners('keypress');
             this.task.done();
             console.clear();
             process.stdout.write(chalk.green('Remote | ') + 'Restarting...' + '\r');
 
-            setTimeout(() => {
-              this.construct(this._cli);
-            }, 2000);
+            masterData.saveData("listen_from_outside", {});
           }
           var closeRemote = () => {
             if (this._currentConf.devsync.script.remote.on_stop != "" && this._currentConf.devsync.script.remote.on_stop != null) {
