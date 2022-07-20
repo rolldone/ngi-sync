@@ -9,7 +9,7 @@ import Config, { ConfigInterface } from "../compute/Config";
 import YAML from 'yaml';
 import readdirp from "readdirp";
 import filendir from 'filendir';
-import * as folderEncrypt from 'folder-encrypt';
+import * as folderEncrypt from '../compute/FolderEncrypt';
 
 export interface LoadSaveServiceInterface extends BaseServiceInterface {
   _completeData: {
