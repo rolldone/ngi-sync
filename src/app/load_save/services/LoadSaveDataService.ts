@@ -246,7 +246,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
             if (statSync(_sync_collection_files[a]) != null) {
               let _file_resolve = path.resolve("", _sync_collection_files[a]);
               let _readFile = readFileSync(_file_resolve);
-              writeFileSync(upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/' + _sync_collection_files[a]), _readFile, "utf8");
+              filendir.writeFileSync(upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/' + _sync_collection_files[a]), _readFile, "utf8");
             }
             break;
         }
@@ -273,7 +273,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
         type: "all",
         depth: 0, // One level
       });
-      
+
       // Keep cleaning first
       for (var a = 0; a < _existFilesSrc.length; a++) {
         if (lstatSync(_existFilesSrc[a].fullPath).isDirectory() == true) {
@@ -316,7 +316,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
               let _file_resolve = path.resolve("", _sync_collection_files[a]);
               let _readFile = readFileSync(_file_resolve);
               let _filePath = upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/' + _sync_collection_files[a]);
-              writeFileSync(_filePath, _readFile, "utf8");
+              filendir.writeFileSync(_filePath, _readFile, "utf8")
             }
             break;
         }
