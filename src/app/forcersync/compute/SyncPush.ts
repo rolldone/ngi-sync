@@ -443,9 +443,11 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
         }
       }
     }
+
     _filterPatternRules.ignores = [
       ...newIgnores,
-      ..._filterPatternRules.ignores
+      ..._filterPatternRules.ignores,
+      this._config.privateKeyPath
     ];
 
     let extraWatch: Array<{

@@ -546,7 +546,12 @@ export default class Uploader {
 				// debug: true
 			});
 			this.client.on('close', () => {
-				this.connect(callback);
+				setTimeout(()=>{
+					if(this.client == null){
+						return;
+					}
+					this.connect(callback);
+				},1000);
 			})
 			callback(null, 'Connected');
 		} catch (ex) {
@@ -573,6 +578,7 @@ export default class Uploader {
 	_exeHandlePush: Function = null;
 	clientClose(): void {
 		this.client.end();
+		this.client = null;
 	}
 	async _executeCommand(whatCommand: string, callback?: Function) {
 		try {
@@ -654,6 +660,12 @@ export default class Uploader {
 			debounceClose();
 		}
 		return (entry: any, first_time_out: number) => {
+
+			if(this.client == null){
+				this._pendingQueue = {};
+				return;
+			}
+			
 			this._orders[entry.queue_no] = Object.create({
 				...entry,
 				queue_no: entry.queue_no
@@ -688,6 +700,10 @@ export default class Uploader {
 				var reject = entry.reject;
 				var fileName = entry.fileName;
 				var action = entry.action;
+
+				if(this.client == null){
+					return;
+				}
 
 				switch (action) {
 					case 'add_change':
