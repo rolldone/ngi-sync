@@ -12,7 +12,7 @@ import { CliInterface } from "../services/CliService";
 var size = require('window-size');
 import os from 'os';
 import { ConfigInterface } from "./Config";
-import { fstatSync, readFileSync, Stats, statSync, writeFileSync } from "fs";
+import { existsSync, fstatSync, readFileSync, Stats, statSync, writeFileSync } from "fs";
 import parseGitIgnore from '@root/tool/parse-gitignore'
 import ignore from 'ignore'
 import { uniq } from "lodash";
@@ -271,7 +271,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
       const isLocal = typeof process.pkg === 'undefined';
 
       let localFilePath = isLocal ? upath.normalizeSafe(path.join(__dirname, "") + '/' + tarFile) : path.dirname(process.execPath) + `/${tarFile}`;
-      let remoteFilePath = upath.normalizeSafe(this._config.remotePath + '/' + tarFile);
+      let remoteFilePath = upath.normalizeSafe(this._config.remotePath + '/.sync_agents/' + tarFile);
       let exists = await this._client.exists(remoteFilePath);
       let curretnFileStat = statSync(isLocal ? upath.normalizeSafe(path.join(__dirname, "")) + '/' + tarFile : path.dirname(process.execPath) + `/${tarFile}`, {});
       let executeFile = upath.normalizeSafe(this._config.remotePath + '/' + fileName);
@@ -315,7 +315,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
               case 'darwin':
               case 'linux':
                 let rawSSH = await this._client.getRawSSH2();
-                rawSSH.exec('tar -zxf ' + remoteFilePath + " --directory " + this._config.remotePath, async (err: any, stream: any) => {
+                rawSSH.exec('tar -zxf ' + remoteFilePath + " --directory " + path.dirname(remoteFilePath), async (err: any, stream: any) => {
                   process.stdout.write(chalk.green('Devsync | '));
                   process.stdout.write(chalk.green('Install Agent :: Extrating.' + '\n'));
                   resolve();
@@ -335,7 +335,10 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           process.stdout.write('Copy file agent -> ' + localFilePath + ' - ' + remoteFilePath + '\n');
           try {
             // await this._client.delete(remoteFilePath);
-          } catch (ex) { }
+            await this._client.mkdir(path.dirname(remoteFilePath));
+          } catch (ex) {
+            console.log(ex);
+          }
           try {
             await this._client.mkdir(path.dirname(localFilePath), false);
             await this._client.chmod(path.dirname(localFilePath), this._config.pathMode);
@@ -368,14 +371,19 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
   generateSSHConfig() {
     let _direct_access: DirectAccessType = this._config.direct_access as any;
     let _configFilePath = upath.normalizeSafe(os.homedir() + '/.ssh/config');
-
+    let _privateKey = null;
+    if (existsSync(upath.normalize(process.cwd() + "/" + this._config.privateKey)) == true) {
+      _privateKey = upath.normalize(process.cwd() + "/" + this._config.privateKey);
+    } else {
+      _privateKey = this._config.privateKey
+    }
     /* Persisten ssh_config */
     let ssh_confi = {
       Host: "temp_reverse_port_ssh",
       HostName: this._config.host,
       User: this._config.username,
       Port: this._config.port,
-      IdentityFile: this._config.privateKey,
+      IdentityFile: _privateKey,
       RequestTTY: "force",
       StrictHostKeyChecking: "no"
     }
@@ -424,13 +432,13 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
           _ptyProcess.write(`cd ${this._config.remotePath} \r`);
           switch (this._config.devsync.os_target) {
             case 'windows':
-              _ptyProcess.write(`ngi-sync-agent-win.exe devsync_remote ${this._randomPort}` + "\r");
+              _ptyProcess.write(`./sync_agents/ngi-sync-agent-win.exe devsync_remote ${this._randomPort}` + "\r");
               break;
             case 'darwin':
             case 'linux':
             default:
-              _ptyProcess.write("chmod +x ngi-sync-agent-linux" + '\r');
-              _ptyProcess.write(`./ngi-sync-agent-linux devsync_remote ${this._randomPort}` + "\r");
+              _ptyProcess.write("chmod +x ./.sync_agents/ngi-sync-agent-linux" + '\r');
+              _ptyProcess.write(`./.sync_agents/ngi-sync-agent-linux devsync_remote ${this._randomPort}` + "\r");
               break;
           }
           isLoginFinish = true;

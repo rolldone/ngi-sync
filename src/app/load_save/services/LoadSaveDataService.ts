@@ -1,5 +1,5 @@
 import BaseService from "@root/base/BaseService";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from "fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "fs";
 import inquirer from 'inquirer';
 import path from "path";
 import upath from 'upath';
@@ -9,6 +9,7 @@ import Config, { ConfigInterface } from "../compute/Config";
 import YAML from 'yaml';
 import readdirp from "readdirp";
 import filendir from 'filendir';
+import * as folderEncrypt from '../compute/FolderEncrypt';
 
 export interface LoadSaveServiceInterface extends BaseServiceInterface {
   _completeData: {
@@ -47,21 +48,28 @@ export default BaseService.extend<LoadSaveServiceInterface>({
     return existsSync(path);
   },
   construct: function (cli, action) {
-    this._config = this.returnConfig(cli);
-    /* Display project folder base path */
-    if (this._existConfig(this._config._filename) == false) {
-      process.exit();
-    }
+    try {
+      this._config = this.returnConfig(cli);
+      /* Display project folder base path */
+      if (this._existConfig(this._config._filename) == false) {
+        process.exit();
+      }
 
-    this._sync_collection_src = this._config.sync_collection.src;
-    let test: any = existsSync(upath.normalizeSafe(this._sync_collection_src));
-    if (test == false) {
-      mkdirSync(upath.normalizeSafe(this._sync_collection_src));
+      this._sync_collection_src = this._config.sync_collection.src;
+      let test: any = existsSync(upath.normalizeSafe(this._sync_collection_src));
+
+      if (test == false) {
+        mkdirSync(upath.normalizeSafe(this._sync_collection_src));
+      }
+      if (action == "auto_save") {
+        return this.autoSave();
+      }
+      this.defaultPrompt();
+    } catch (ex) {
+      console.clear();
+      console.log(ex);
+      process.exit(0);
     }
-    if (action == "auto_save") {
-      return this.autoSave();
-    }
-    this.defaultPrompt();
   },
   defaultPrompt() {
     let questions: inquirer.QuestionCollection = [
@@ -146,9 +154,14 @@ export default BaseService.extend<LoadSaveServiceInterface>({
         },
       },
       {
-        type: 'default',
-        name: "Enter again " + String.fromCodePoint(0x00002386)
+        type: "password",
+        name: "fill_password",
+        message: "Put the password :",
       },
+      // {
+      //   type: 'default',
+      //   name: "Enter again " + String.fromCodePoint(0x00002386)
+      // },
     ];
     this._promptAction("", questions);
   },
@@ -174,7 +187,12 @@ export default BaseService.extend<LoadSaveServiceInterface>({
         name: "new_sync_name",
         message: "New File Name :",
         when: (answers: any) => answers.target_save === "New file"
-      }
+      },
+      {
+        type: "password",
+        name: "fill_password",
+        message: "Put the password :",
+      },
     ];
     this._promptAction("", questions);
   },
@@ -228,7 +246,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
             if (statSync(_sync_collection_files[a]) != null) {
               let _file_resolve = path.resolve("", _sync_collection_files[a]);
               let _readFile = readFileSync(_file_resolve);
-              writeFileSync(upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/' + _sync_collection_files[a]), _readFile, "utf8");
+              filendir.writeFileSync(upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/' + _sync_collection_files[a]), _readFile, "utf8");
             }
             break;
         }
@@ -240,7 +258,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
   },
   createUpdateNewSave: async function () {
     try {
-      let { new_sync_name, target_save } = this._completeData;
+      let { new_sync_name, target_save, fill_password } = this._completeData;
       let whatSyncName = target_save;
       if (new_sync_name != null) {
         whatSyncName = new_sync_name;
@@ -250,6 +268,22 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       let bodyData: any = readFileSync(_fileName);
       bodyData = YAML.parse(bodyData.toString()) as any;
       bodyData.sync_config_name = whatSyncName;
+
+      let _existFilesSrc = await readdirp.promise(upath.normalize(`${this._sync_collection_src}/${whatSyncName}`), {
+        type: "all",
+        depth: 0, // One level
+      });
+
+      // Keep cleaning first
+      for (var a = 0; a < _existFilesSrc.length; a++) {
+        if (lstatSync(_existFilesSrc[a].fullPath).isDirectory() == true) {
+          rmdirSync(_existFilesSrc[a].fullPath, {
+            recursive: true
+          })
+        } else if (lstatSync(_existFilesSrc[a].fullPath).isFile() == true) {
+          rmSync(_existFilesSrc[a].fullPath);
+        }
+      }
 
       filendir.writeFileSync(upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/sync-config.yaml'), YAML.stringify(bodyData, null), 'utf8');
       /* Add sync_ignore can self by owner ngi-sync */
@@ -281,22 +315,79 @@ export default BaseService.extend<LoadSaveServiceInterface>({
             if (statSync(_sync_collection_files[a]) != null) {
               let _file_resolve = path.resolve("", _sync_collection_files[a]);
               let _readFile = readFileSync(_file_resolve);
-              writeFileSync(upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/' + _sync_collection_files[a]), _readFile, "utf8");
+              let _filePath = upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/' + _sync_collection_files[a]);
+              filendir.writeFileSync(_filePath, _readFile, "utf8")
             }
             break;
         }
         console.log(`${upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/' + _sync_collection_files[a])} is created!`);
       }
+
+      let _filesReadDirSrcEnc = await readdirp.promise(upath.normalize(`${this._sync_collection_src}/${whatSyncName}`), {
+        type: "all",
+        depth: 0
+      });
+      for (var a = 0; a < _filesReadDirSrcEnc.length; a++) {
+        await folderEncrypt.encrypt({
+          password: fill_password,
+          input: _filesReadDirSrcEnc[a].fullPath,
+          output: _filesReadDirSrcEnc[a].fullPath + "_encrypto" // optional, default will be input path with extension `encrypted`
+        })
+        if (existsSync(_filesReadDirSrcEnc[a].fullPath) == true) {
+          if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isDirectory() == true) {
+            rmdirSync(_filesReadDirSrcEnc[a].fullPath, {
+              recursive: true
+            })
+          } else if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isFile() == true) {
+            rmSync(_filesReadDirSrcEnc[a].fullPath);
+          }
+        }
+      }
+
     } catch (ex) {
       console.error('createNewSave - ex ', ex);
     }
   },
   loadDataSave: async function () {
     try {
-      let { target_load } = this._completeData;
+      let { target_load, fill_password } = this._completeData;
       let whatSyncName = target_load;
       let _config = this._config;
-      let bodyData: any = readFileSync(upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/sync-config.yaml'));
+
+      // Descript first
+      let _filesReadDirSrcEnc = await readdirp.promise(upath.normalize(`${this._sync_collection_src}/${whatSyncName}`), {
+        type: "all",
+        depth: 0, // One level
+      });
+
+      // Keep cleaning first
+      for (var a = 0; a < _filesReadDirSrcEnc.length; a++) {
+        if (_filesReadDirSrcEnc[a].fullPath.includes("_encrypto")) {
+
+        } else {
+          if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isDirectory() == true) {
+            rmdirSync(_filesReadDirSrcEnc[a].fullPath, {
+              recursive: true
+            })
+          } else if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isFile() == true) {
+            rmSync(_filesReadDirSrcEnc[a].fullPath);
+          }
+        }
+      }
+
+      // Create again
+      for (var a = 0; a < _filesReadDirSrcEnc.length; a++) {
+        if (_filesReadDirSrcEnc[a].fullPath.includes("_encrypto")) {
+          await folderEncrypt.decrypt({
+            password: fill_password,
+            input: _filesReadDirSrcEnc[a].fullPath,
+            output: _filesReadDirSrcEnc[a].fullPath.replace("_encrypto", ""),
+          })
+        }
+      }
+
+      let fileSyncConfigPath = upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/sync-config.yaml');
+      let bodyData: any = readFileSync(fileSyncConfigPath);
       bodyData = YAML.parse(bodyData.toString()) as any;
       bodyData.sync_config_name = whatSyncName;
       bodyData.sync_collection.src = this._sync_collection_src;
@@ -307,26 +398,31 @@ export default BaseService.extend<LoadSaveServiceInterface>({
         writeFileSync(".sync_ignore", syncIgnoreData, 'utf8');
       }
 
+
       // console.log(`${this._sync_collection_src + '/' + whatSyncName + '/sync-config.yaml'} is created!`);
       // console.log(`${this._sync_collection_src + '/' + whatSyncName + '/.sync_ignore'} is created!`);
 
       let _filesReadDirSrc = await readdirp.promise(upath.normalize(`${this._sync_collection_src}/${whatSyncName}`), {
-        type: "all"
+        type: "all",
       });
       for (var a = 0; a < _filesReadDirSrc.length; a++) {
         // console.log("_filesReadDirSrc :: ", _filesReadDirSrc[a]);
-        switch (_filesReadDirSrc[a].basename) {
-          case 'sync-config.yaml':
-          case '.sync_ignore':
-            break;
-          default:
-            if (lstatSync(_filesReadDirSrc[a].fullPath).isFile() == true) {
-              // console.log('_filesReadDirSrc :: ', _filesReadDirSrc[a]);
-              let _readFile = readFileSync(upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/' + _filesReadDirSrc[a].path));
-              filendir.writeFileSync(upath.normalize(path.resolve("", _filesReadDirSrc[a].path)), _readFile, "utf8");
-              console.log(`${upath.normalize(path.resolve("", _filesReadDirSrc[a].path))} is loaded!`);
-            }
-            break;
+        if (_filesReadDirSrc[a].basename.includes("_encrypto")) {
+
+        } else {
+          switch (_filesReadDirSrc[a].basename) {
+            case 'sync-config.yaml':
+            case '.sync_ignore':
+              break;
+            default:
+              if (lstatSync(_filesReadDirSrc[a].fullPath).isFile() == true) {
+                // console.log('_filesReadDirSrc :: ', _filesReadDirSrc[a]);
+                let _readFile = readFileSync(upath.normalize(this._sync_collection_src + '/' + whatSyncName + '/' + _filesReadDirSrc[a].path));
+                filendir.writeFileSync(upath.normalize(path.resolve("", _filesReadDirSrc[a].path)), _readFile, "utf8");
+                console.log(`${upath.normalize(path.resolve("", _filesReadDirSrc[a].path))} is loaded!`);
+              }
+              break;
+          }
         }
       }
     } catch (ex) {

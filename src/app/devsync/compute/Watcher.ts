@@ -116,7 +116,8 @@ export default class Watcher {
 
 		gitIgnore = [
 			...gitIgnore,
-			...defaultIgnores
+			...defaultIgnores,
+			this.config.privateKey
 		]
 
 		let resCHeckGItIgnores = (() => {
@@ -399,7 +400,11 @@ export default class Watcher {
 	}
 
 	async close(): Promise<void> {
-		this.uploader.client.end();
+		try {
+			this.uploader.client.end();
+		} catch (ex) {
+			console.log("this.uploader.client.end - ex :: ", ex);
+		}
 		for (var a = 0; a < this._unwatch.length; a++) {
 			await this._unwatch[a].close();
 		}
