@@ -107,5 +107,10 @@ BaseStart({
         masterData.saveData('command.direct.index', null);
         return;
     }
+
+    const interval = setInterval(() => {
+      process.setMaxListeners(0);
+    }, 10000);
+
   }
 } as AppInterface);
