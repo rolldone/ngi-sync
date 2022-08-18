@@ -24,6 +24,7 @@ process.on('SIGINT', (props: any, props2: any) => {
 
 /* Set unlimited max listener callback function */
 process.setMaxListeners(0);
+require('events').EventEmitter.defaultMaxListeners = Infinity; 
 process.on('warning', e => console.warn(e.stack));
 
 BaseStart({
@@ -107,10 +108,5 @@ BaseStart({
         masterData.saveData('command.direct.index', null);
         return;
     }
-
-    const interval = setInterval(() => {
-      process.setMaxListeners(0);
-    }, 10000);
-
   }
 } as AppInterface);
