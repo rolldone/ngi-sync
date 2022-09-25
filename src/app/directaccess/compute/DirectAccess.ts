@@ -51,7 +51,7 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
         _direct_access.ssh_configs[a].IdentityFile = upath.normalize(process.cwd() + "/" + _direct_access.ssh_configs[a].IdentityFile);
       } else { }
       if (os.platform() == "win32") {
-        if(_direct_access.ssh_configs[a].IdentityFile != null){
+        if (_direct_access.ssh_configs[a].IdentityFile != null) {
           child_process.execSync(`Icacls "${_direct_access.ssh_configs[a].IdentityFile}" /Inheritance:r`)
           child_process.execSync(`Icacls "${_direct_access.ssh_configs[a].IdentityFile}" /Grant:r "%username%":"(F)"`)
         }
@@ -73,7 +73,10 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
     if (_select_ssh_command.command.includes('ssh')) {
       env = null;
     }
-
+    if (_select_ssh_command.command == "stay-here") {
+      process.exit(0);
+      return;
+    }
     var child = child_process.spawn(_select_ssh_command.command, [], {
       env: env,
       stdio: 'inherit',//['pipe', process.stdout, process.stderr]

@@ -535,7 +535,11 @@ export default class Uploader {
 			if (os.platform() == "win32") {
 				_ptyProcess.write('cd ' + this.config.localPath + '\r');
 			}
-			_ptyProcess.write(props[0] + '\r');
+			if (props[0] == "console") {
+				// Ignore it
+			} else {
+				_ptyProcess.write(props[0] + '\r');
+			}
 		}, 1000);
 		return _ptyProcess;
 	}
