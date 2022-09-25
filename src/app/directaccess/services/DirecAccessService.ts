@@ -65,7 +65,7 @@ const DirectAccessService = BaseService.extend<DirectAccessServiceInterface>({
     _directAccess.ssh_commands.push({
       access_name: OPEN_CONSOLE,
       key: 'console',
-      command: 'ngi-sync console'
+      command: 'stay-here'
     });
     _directAccess.ssh_commands.push({
       access_name: RUN_DEVSYNC,
