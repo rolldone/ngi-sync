@@ -531,9 +531,12 @@ export default class Uploader {
 		process.stdout.write(chalk.yellow("Two times spawn for better experience\n"));
 		process.stdout.write(chalk.yellow('\n'));
 		setTimeout(() => {
-			_ptyProcess.write(shell + "\r");
 			if (os.platform() == "win32") {
+				let upathParse = upath.parse(upath.normalize(shell));
+				_ptyProcess.write(upathParse.name + "\r");
 				_ptyProcess.write('cd ' + this.config.localPath + '\r');
+			} else {
+				_ptyProcess.write(shell + "\r");
 			}
 			if (props[0] == "console") {
 				// Ignore it
