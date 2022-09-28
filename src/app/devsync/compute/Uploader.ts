@@ -229,7 +229,7 @@ export default class Uploader {
 						callback('ENTER_LISTENER');
 						break;
 				}
-				
+
 				switch (data.sequence) {
 					case '\u0003':
 						return;
@@ -526,8 +526,21 @@ export default class Uploader {
 			// },
 			handleFlowControl: true
 		});
-		_ptyProcess.write('cd ' + this.config.localPath + '\r');
-		_ptyProcess.write(props[0] + '\r');
+		// Two times for better experience if use change environment nodejs
+		process.stdout.write(chalk.yellow('Local | '));
+		process.stdout.write(chalk.yellow("Two times spawn for better experience\n"));
+		process.stdout.write(chalk.yellow('\n'));
+		setTimeout(() => {
+			_ptyProcess.write(shell + "\r");
+			if (os.platform() == "win32") {
+				_ptyProcess.write('cd ' + this.config.localPath + '\r');
+			}
+			if (props[0] == "console") {
+				// Ignore it
+			} else {
+				_ptyProcess.write(props[0] + '\r');
+			}
+		}, 1000);
 		return _ptyProcess;
 	}
 
@@ -546,12 +559,12 @@ export default class Uploader {
 				// debug: true
 			});
 			this.client.on('close', () => {
-				setTimeout(()=>{
-					if(this.client == null){
+				setTimeout(() => {
+					if (this.client == null) {
 						return;
 					}
 					this.connect(callback);
-				},1000);
+				}, 1000);
 			})
 			callback(null, 'Connected');
 		} catch (ex) {
@@ -568,7 +581,7 @@ export default class Uploader {
 		return upath.normalizeSafe(remotePath);
 	}
 	_index: number = 0
-	_concurent: number = 4
+	_concurent: number = 8
 	_pendingUpload: {
 		[key: string]: DebouncedFunc<any>
 	} = {}
@@ -661,11 +674,11 @@ export default class Uploader {
 		}
 		return (entry: any, first_time_out: number) => {
 
-			if(this.client == null){
+			if (this.client == null) {
 				this._pendingQueue = {};
 				return;
 			}
-			
+
 			this._orders[entry.queue_no] = Object.create({
 				...entry,
 				queue_no: entry.queue_no
@@ -701,7 +714,7 @@ export default class Uploader {
 				var fileName = entry.fileName;
 				var action = entry.action;
 
-				if(this.client == null){
+				if (this.client == null) {
 					return;
 				}
 
@@ -789,6 +802,7 @@ export default class Uploader {
 						}).catch((err: any) => {
 							deleteQueueFunc();
 							reject(err.message);
+							next();
 						})
 						this.client.client.removeAllListeners('error');
 						break;

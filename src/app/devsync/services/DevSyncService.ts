@@ -402,7 +402,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         },
         choices: [
           ...this._currentConf.devsync.script.local.commands || [],
-          "pwd",
+          "console",
           "git add --renormalize . && git reset",
           "Back",
           'Exit'
