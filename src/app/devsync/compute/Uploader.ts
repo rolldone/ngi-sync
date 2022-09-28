@@ -581,7 +581,7 @@ export default class Uploader {
 		return upath.normalizeSafe(remotePath);
 	}
 	_index: number = 0
-	_concurent: number = 4
+	_concurent: number = 8
 	_pendingUpload: {
 		[key: string]: DebouncedFunc<any>
 	} = {}
@@ -802,6 +802,7 @@ export default class Uploader {
 						}).catch((err: any) => {
 							deleteQueueFunc();
 							reject(err.message);
+							next();
 						})
 						this.client.client.removeAllListeners('error');
 						break;
