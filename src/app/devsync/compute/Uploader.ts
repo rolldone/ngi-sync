@@ -429,7 +429,6 @@ export default class Uploader {
 			}).on('close', function () {
 				console.log("Close Readline Local Console");
 			});
-
 			let timesCloseClick = 0;
 			let _localRecordText = "";
 			let _keypress = (key: string, data: any) => {
@@ -465,11 +464,13 @@ export default class Uploader {
 				} else {
 					timesCloseClick = 0;
 				}
+
 				if (isStop == true) {
 					return;
 				}
 
 				switch (data.sequence) {
+					case '\x03':
 					case '\u0003':
 						// theClient.write("exit\r");
 						return;
@@ -534,7 +535,7 @@ export default class Uploader {
 			if (os.platform() == "win32") {
 				let upathParse = upath.parse(upath.normalize(shell));
 				_ptyProcess.write(upathParse.name + "\r");
-				_ptyProcess.write('cd ' + this.config.localPath + '\r');
+				// _ptyProcess.write('cd ' + this.config.localPath + '\r');
 			} else {
 				_ptyProcess.write(shell + "\r");
 			}
