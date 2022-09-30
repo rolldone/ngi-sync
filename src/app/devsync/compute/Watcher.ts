@@ -462,7 +462,7 @@ export default class Watcher {
 				db.cancel();
 			}
 			db = debounce(() => {
-				process.stdout.write(chalk.green('Pool | Stopped'));
+				process.stdout.write(chalk.green('Pool | Stopped\n'));
 				pool.terminate();
 			}, 20000);
 			db();
