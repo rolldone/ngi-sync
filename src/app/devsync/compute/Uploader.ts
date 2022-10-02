@@ -386,7 +386,7 @@ export default class Uploader {
 				if (is_streamed == true) {
 					appendFile(upath.normalizeSafe(this.config.localPath + "/" + _xs_split[1]), this._stripAnsi(data.toString()), (err) => { });
 				}
-				switch (data) {
+				switch (data.toString()) {
 					case "exit":
 						return;
 				}
@@ -544,7 +544,7 @@ export default class Uploader {
 			} else {
 				_ptyProcess.write(props[0] + '\r');
 			}
-		}, 1000);
+		}, 100);
 		return _ptyProcess;
 	}
 
