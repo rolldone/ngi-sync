@@ -11,6 +11,7 @@ var pty = require('node-pty');
 var os = require('os');
 import rl, { ReadLine } from 'readline';
 import { stripAnsi } from "@root/tool/Helpers";
+import { Writable } from "stream";
 
 
 declare var masterData: MasterDataInterface;
@@ -198,7 +199,7 @@ export default class Uploader {
 						console.clear();
 						setTimeout(() => {
 							callback("switch", data);
-						}, 1000);
+						}, 100);
 						isStop = true;
 					}
 				}
@@ -395,7 +396,9 @@ export default class Uploader {
 					_consoleCaches[index].shift();
 				};
 				_consoleCaches[index].push(data);
-				process.stdout.write(data);
+				if (theClient.muted == false) {
+					process.stdout.write(data);
+				}
 			}
 			theClient.on('data', onData);
 			let onExit = (exitCode: any, signal: any) => {
@@ -505,7 +508,6 @@ export default class Uploader {
 
 	iniPtyProcess(props: Array<string> = []) {
 		var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
-
 		var autoComplete = function completer(line: string): Array<string> {
 			const completions = ''.split(' ');
 			const hits = completions.filter((c) => c.startsWith(line));
@@ -527,24 +529,29 @@ export default class Uploader {
 			// },
 			handleFlowControl: true
 		});
+		_ptyProcess.muted = true;
 		// Two times for better experience if use change environment nodejs
 		process.stdout.write(chalk.yellow('Local | '));
 		process.stdout.write(chalk.yellow("Two times spawn for better experience\n"));
-		process.stdout.write(chalk.yellow('\n'));
+		process.stdout.write(chalk.yellow('Local | '));
+		// process.stdout.write(chalk.yellow('\n'));
+		if (os.platform() == "win32") {
+			let upathParse = upath.parse(upath.normalize(shell));
+			_ptyProcess.write(upathParse.name + "\r");
+			// _ptyProcess.write('cd ' + this.config.localPath + '\r');
+		} else {
+			_ptyProcess.write(shell + "\r");
+		}
 		setTimeout(() => {
-			if (os.platform() == "win32") {
-				let upathParse = upath.parse(upath.normalize(shell));
-				_ptyProcess.write(upathParse.name + "\r");
-				// _ptyProcess.write('cd ' + this.config.localPath + '\r');
-			} else {
-				_ptyProcess.write(shell + "\r");
-			}
+			process.stdout.write(chalk.yellow("Enter...\n"));
+			_ptyProcess.muted = false;
 			if (props[0] == "console") {
 				// Ignore it
+				_ptyProcess.write('\r');
 			} else {
 				_ptyProcess.write(props[0] + '\r');
 			}
-		}, 100);
+		}, 1000);
 		return _ptyProcess;
 	}
 
