@@ -438,12 +438,18 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           this._actionMode = "devsync";
           this.watcher.actionMode = this._actionMode;
 
+          // _readLine = rl.createInterface({
+          //   input: process.stdin,
+          //   output: process.stdout,
+          //   // terminal: true
+          // });
+          process.stdin.removeListener("keypress", remoteFuncKeypress);
           _readLine = rl.createInterface({
             input: process.stdin,
             output: process.stdout,
             // terminal: true
           });
-          process.stdin.off('keypress', remoteFuncKeypress);
+          // process.stdin.off('keypress', remoteFuncKeypress);
           process.stdin.on('keypress', remoteFuncKeypress);
           break;
         case '\u001b2':
@@ -486,7 +492,8 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             _readLine.close();
             _readLine = null;
           } catch (ex) { }
-          process.stdin.removeListener('keypress', remoteFuncKeypress);
+          process.stdin.removeAllListeners('keypress');
+          // process.stdin.removeListener('keypress', remoteFuncKeypress);
           console.clear();
           this.uploader.setConsoleAction("pending first");
           let inin = i;
