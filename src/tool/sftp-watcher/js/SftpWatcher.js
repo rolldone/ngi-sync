@@ -41,7 +41,9 @@ var deletedRemainingRecord = function () {
 						base_path: config.base_path,
 						file: lastRecord[lastFileName]
 					};
-					self._event.emit("delete", theDelete);
+					if(self._event != null){
+						self._event.emit("delete", theDelete);
+					}
 				}
 				delete lastRecord[lastFileName];
 			};
