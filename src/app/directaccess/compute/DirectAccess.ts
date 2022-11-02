@@ -5,6 +5,9 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import upath from 'upath';
 import os from 'os';
 import * as child_process from 'child_process';
+import rl, { ReadLine } from 'readline';
+
+var pty = require('node-pty');
 
 export type DirectAccessType = {
   ssh_configs: Array<any>
@@ -21,6 +24,8 @@ export interface DirectAccessInterface extends BaseModelInterface {
   _onListener?: Function
   _direct_access?: DirectAccessType
   _ssh_config?: SSHConfigInterface
+  iniPtyProcess?: { (props: Array<string>): any }
+
 }
 
 const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
@@ -51,7 +56,7 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
         _direct_access.ssh_configs[a].IdentityFile = upath.normalize(process.cwd() + "/" + _direct_access.ssh_configs[a].IdentityFile);
       } else { }
       if (os.platform() == "win32") {
-        if(_direct_access.ssh_configs[a].IdentityFile != null){
+        if (_direct_access.ssh_configs[a].IdentityFile != null) {
           child_process.execSync(`Icacls "${_direct_access.ssh_configs[a].IdentityFile}" /Inheritance:r`)
           child_process.execSync(`Icacls "${_direct_access.ssh_configs[a].IdentityFile}" /Grant:r "%username%":"(F)"`)
         }
@@ -74,29 +79,113 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
       env = null;
     }
 
-    var child = child_process.spawn(_select_ssh_command.command, [], {
-      env: env,
-      stdio: 'inherit',//['pipe', process.stdout, process.stderr]
-      shell: true
-      /* Open new window */
-      // detached: true
+    if (_select_ssh_command.command == "stay-here") {
+      _select_ssh_command.command = "";
+    }
+
+    let onData = (data: any) => {
+      process.stdout.write(data);
+    }
+
+    let theClient = this.iniPtyProcess([_select_ssh_command.command]);
+
+    let _readLine = rl.createInterface({
+      input: process.stdin,
+      // output : process.stdout,
+      terminal: true
     });
 
-    child.on('error', function (err) {
-      console.log('Spawn error : ' + err);
+    _readLine.on('SIGINT', () => {
+      // inject ctrl + c
+      theClient.write("\u0003");
     });
 
-    child.on('exit', (e, code) => {
+    theClient.on('exit', () => {
       this._onListener({
         action: "exit",
-        return: {
-          e, code
-        }
+        return: {}
       })
-    });
+      
+      theClient.removeListener('data', onData);
+      process.stdin.removeListener("keypress", _keypress)
+      // process.exit(0);
+    })
+
+    theClient.on('data', onData);
+
+    let _keypress = (key: string, data: any) => {
+      switch (data.sequence) {
+        case '\x03':
+        case '\u0003':
+          // theClient.write("exit\r");
+          return;
+        // Up and down
+        case '\u001b[A':
+        case '\u001b[B':
+          theClient.write(data.sequence);
+          return;
+        case '\r':
+          break;
+      }
+      theClient.write(data.sequence);
+    }
+
+    process.stdin.on("keypress", _keypress)
+
+    return;
+    // var child = child_process.spawn(_select_ssh_command.command, [], {
+    //   env: env,
+    //   stdio: 'inherit',//['pipe', process.stdout, process.stderr]
+    //   shell: true,
+    //   /* Open new window */
+    //   // detached: true
+    // });
+
+    // child.on('error', function (err) {
+    //   console.log('Spawn error : ' + err);
+    // });
+
+    // child.on('exit', (e, code) => {
+    //   this._onListener({
+    //     action: "exit",
+    //     return: {
+    //       e, code
+    //     }
+    //   })
+    // });
   },
   setOnListener: function (onListener) {
     this._onListener = onListener;
+  },
+  iniPtyProcess(props: Array<string> = []) {
+    var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+
+    var autoComplete = function completer(line: string): Array<string> {
+      const completions = ''.split(' ');
+      const hits = completions.filter((c) => c.startsWith(line));
+      // show all completions if none found
+      // console.log([hits.length ? hits : completions, line]);
+      return [];//[hits.length ? hits : completions, line];
+    }
+    let _ptyProcess = pty.spawn(shell, [], {
+      // name: 'xterm-color',
+      cols: process.stdout.columns,
+      rows: process.stdout.rows,
+      completer: autoComplete,
+      // env: process.env,
+      // cwd: process.env.HOME,
+      // env: {
+      // 	/* Fill from parent process.env */
+      // 	...process.env,
+      // 	/* Override for this value */
+      // 	IS_PROCESS: "open_console"
+      // },
+      handleFlowControl: true
+    });
+    if (props[0] != "") {
+      _ptyProcess.write(props[0] + '\r');
+    }
+    return _ptyProcess;
   }
 });
 

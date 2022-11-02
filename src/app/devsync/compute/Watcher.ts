@@ -457,11 +457,12 @@ export default class Watcher {
 	_getPendingTerminate: any = null;
 	private pendingTerminate() {
 		let db: any = null;
-		return function () {
+		return ()=> {
 			if (db != null) {
 				db.cancel();
 			}
 			db = debounce(() => {
+				process.stdout.write(chalk.green('Pool | Stopped\n'));
 				pool.terminate();
 			}, 20000);
 			db();
@@ -688,9 +689,9 @@ export default class Watcher {
 	};
 
 	private unlinkDir = (path: string) => {
-		if (upath.normalizeSafe(path).includes(this._contain_path[upath.dirname(path)]) == true) {
-			return;
-		}
+		// if (upath.normalizeSafe(path).includes(this._contain_path[upath.dirname(path)]) == true) {
+		// 	return;
+		// }
 		this._contain_path[upath.normalizeSafe(path)] = upath.normalizeSafe(path);
 		if (safeJSON(this.config, 'devsync.trigger_permission.unlink_folder', false) == false) {
 			process.stdout.write(chalk.red('Devsync | '));

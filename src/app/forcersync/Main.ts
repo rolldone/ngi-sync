@@ -29,10 +29,7 @@ const ForceRsync = BaseController.extend<ForceRsyncInterface>({
   },
   index: function (props) {
     let cliService = this.returnCliService();
-    // if (cliService.hasStartupCommand('forcersync')) {
-    //   let _devRsyncPushService = this.returnDevRsyncPushService(cliService,props);
-    //   return;
-    // }
+    // Ini Di panggil dari menu dan dari devsync nested prompt
     if (cliService.hasStartupCommand('singlesync') || props.action == "single_sync_nested_prompt") {
       let _singleSyncService = this.returnSingleSyncService(cliService, props);
       return;

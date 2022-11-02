@@ -37,7 +37,7 @@ export class Uploader extends DevSyncUploader {
 				this._pendingQueue = {};
 				return;
 			}
-			
+
 			this._orders[entry.queue_no] = Object.create({
 				...entry,
 				queue_no: entry.queue_no
@@ -154,6 +154,7 @@ export class Uploader extends DevSyncUploader {
 						}).catch((err: any) => {
 							deleteQueueFunc();
 							reject(err.message);
+							next();
 						})
 						this.client.client.removeAllListeners('error');
 						break;
