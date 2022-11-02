@@ -11,6 +11,7 @@ var pty = require('node-pty');
 var os = require('os');
 import rl, { ReadLine } from 'readline';
 import { stripAnsi } from "@root/tool/Helpers";
+import { Writable } from "stream";
 
 
 declare var masterData: MasterDataInterface;
@@ -198,7 +199,7 @@ export default class Uploader {
 						console.clear();
 						setTimeout(() => {
 							callback("switch", data);
-						}, 1000);
+						}, 100);
 						isStop = true;
 					}
 				}
@@ -229,7 +230,7 @@ export default class Uploader {
 						callback('ENTER_LISTENER');
 						break;
 				}
-				
+
 				switch (data.sequence) {
 					case '\u0003':
 						return;
@@ -386,7 +387,7 @@ export default class Uploader {
 				if (is_streamed == true) {
 					appendFile(upath.normalizeSafe(this.config.localPath + "/" + _xs_split[1]), this._stripAnsi(data.toString()), (err) => { });
 				}
-				switch (data) {
+				switch (data.toString()) {
 					case "exit":
 						return;
 				}
@@ -395,7 +396,9 @@ export default class Uploader {
 					_consoleCaches[index].shift();
 				};
 				_consoleCaches[index].push(data);
-				process.stdout.write(data);
+				if (theClient.muted == false) {
+					process.stdout.write(data);
+				}
 			}
 			theClient.on('data', onData);
 			let onExit = (exitCode: any, signal: any) => {
@@ -429,7 +432,6 @@ export default class Uploader {
 			}).on('close', function () {
 				console.log("Close Readline Local Console");
 			});
-
 			let timesCloseClick = 0;
 			let _localRecordText = "";
 			let _keypress = (key: string, data: any) => {
@@ -465,11 +467,13 @@ export default class Uploader {
 				} else {
 					timesCloseClick = 0;
 				}
+
 				if (isStop == true) {
 					return;
 				}
 
 				switch (data.sequence) {
+					case '\x03':
 					case '\u0003':
 						// theClient.write("exit\r");
 						return;
@@ -504,7 +508,6 @@ export default class Uploader {
 
 	iniPtyProcess(props: Array<string> = []) {
 		var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
-
 		var autoComplete = function completer(line: string): Array<string> {
 			const completions = ''.split(' ');
 			const hits = completions.filter((c) => c.startsWith(line));
@@ -526,8 +529,29 @@ export default class Uploader {
 			// },
 			handleFlowControl: true
 		});
-		_ptyProcess.write('cd ' + this.config.localPath + '\r');
-		_ptyProcess.write(props[0] + '\r');
+		_ptyProcess.muted = true;
+		// Two times for better experience if use change environment nodejs
+		process.stdout.write(chalk.yellow('Local | '));
+		process.stdout.write(chalk.yellow("Two times spawn for better experience\n"));
+		process.stdout.write(chalk.yellow('Local | '));
+		// process.stdout.write(chalk.yellow('\n'));
+		if (os.platform() == "win32") {
+			let upathParse = upath.parse(upath.normalize(shell));
+			_ptyProcess.write(upathParse.name + "\r");
+			// _ptyProcess.write('cd ' + this.config.localPath + '\r');
+		} else {
+			_ptyProcess.write(shell + "\r");
+		}
+		setTimeout(() => {
+			process.stdout.write(chalk.yellow("Enter...\n"));
+			_ptyProcess.muted = false;
+			if (props[0] == "console") {
+				// Ignore it
+				_ptyProcess.write('\r');
+			} else {
+				_ptyProcess.write(props[0] + '\r');
+			}
+		}, 1000);
 		return _ptyProcess;
 	}
 
@@ -546,12 +570,12 @@ export default class Uploader {
 				// debug: true
 			});
 			this.client.on('close', () => {
-				setTimeout(()=>{
-					if(this.client == null){
+				setTimeout(() => {
+					if (this.client == null) {
 						return;
 					}
 					this.connect(callback);
-				},1000);
+				}, 1000);
 			})
 			callback(null, 'Connected');
 		} catch (ex) {
@@ -568,7 +592,7 @@ export default class Uploader {
 		return upath.normalizeSafe(remotePath);
 	}
 	_index: number = 0
-	_concurent: number = 4
+	_concurent: number = 8
 	_pendingUpload: {
 		[key: string]: DebouncedFunc<any>
 	} = {}
@@ -661,11 +685,11 @@ export default class Uploader {
 		}
 		return (entry: any, first_time_out: number) => {
 
-			if(this.client == null){
+			if (this.client == null) {
 				this._pendingQueue = {};
 				return;
 			}
-			
+
 			this._orders[entry.queue_no] = Object.create({
 				...entry,
 				queue_no: entry.queue_no
@@ -701,7 +725,7 @@ export default class Uploader {
 				var fileName = entry.fileName;
 				var action = entry.action;
 
-				if(this.client == null){
+				if (this.client == null) {
 					return;
 				}
 
@@ -789,6 +813,7 @@ export default class Uploader {
 						}).catch((err: any) => {
 							deleteQueueFunc();
 							reject(err.message);
+							next();
 						})
 						this.client.client.removeAllListeners('error');
 						break;

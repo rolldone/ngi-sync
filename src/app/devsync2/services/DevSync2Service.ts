@@ -504,7 +504,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
         },
         choices: [
           ...this._currentConf.devsync.script.local.commands || [],
-          "pwd",
+          "console",
           "git add --renormalize . && git reset",
           "Back",
           'Exit'

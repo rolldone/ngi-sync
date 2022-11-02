@@ -42,7 +42,7 @@ export const COMMAND_SHORT = {
   SAFE_SYNC: 'safe_sync',
   SAFE_PULL_SYNC: 'safe_pull_sync',
   SAFE_SYNC_NON_FORCE: 'safe_sync_non_force',
-  SOFT_PUSH_SYNC: 'soft_push_sync',
+  SAVE_PUSH_SYNC: 'soft_push_sync',
   FORCE_PUSH_SYNC: 'force_push_sync',
   FORCE_SINGLE_SYNC: 'force_single_sync',
 }
@@ -51,7 +51,7 @@ export const COMMAND_TARGET = {
   SAFE_SYNC: COMMAND_SHORT.SAFE_SYNC + ' :: DevSync Basic Safe Syncronise - Trigger by edit file :)',
   SAFE_PULL_SYNC: COMMAND_SHORT.SAFE_PULL_SYNC + ' :: devsync Pull Syncronise - This feature only download by your base template - And ignore all file you define on config file and .sync_ignore :)',
   SAFE_SYNC_NON_FORCE: COMMAND_SHORT.SAFE_SYNC_NON_FORCE + ' :: DevSync Basic with non force file - Trigger by edit file :). Ignored file not activated except pull sync - Caution : This mode will take a long time indexing the file. and need more consume RAM',
-  SOFT_PUSH_SYNC: COMMAND_SHORT.SOFT_PUSH_SYNC + ' :: DevSync Soft Push Data. - Your sensitive data will be safe on target :)',
+  SAVE_PUSH_SYNC: COMMAND_SHORT.SAVE_PUSH_SYNC + ' :: DevSync Safe Push Data. - Your sensitive data will be safe on target :)',
   FORCE_PUSH_SYNC: COMMAND_SHORT.FORCE_PUSH_SYNC + ' :: DevSync Force Push Data - "DANGER : Your sensitive data will destroy if have no define _ignore on your folder data on local :("',
   FORCE_SINGLE_SYNC: COMMAND_SHORT.FORCE_SINGLE_SYNC + ' :: DevSync Single Syncronize - You can download simple file or folder',
 }
@@ -85,10 +85,10 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         message: "Devsync Mode :",
         choices: [
           COMMAND_TARGET.SAFE_SYNC,
-          COMMAND_TARGET.SAFE_SYNC_NON_FORCE,
+          // COMMAND_TARGET.SAFE_SYNC_NON_FORCE,
           COMMAND_TARGET.SAFE_PULL_SYNC,
-          COMMAND_TARGET.SOFT_PUSH_SYNC,
-          COMMAND_TARGET.FORCE_PUSH_SYNC,
+          COMMAND_TARGET.SAVE_PUSH_SYNC,
+          // COMMAND_TARGET.FORCE_PUSH_SYNC,
           COMMAND_TARGET.FORCE_SINGLE_SYNC
         ]
       },
@@ -126,7 +126,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           }
         });
         break;
-      case COMMAND_SHORT.SOFT_PUSH_SYNC:
+      case COMMAND_SHORT.SAVE_PUSH_SYNC:
         masterData.saveData('command.forcersync.index', {
           mode: 'soft',
           callback: (err: boolean) => {
@@ -207,8 +207,8 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
     inquirer.prompt(questions)['then']((passAnswer: any) => {
       if (passAnswer.target == COMMAND_TARGET.FORCE_PUSH_SYNC) {
         this._executeCommand(COMMAND_SHORT.FORCE_PUSH_SYNC);
-      } else if (passAnswer.target == COMMAND_TARGET.SOFT_PUSH_SYNC) {
-        this._executeCommand(COMMAND_SHORT.SOFT_PUSH_SYNC);
+      } else if (passAnswer.target == COMMAND_TARGET.SAVE_PUSH_SYNC) {
+        this._executeCommand(COMMAND_SHORT.SAVE_PUSH_SYNC);
       } else if (passAnswer.target == COMMAND_TARGET.SAFE_PULL_SYNC) {
         this._executeCommand(COMMAND_SHORT.SAFE_PULL_SYNC);
       } else if (passAnswer.target == COMMAND_TARGET.SAFE_SYNC_NON_FORCE) {
@@ -402,7 +402,7 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
         },
         choices: [
           ...this._currentConf.devsync.script.local.commands || [],
-          "pwd",
+          "console",
           "git add --renormalize . && git reset",
           "Back",
           'Exit'
@@ -438,12 +438,18 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
           this._actionMode = "devsync";
           this.watcher.actionMode = this._actionMode;
 
+          // _readLine = rl.createInterface({
+          //   input: process.stdin,
+          //   output: process.stdout,
+          //   // terminal: true
+          // });
+          process.stdin.removeListener("keypress", remoteFuncKeypress);
           _readLine = rl.createInterface({
             input: process.stdin,
             output: process.stdout,
             // terminal: true
           });
-          process.stdin.off('keypress', remoteFuncKeypress);
+          // process.stdin.off('keypress', remoteFuncKeypress);
           process.stdin.on('keypress', remoteFuncKeypress);
           break;
         case '\u001b2':
@@ -486,7 +492,8 @@ const DevSyncService = BaseService.extend<DevSyncServiceInterface>({
             _readLine.close();
             _readLine = null;
           } catch (ex) { }
-          process.stdin.removeListener('keypress', remoteFuncKeypress);
+          process.stdin.removeAllListeners('keypress');
+          // process.stdin.removeListener('keypress', remoteFuncKeypress);
           console.clear();
           this.uploader.setConsoleAction("pending first");
           let inin = i;
