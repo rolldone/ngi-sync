@@ -65,6 +65,7 @@ export interface SyncPushInterface extends BaseModelInterface {
     }>>
   }
   _stripAnsi?: { (text: string): string }
+  is_single_sync: Boolean
 }
 
 export interface RsyncOptions {
@@ -99,6 +100,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
     return Config.create(cli);
   },
   tempFolder: '.sync_temp/',
+  is_single_sync: false,
   construct: function (cli, config) {
     // console.log('config -> ', config);
     this._cli = cli;
@@ -520,15 +522,21 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       let config = this._config;
       let _local_path = config.local_path;
       let _is_file = false;
+      let _is_error = false;
       if (extraWatchs[index] != null) {
 
         _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + extraWatchs[index].path));
         let _remote_path = upath.normalizeSafe(config.base_path + '/' + extraWatchs[index].path);
         if (isFile == true) {
           /* Remove file path to be dirname only */
-          _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + dirname(extraWatchs[index].path)));
+          let _extrawatchPath = dirname(extraWatchs[index].path);
+          _extrawatchPath = this._removeSameString(_local_path, _extrawatchPath); // sql/text.txt <-> sql = /text.txt
+          _local_path = this._removeSameString(_local_path, _extrawatchPath); // [sql/text.txt <-> /text.txt] = sql
+          _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + _extrawatchPath));
           _local_path = upath.normalizeSafe('./' + _local_path);
           _remote_path = dirname(_remote_path);
+          let _parse_local_path = upath.parse(_local_path);
+          _remote_path = _remote_path + "/" + _parse_local_path.base;
           _remote_path = config.username + '@' + config.host + ':' + _remote_path;
         } else {
           _local_path = upath.normalizeSafe('./' + _local_path + '/')
@@ -538,6 +546,9 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
         process.stdout.write(chalk.green('Rsync Upload | ') + _local_path + ' >> ' + _remote_path + '\n');
 
         let _delete_mode_active = config.mode == "hard" ? true : false;
+        if (extraWatchs[index].includes == null) {
+          extraWatchs[index].includes = [];
+        }
         _delete_mode_active = extraWatchs[index].includes.length > 0 ? false : _delete_mode_active
         var rsync = Rsync.build({
           /* Support multiple source too */
@@ -585,6 +596,9 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
               }
             }
           }
+          if (data.includes('failed: No such file or directory')) {
+            _is_error = true;
+          }
           if (data.includes('Not a directory')) {
             _is_file = true;
             ptyProcess.write('exit' + '\r');
@@ -595,12 +609,23 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           // process.stdin.off('keypress', theCallback);
           ptyProcess.kill();
           ptyProcess = null;
+          if (_is_error == true) {
+            this._onListener({
+              action: "exit",
+              return: {
+                exitCode, signal
+              }
+            })
+            return;
+          }
           if (extraWatchs[index + 1] != null) {
             if (_is_file == true) {
               this._recursiveRsync(extraWatchs, index, _is_file);
             } else {
-              // Cache it to temp
-              await this._cacheToTemp(extraWatchs, index, isFile);
+              if (this.is_single_sync == false) {
+                // Cache it to temp
+                await this._cacheToTemp(extraWatchs, index, isFile);
+              }
               // And next recursive
               this._recursiveRsync(extraWatchs, index + 1);
             }
@@ -609,8 +634,10 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
               this._recursiveRsync(extraWatchs, index, _is_file);
               return;
             }
-            // Cache it to temp
-            await this._cacheToTemp(extraWatchs, index, isFile);
+            if (this.is_single_sync == false) {
+              // Cache it to temp
+              await this._cacheToTemp(extraWatchs, index, isFile);
+            }
             // ANd exit
             this._onListener({
               action: "exit",
@@ -618,7 +645,6 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
                 exitCode, signal
               }
             })
-
           }
         });
 
@@ -640,9 +666,9 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           let _remote_path = extraWatchs[index].path;
           if (isFile == true) {
             /* Remove file path to be dirname only */
-            _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + dirname(extraWatchs[index].path)));
-            _local_path = upath.normalizeSafe('./' + _local_path);
             _remote_path = dirname(_remote_path);
+            let _parse_local_path = upath.parse(_local_path);
+            _remote_path = _remote_path + "/" + _parse_local_path.base;
           } else {
             _local_path = upath.normalizeSafe('./' + _local_path + '/')
           }
@@ -712,7 +738,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
               } else {
                 // You dont need it
                 // this._cacheToTemp(extraWatchs, index + 1);
-              resolve();
+                resolve();
               }
             } else {
               if (_is_file == true) {
@@ -746,6 +772,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
 
       // Send All data on single_sync sync-config.yaml
       if (this._config.withoutSyncIgnorePattern == true) {
+        this.is_single_sync = true;
         extraWatch = [];
         for (var i = 0; i < this._config.single_sync.length; i++) {
           switch (this._config.single_sync[i]) {

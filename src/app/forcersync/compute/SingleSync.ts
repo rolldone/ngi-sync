@@ -18,6 +18,7 @@ export interface SingleSyncInterface extends Omit<SyncPushInterface, 'submitPush
 
 const SingleSync = SyncPush.extend<SingleSyncInterface>({
   tempFolder: '.sync_temp/',
+  is_single_sync: true,
   setOnListener: function (func) {
     return this._super(func);
   },
@@ -55,6 +56,7 @@ const SingleSync = SyncPush.extend<SingleSyncInterface>({
           return this._recursiveRsync(extraWatch, 0);
         case 'download':
           this._syncPull.setOnListener(this._onListener);
+          this._syncPull.is_single_sync = true;
           return this._syncPull._recursiveRsync(extraWatch, 0);
       }
 
