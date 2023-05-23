@@ -123,18 +123,20 @@ export default class Watcher {
 		let resCHeckGItIgnores = (() => {
 			let newResGItIngore = [];
 			for (var a = 0; a < gitIgnore.length; a++) {
-				// console.log(gitIgnore[a][Object.keys(gitIgnore[a])[0]]);
-				if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
+				if (gitIgnore[a] != null) {
+					// console.log(gitIgnore[a][Object.keys(gitIgnore[a])[0]]);
+					if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
 
-				} else {
-					if (gitIgnore[a] instanceof RegExp) {
-						newResGItIngore.push(gitIgnore[a]);
-					} else if (gitIgnore[a][Object.keys(gitIgnore[a]).length - 1] == '/') {
-						gitIgnore[a] = this.config.localPath + '/' + gitIgnore[a];
-						newResGItIngore.push(upath.normalizeSafe(this._replaceAt(gitIgnore[a], '/', '', gitIgnore[a].length - 1, gitIgnore[a].length)));
 					} else {
-						gitIgnore[a] = this.config.localPath + '/' + gitIgnore[a];
-						newResGItIngore.push(upath.normalizeSafe(gitIgnore[a]));
+						if (gitIgnore[a] instanceof RegExp) {
+							newResGItIngore.push(gitIgnore[a]);
+						} else if (gitIgnore[a][Object.keys(gitIgnore[a]).length - 1] == '/') {
+							gitIgnore[a] = this.config.localPath + '/' + gitIgnore[a];
+							newResGItIngore.push(upath.normalizeSafe(this._replaceAt(gitIgnore[a], '/', '', gitIgnore[a].length - 1, gitIgnore[a].length)));
+						} else {
+							gitIgnore[a] = this.config.localPath + '/' + gitIgnore[a];
+							newResGItIngore.push(upath.normalizeSafe(gitIgnore[a]));
+						}
 					}
 				}
 			}
@@ -144,9 +146,12 @@ export default class Watcher {
 		/* Define extra watch if get ! on git ignore */
 		let pass = [];
 		for (var a = 0; a < gitIgnore.length; a++) {
-			if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
-				// newExtraWatch[upath.normalizeSafe(base+'/'+this._replaceAt(gitIgnore[a],'!','',0,1))];
-				pass.push(this._replaceAt(gitIgnore[a], '!', '', 0, 1));
+			// console.log("aaaaaaaaaaa",gitIgnore[a]);
+			if (gitIgnore[a] != null) {
+				if (gitIgnore[a][Object.keys(gitIgnore[a])[0]] == '!') {
+					// newExtraWatch[upath.normalizeSafe(base+'/'+this._replaceAt(gitIgnore[a],'!','',0,1))];
+					pass.push(this._replaceAt(gitIgnore[a], '!', '', 0, 1));
+				}
 			}
 		}
 
@@ -457,7 +462,7 @@ export default class Watcher {
 	_getPendingTerminate: any = null;
 	private pendingTerminate() {
 		let db: any = null;
-		return ()=> {
+		return () => {
 			if (db != null) {
 				db.cancel();
 			}
