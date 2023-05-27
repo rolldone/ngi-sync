@@ -135,7 +135,7 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
                 process.stdout.write("\n" + chalk.yellow('If you want to return to the ngi-sync menu, try typing exit again\n'));
               }
               isExitType = "";
-            }, 1000)
+            }, 500)
           }else{
             isExitType = "";
           }
