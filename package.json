@@ -100,7 +100,7 @@
     "ssh-config": "^4.0.6",
     "ssh2": "0.8.9",
     "ssh2-config": "^0.1.0",
-    "ssh2-sftp-client": "^7.0.4",
+    "ssh2-sftp-client": "^9.1.0",
     "stream-equal": "^2.0.1",
     "ts-node": "^10.6.0",
     "tslib": "^2.3.1",
