@@ -6,6 +6,7 @@ import upath from 'upath';
 import os from 'os';
 import * as child_process from 'child_process';
 import rl, { ReadLine } from 'readline';
+const chalk = require('chalk');
 
 var pty = require('node-pty');
 
@@ -36,7 +37,10 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
 
     /* DONT LET ERROR! */
     /* Manage the ssh_config from .ssh home dir */
-    this._ssh_config = SSHConfig.parse(readFileSync(_configFilePath).toString());
+    if(existsSync(_configFilePath) == false){
+      writeFileSync(_configFilePath,"");
+    }
+    this._ssh_config = SSHConfig.parse(readFileSync(_configFilePath,{ encoding: 'utf8', flag: 'r' }).toString());
 
 
 
@@ -83,10 +87,11 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
       _select_ssh_command.command = "";
     }
 
-    let onData = (data: any) => {
+    let onData = (data: string) => {
       process.stdout.write(data);
     }
 
+    let isExitType = "";
     let theClient = this.iniPtyProcess([_select_ssh_command.command]);
 
     let _readLine = rl.createInterface({
@@ -101,11 +106,12 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
     });
 
     theClient.on('exit', () => {
+      isExitType = "";
       this._onListener({
         action: "exit",
         return: {}
       })
-      
+
       theClient.removeListener('data', onData);
       process.stdin.removeListener("keypress", _keypress)
       // process.exit(0);
@@ -114,6 +120,7 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
     theClient.on('data', onData);
 
     let _keypress = (key: string, data: any) => {
+      isExitType += data.sequence;
       switch (data.sequence) {
         case '\x03':
         case '\u0003':
@@ -125,6 +132,16 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
           theClient.write(data.sequence);
           return;
         case '\r':
+          if (isExitType.startsWith("exit")) {
+            setTimeout(() => {
+              if(isExitType != ""){
+                process.stdout.write("\n" + chalk.yellow('If you want to return to the ngi-sync menu, try typing exit again\n'));
+              }
+              isExitType = "";
+            }, 500)
+          }else{
+            isExitType = "";
+          }
           break;
       }
       theClient.write(data.sequence);
@@ -165,6 +182,7 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
       const hits = completions.filter((c) => c.startsWith(line));
       // show all completions if none found
       // console.log([hits.length ? hits : completions, line]);
+      // return hits;
       return [];//[hits.length ? hits : completions, line];
     }
     let _ptyProcess = pty.spawn(shell, [], {
