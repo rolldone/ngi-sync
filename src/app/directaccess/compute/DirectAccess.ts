@@ -37,7 +37,10 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
 
     /* DONT LET ERROR! */
     /* Manage the ssh_config from .ssh home dir */
-    this._ssh_config = SSHConfig.parse(readFileSync(_configFilePath).toString());
+    if(existsSync(_configFilePath) == false){
+      writeFileSync(_configFilePath,"");
+    }
+    this._ssh_config = SSHConfig.parse(readFileSync(_configFilePath,{ encoding: 'utf8', flag: 'r' }).toString());
 
 
 
