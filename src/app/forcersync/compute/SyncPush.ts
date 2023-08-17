@@ -530,6 +530,10 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
         if (isFile == true) {
           /* Remove file path to be dirname only */
           let _extrawatchPath = dirname(extraWatchs[index].path);
+          // If _extrawatchPath equal . remove it
+          if(_extrawatchPath == "."){
+            _extrawatchPath = "";
+          }
           _extrawatchPath = this._removeSameString(_local_path, _extrawatchPath); // sql/text.txt <-> sql = /text.txt
           _local_path = this._removeSameString(_local_path, _extrawatchPath); // [sql/text.txt <-> /text.txt] = sql
           _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + _extrawatchPath));
