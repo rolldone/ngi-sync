@@ -467,7 +467,10 @@ export default class Watcher {
 				db.cancel();
 			}
 			db = debounce(() => {
-				process.stdout.write(chalk.green('Pool | Stopped\n'));
+				// process.stdout.write(chalk.green('Pool | Stopped\n'));
+				this._onListener({
+					action: "POOL_STOPPED",
+				})
 				pool.terminate();
 			}, 20000);
 			db();
@@ -634,8 +637,12 @@ export default class Watcher {
 			return;
 		}
 		if (this._sameChangePath == path) {
-			process.stdout.write(chalk.green('Devsync | '));
-			process.stdout.write(chalk.green('Ups get 2x change :: ' + path) + '\n');
+			// process.stdout.write(chalk.green('Devsync | '));
+			// process.stdout.write(chalk.green('Ups get 2x change :: ' + path) + '\n');
+			this._onListener({
+				action: "2_TIME_CHANGE",
+				return : path
+			})
 			this._sameChangePath = null;
 		} else {
 			this._sameChangePath = path;
