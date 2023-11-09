@@ -343,6 +343,7 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     });
     this._httpEvent = this.returnHttpEvent(this._cli, this._currentConf);
     this._httpEvent.setOnChangeListener(async (action, props) => {
+      process.stdout.write(chalk.green('-\n'));
       process.stdout.write(chalk.green('Ngi-sync Agent | '));
       process.stdout.write(chalk.green('Action :: ') + action + " - " + (props || "HTTP") + '\n');
       await this._download.startSftp();
@@ -392,7 +393,6 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     const basePath = isLocal ? path.join(__dirname, '/public/img', "") : path.dirname(process.execPath) + "/public/img";
     this.uploader.setOnListener((action: string, props: any) => {
       switch (action) {
-
         case 'RESTART':
           notifier.notify(
             {
@@ -556,10 +556,10 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
           break;
         case '\u001b2':
           console.clear();
-          try{
+          try {
             _readLine.close();
             _readLine = null;
-          }catch(ex){}
+          } catch (ex) { }
           process.stdin.removeListener('keypress', remoteFuncKeypress);
           process.stdout.write(chalk.green('Console | ') + 'Start Console' + '\r');
           for (var i = 0; i < total_tab; i++) {
@@ -586,10 +586,10 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
       }
       for (var i = 0; i < total_tab; i++) {
         if (data.sequence == '\u001b' + (i + 3)) {
-          try{
+          try {
             _readLine.close();
             _readLine = null;
-          }catch(ex){}
+          } catch (ex) { }
           process.stdin.removeAllListeners('keypress');
           // process.stdin.removeListener('keypress', remoteFuncKeypress);
           console.clear();
@@ -799,8 +799,45 @@ const DevRsyncService = BaseService.extend<DevRsyncServiceInterface>({
     let _pendingClearData = this.watcher.pendingClearData();
     this.watcher.setOnListener((props: {
       action: string
+      return?: any
     }) => {
       switch (props.action) {
+        case '2_TIME_CHANGE':
+          notifier.notify(
+            {
+              title: "Devsync Status",
+              message: "Ups get 2x change :: " + props.return,
+              icon: path.join(basePath, 'success.png'), // Absolute path (doesn't work on balloons)
+              sound: true, // Only Notification Center or Windows Toasters
+              wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+              type: 'info',
+              'app-name': 'ngi-sync',
+              appID: this._currentConf.project_name
+            },
+            function (err: any, response: any, metadata: any) {
+              // Response is response from notification
+              // Metadata contains activationType, activationAt, deliveredAt
+            }
+          );
+          break;
+        case 'POOL_STOPPED':
+          notifier.notify(
+            {
+              title: "Pool Status",
+              message: "Pool Stopped",
+              icon: path.join(basePath, 'success.png'), // Absolute path (doesn't work on balloons)
+              sound: true, // Only Notification Center or Windows Toasters
+              wait: false, // Wait with callback, until user action is taken against notification, does not apply to Windows Toasters as they always wait or notify-send as it does not support the wait option
+              type: 'info',
+              'app-name': 'ngi-sync',
+              appID: this._currentConf.project_name
+            },
+            function (err: any, response: any, metadata: any) {
+              // Response is response from notification
+              // Metadata contains activationType, activationAt, deliveredAt
+            }
+          );
+          break;
         case 'ALL_EVENT':
           _pendingClearData();
           break;
