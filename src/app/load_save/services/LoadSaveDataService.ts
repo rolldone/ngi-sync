@@ -1,5 +1,5 @@
 import BaseService from "@root/base/BaseService";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from "fs";
 import inquirer from 'inquirer';
 import path from "path";
 import upath from 'upath';
@@ -277,7 +277,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       // Keep cleaning first
       for (var a = 0; a < _existFilesSrc.length; a++) {
         if (lstatSync(_existFilesSrc[a].fullPath).isDirectory() == true) {
-          rmdirSync(_existFilesSrc[a].fullPath, {
+          rmSync(_existFilesSrc[a].fullPath, {
             recursive: true
           })
         } else if (lstatSync(_existFilesSrc[a].fullPath).isFile() == true) {
@@ -335,7 +335,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
         })
         if (existsSync(_filesReadDirSrcEnc[a].fullPath) == true) {
           if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isDirectory() == true) {
-            rmdirSync(_filesReadDirSrcEnc[a].fullPath, {
+            rmSync(_filesReadDirSrcEnc[a].fullPath, {
               recursive: true
             })
           } else if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isFile() == true) {
