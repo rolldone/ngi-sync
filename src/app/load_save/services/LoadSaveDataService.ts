@@ -366,7 +366,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
 
         } else {
           if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isDirectory() == true) {
-            rmdirSync(_filesReadDirSrcEnc[a].fullPath, {
+            rmSync(_filesReadDirSrcEnc[a].fullPath, {
               recursive: true
             })
           } else if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isFile() == true) {
