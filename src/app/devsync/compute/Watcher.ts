@@ -1,6 +1,6 @@
 import * as chokidar from "chokidar"
 const chalk = require('chalk');
-import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync, unlink, rmdir, statSync } from "fs";
+import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync, unlink, statSync } from "fs";
 import Uploader from "./Uploader";
 import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
