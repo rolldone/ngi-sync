@@ -1,6 +1,6 @@
 import * as chokidar from "chokidar"
 const chalk = require('chalk');
-import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, readdirSync, lstatSync, unlinkSync, unlink, statSync, rmSync } from "fs";
+import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, readdirSync, lstatSync, unlinkSync, unlink, statSync } from "fs";
 import Uploader from "./Uploader";
 import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
@@ -389,7 +389,7 @@ export default class Watcher {
 					unlinkSync(curPath);
 				}
 			});
-			rmSync(directoryPath);
+			removeSync(directoryPath);
 		}
 	};
 

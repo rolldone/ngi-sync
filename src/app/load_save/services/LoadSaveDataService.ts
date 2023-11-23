@@ -10,6 +10,7 @@ import YAML from 'yaml';
 import readdirp from "readdirp";
 import filendir from 'filendir';
 import * as folderEncrypt from '../compute/FolderEncrypt';
+import { removeSync } from "fs-extra";
 
 export interface LoadSaveServiceInterface extends BaseServiceInterface {
   _completeData: {
@@ -277,9 +278,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
       // Keep cleaning first
       for (var a = 0; a < _existFilesSrc.length; a++) {
         if (lstatSync(_existFilesSrc[a].fullPath).isDirectory() == true) {
-          rmSync(_existFilesSrc[a].fullPath, {
-            recursive: true
-          })
+          removeSync(_existFilesSrc[a].fullPath)
         } else if (lstatSync(_existFilesSrc[a].fullPath).isFile() == true) {
           rmSync(_existFilesSrc[a].fullPath);
         }
@@ -335,9 +334,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
         })
         if (existsSync(_filesReadDirSrcEnc[a].fullPath) == true) {
           if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isDirectory() == true) {
-            rmSync(_filesReadDirSrcEnc[a].fullPath, {
-              recursive: true
-            })
+            removeSync(_filesReadDirSrcEnc[a].fullPath)
           } else if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isFile() == true) {
             rmSync(_filesReadDirSrcEnc[a].fullPath);
           }
@@ -366,9 +363,7 @@ export default BaseService.extend<LoadSaveServiceInterface>({
 
         } else {
           if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isDirectory() == true) {
-            rmSync(_filesReadDirSrcEnc[a].fullPath, {
-              recursive: true
-            })
+            removeSync(_filesReadDirSrcEnc[a].fullPath)
           } else if (lstatSync(_filesReadDirSrcEnc[a].fullPath).isFile() == true) {
             rmSync(_filesReadDirSrcEnc[a].fullPath);
           }
