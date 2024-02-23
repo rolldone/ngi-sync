@@ -1,6 +1,6 @@
 import * as chokidar from "chokidar"
 const chalk = require('chalk');
-import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, rmdirSync, readdirSync, lstatSync, unlinkSync, unlink, rmdir, statSync } from "fs";
+import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, readdirSync, lstatSync, unlinkSync, unlink, statSync } from "fs";
 import Uploader from "./Uploader";
 import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
@@ -389,7 +389,7 @@ export default class Watcher {
 					unlinkSync(curPath);
 				}
 			});
-			rmdirSync(directoryPath);
+			removeSync(directoryPath);
 		}
 	};
 
@@ -467,7 +467,10 @@ export default class Watcher {
 				db.cancel();
 			}
 			db = debounce(() => {
-				process.stdout.write(chalk.green('Pool | Stopped\n'));
+				// process.stdout.write(chalk.green('Pool | Stopped\n'));
+				this._onListener({
+					action: "POOL_STOPPED",
+				})
 				pool.terminate();
 			}, 20000);
 			db();
@@ -634,8 +637,12 @@ export default class Watcher {
 			return;
 		}
 		if (this._sameChangePath == path) {
-			process.stdout.write(chalk.green('Devsync | '));
-			process.stdout.write(chalk.green('Ups get 2x change :: ' + path) + '\n');
+			// process.stdout.write(chalk.green('Devsync | '));
+			// process.stdout.write(chalk.green('Ups get 2x change :: ' + path) + '\n');
+			this._onListener({
+				action: "2_TIME_CHANGE",
+				return : path
+			})
 			this._sameChangePath = null;
 		} else {
 			this._sameChangePath = path;
