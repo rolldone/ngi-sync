@@ -11,7 +11,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npx webpack --watch",
     "build": "npx webpack --config webpack.config.prod.js",
-    "compile-win": "pkg . --targets node14-win-x64",
+    "compile-win": "pkg . --targets node16-win-x64",
     "compile-linux": "pkg . --targets node14-linux"
   },
   "pkg": {
@@ -23,7 +23,7 @@
       "dist/example.yaml"
     ],
     "targets": [
-      "node14-win-x64",
+      "node16-win-x64",
       "node14-linux"
     ],
     "outputPath": "dist_prod"
@@ -100,7 +100,7 @@
     "ssh-config": "^4.0.6",
     "ssh2": "0.8.9",
     "ssh2-config": "^0.1.0",
-    "ssh2-sftp-client": "^7.0.4",
+    "ssh2-sftp-client": "^9.1.0",
     "stream-equal": "^2.0.1",
     "ts-node": "^10.6.0",
     "tslib": "^2.3.1",
