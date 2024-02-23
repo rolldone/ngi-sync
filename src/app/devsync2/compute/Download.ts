@@ -1,6 +1,6 @@
 import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import sftpClient, { sftp } from '@root/tool/ssh2-sftp-client';
-import { existsSync, mkdirSync, readFileSync, rmdirSync, statSync, unlink, unlinkSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync } from "fs";
 import { debounce, DebouncedFunc } from "lodash";
 import { CliInterface } from "../services/CliService";
 import { ConfigInterface } from "./Config";
