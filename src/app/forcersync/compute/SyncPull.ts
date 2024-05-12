@@ -39,15 +39,15 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
         if (isFile == true) {
           /* Remove file path to be dirname only */
           _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + dirname(extraWatchs[index].path)));
-
+          // console.log("_local_path A --> ", _local_path);
           let _extrawatchPath = extraWatchs[index].path;
+          // Remove the first "/" if any
+          _extrawatchPath = _extrawatchPath.replace(/^\/?/, '');
           _extrawatchPath = this._removeSameString(_extrawatchPath, _local_path); // sql/text.txt <-> sql = /text.txt
           _local_path = this._removeSameString(_local_path, _extrawatchPath); // [sql/text.txt <-> /text.txt] = sql
-          _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + _extrawatchPath));
-
-          if (_local_path == "") {
-            _local_path = "./";
-          }
+          // if (_local_path == "") {
+          //   _local_path = "./";
+          // }
         } else {
           _local_path = path.relative(upath.normalize(path.resolve("")), upath.normalize(_local_path + '/' + extraWatchs[index].path) + '/');
           _local_path = _local_path;
@@ -175,7 +175,6 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
             // _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + dirname(extraWatchs[index].path)));
             // _local_path = upath.normalizeSafe('./' + _local_path);
             // _remote_path = dirname(_remote_path);
-
             let _extrawatchPath = dirname(extraWatchs[index].path);
             _extrawatchPath = this._removeSameString(_local_path, _extrawatchPath); // sql/text.txt <-> sql = /text.txt
             _local_path = this._removeSameString(_local_path, _extrawatchPath); // [sql/text.txt <-> /text.txt] = sql
