@@ -10,6 +10,9 @@ import os from 'os';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import filendir from 'filendir';
 import { execSync } from "child_process";
+import mustache from "mustache"
+import dotenv from 'dotenv'; 
+dotenv.config();  // Load environment variables from .env file 
 
 export const CONFIG_FILE_NAME = "sync-config.yaml";
 export type trigger_permission = {
@@ -226,10 +229,10 @@ const Config = BaseModel.extend<ConfigInterface>({
   _reconstruction: function () {
     try {
       if (existsSync(this._filename)) {
-        let configraw;
+        let configraw = null;
         if (configraw = readFileSync(this._filename)) {
           let testStringValue = "";
-
+          configraw = mustache.render(configraw.toString(),process.env);
           try {
             this._config = YAML.parse(configraw.toString()) as any;
             this._originConfig = Object.assign({}, this._config);
@@ -296,7 +299,7 @@ const Config = BaseModel.extend<ConfigInterface>({
         ..._overrideSyncConfig,
       }
       // Override the sync-config if getting new and replace old version
-      filendir.writeFileSync(path.resolve("", "sync-config.yaml"), YAML.stringify(_overrideSyncConfig, null), "utf8");
+      // filendir.writeFileSync(path.resolve("", "sync-config.yaml"), YAML.stringify(_overrideSyncConfig, null), "utf8");
     } catch (ex) {
       console.log('_expand -> ex ', ex);
     }
@@ -306,8 +309,9 @@ const Config = BaseModel.extend<ConfigInterface>({
       let configraw;
       if (configraw = readFileSync(this._filename)) {
         let testStringValue = "";
+        configraw = mustache.render(configraw.toString(),process.env);
         try {
-          this._config = YAML.parse(configraw.toString()) as any;
+          this._config = YAML.parse(configraw) as any;
           this._originConfig = Object.assign({}, this._config);
           let newObject = this._config as any;
           testStringValue = JSON.stringify(this._config);
