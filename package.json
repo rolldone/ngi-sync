@@ -64,7 +64,7 @@
     "chalk": "^4.1.1",
     "chokidar": "3.5.2",
     "death": "^1.1.0",
-    "dotenv": "^8.2.0",
+    "dotenv": "^8.6.0",
     "eventemitter2": "^6.4.4",
     "filendir": "^2.0.1",
     "folder-encrypt": "^1.1.7",
@@ -84,6 +84,7 @@
     "module-alias": "^2.2.2",
     "moment": "^2.29.1",
     "moment-timezone": "^0.5.33",
+    "mustache": "^4.2.0",
     "named-routes": "^2.0.7",
     "node-multithread": "^1.0.4",
     "node-notifier": "^10.0.0",
@@ -111,6 +112,7 @@
     "upath": "^2.0.1",
     "webpack": "^5.70.0",
     "window-size": "^1.1.1",
-    "workerpool": "^6.1.5"
+    "workerpool": "^6.1.5",
+    "yaml": "^2.4.2"
   }
 }
