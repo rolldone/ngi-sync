@@ -16,9 +16,9 @@ function testCache(context) {
       }
       let sizeFileNew = statSync(path);
       let sizeFileOld = statSync(destinationFile);
-      if(sizeFileNew.size != sizeFileOld.size){
-        return resolve(false);;
-      }
+      // if(sizeFileNew.size != sizeFileOld.size){
+      //   return resolve(false);;
+      // }
       let readStream1 = createReadStream(path);
       let readStream2 = createReadStream(destinationFile);
       let equal = await streamEqual(readStream1, readStream2);

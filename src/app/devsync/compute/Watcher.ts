@@ -1,6 +1,6 @@
 import * as chokidar from "chokidar"
 const chalk = require('chalk');
-import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, readdirSync, lstatSync, unlinkSync, unlink, statSync } from "fs";
+import { readFileSync, copyFile, existsSync, mkdirSync, createReadStream, readdirSync, lstatSync, unlinkSync, unlink, statSync, chmodSync } from "fs";
 import Uploader from "./Uploader";
 import { ConfigInterface } from "./Config";
 import { CliInterface } from "../services/CliService";
@@ -16,10 +16,16 @@ const pool = workerpool.pool(__dirname + '/TestCache.js');
 import fs, { removeSync } from 'fs-extra';
 import { safeJSON } from "@root/tool/Helpers";
 import readdirp from 'readdirp';
+import sqlite3 from "better-sqlite3"
+import xxhash from "xxhash-addon"
+import path from "path";
 
 const WATCHER_ACTION = {
 	DELETE_FOLDER: 1
 }
+
+const temp_folder = ".sync_temp/";
+const table_name = "file_cache";
 
 export default class Watcher {
 	clear() {
@@ -45,7 +51,7 @@ export default class Watcher {
 	_contain_path?: {
 		[key: string]: string
 	} = {};
-	tempFolder = '.sync_temp/';
+	tempFolder = temp_folder;
 	_unwatch?: Array<any>
 	files: any;
 	_monitorRecursive?: NodeJS.Timeout
@@ -81,6 +87,113 @@ export default class Watcher {
 		this.base = base;
 	}
 
+	columnExists(tableName: string, columnName: string) {
+		return new Promise((resolve, reject) => {
+
+			try {
+				let resData = this.db.pragma(`table_info(${tableName})`);
+				resolve(resData)
+			} catch (error) {
+				reject(error)
+			}
+			// (err, columns) => {
+			// 	if (err) {
+			// 		return reject(err);
+			// 	}
+			// 	const column = columns.find((col: any) => col.name === columnName);
+			// 	if (column == undefined) {
+			// 		reject(column + " not found");
+			// 		return;
+			// 	}
+			// 	resolve(column !== undefined);
+			// }
+		});
+	}
+
+	createTable() {
+		return new Promise((resolve: Function, reject: Function) => {
+
+			try {
+				let resData = this.db.prepare("CREATE TABLE IF NOT EXISTS " + table_name + " (id INTEGER PRIMARY KEY, key TEXT, path TEXT)").run()
+				resolve(resData)
+			} catch (error) {
+				reject(error)
+			}
+		})
+	}
+
+	getHashRecordByPath(path: string) {
+		return new Promise((resolve: { (props: any): void }, reject: Function) => {
+
+			try {
+				let resData = this.db.prepare("SELECT * from " + table_name + " where path = ?").all(path);
+				resolve(resData)
+			} catch (error) {
+				reject(error)
+			}
+		})
+	}
+
+	insertHashRecord(key: string, path: string) {
+		return new Promise((resolve: Function, reject: Function) => {
+
+			try {
+				let resData = this.db.prepare("INSERT INTO " + table_name + " (key,path) VALUES (?,?)").run(key, path);
+				resolve(resData)
+			} catch (error) {
+				reject(error)
+			}
+		})
+	}
+
+	updateHashRecord(key: string, path: string) {
+		return new Promise((resolve: Function, reject: Function) => {
+
+			try {
+				let resData = this.db.prepare("UPDATE " + table_name + " SET  key = ? where path = ?").run(key, path);
+				resolve(resData)
+			} catch (error) {
+				reject(error)
+			}
+		})
+	}
+
+	deleteHashRecord(path: string) {
+		return new Promise((resolve: Function, reject: Function) => {
+
+			try {
+				let resData = this.db.prepare("DELETE from " + table_name + " where path = ?").run(path);
+				resolve(resData)
+			} catch (error) {
+				reject(error)
+			}
+		})
+	}
+
+	deleteHashRecordParentPath(path: string) {
+		return new Promise((resolve: Function, reject: Function) => {
+			try {
+				let resData = this.db.prepare("DELETE from " + table_name + " where path LIKE ?").run(path + "%");
+				resolve(resData)
+			} catch (error) {
+				reject(error)
+			}
+		})
+	}
+
+	dropTableRecord(tableName: string) {
+		return new Promise((resolve: Function, reject: Function) => {
+
+			try {
+				let resData = this.db.prepare("DROP TABLE IF EXISTS " + tableName).run();
+				resolve(resData)
+			} catch (error) {
+				reject(error)
+			}
+		})
+	}
+
+	declare db: sqlite3.Database
 	async initCOntruct(base: string) {
 		let originIgnore: Array<any> = parseGitIgnore(readFileSync('.sync_ignore'));
 		originIgnore.push(this.tempFolder);
@@ -337,6 +450,8 @@ export default class Watcher {
 				this.deleteFolderRecursive(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder));
 			}
 		}
+
+		/* Create if not exist */
 		if (existsSync(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder)) == false) {
 			mkdirSync(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder), {
 				mode: 0o777
@@ -369,6 +484,23 @@ export default class Watcher {
 		});
 
 		this._getPendingTerminate = this.pendingTerminate();
+
+		// This is sqlite db
+		// Specify the path to the SQLite database file
+		const dbPath = path.resolve(this.config.localPath, ".sync_temp", 'db.sqlite')
+		this.db = new sqlite3(dbPath, {
+			// verbose: console.log,
+			fileMustExist: false,
+		})
+		try {
+			await this.columnExists(table_name, "key")
+			await this.columnExists(table_name, "path")
+			await this.columnExists(table_name, "eee")
+		} catch (error) {
+			await this.dropTableRecord(table_name)
+		}
+		// Create table sqlite
+		this.createTable();
 	}
 
 	_replaceAt(input: string, search: string, replace: string, start: number, end: number): string {
@@ -419,17 +551,43 @@ export default class Watcher {
 		this._onListener = onListener;
 	}
 
-	setCacheFile(path: string) {
+	async setCacheFile(path: string) {
+		// try {
+		// 	let relativePathFile = this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath));
+		// 	let destinationFile = upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder + '/' + relativePathFile);
+		// 	if (existsSync(destinationFile) == false) {
+		// 		mkdirSync(upath.dirname(destinationFile), {
+		// 			recursive: true,
+		// 			mode: '0777'
+		// 		});
+		// 	}
+		// 	copyFile(path, destinationFile, (res) => { });
+		// } catch (ex) {
+		// 	console.log('setCacheFile - ex :: ', ex);
+		// }
+
 		try {
 			let relativePathFile = this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath));
-			let destinationFile = upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder + '/' + relativePathFile);
-			if (existsSync(destinationFile) == false) {
-				mkdirSync(upath.dirname(destinationFile), {
-					recursive: true,
-					mode: '0777'
-				});
+			// let destinationFile = upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder + '/' + relativePathFile);
+			// if (existsSync(destinationFile) == false) {
+			// 	mkdirSync(upath.dirname(destinationFile), {
+			// 		recursive: true,
+			// 		mode: '0777'
+			// 	});
+			// }
+			// copyFile(path, destinationFile, (res) => { });
+			// Hash a string using the static one-shot method.
+			const salute = fs.readFileSync(path);
+			const buf_salute = Buffer.from(salute);
+			let key = xxhash.XXHash32.hash(buf_salute).toString('hex');
+			let fileCache = await this.getHashRecordByPath(relativePathFile) as Array<any>;
+			if (fileCache.length > 0) {
+				if (key != fileCache[0].key) {
+					await this.updateHashRecord(key, relativePathFile);
+				}
+			} else {
+				await this.insertHashRecord(key, relativePathFile);
 			}
-			copyFile(path, destinationFile, (res) => { });
 		} catch (ex) {
 			console.log('setCacheFile - ex :: ', ex);
 		}
@@ -437,12 +595,18 @@ export default class Watcher {
 
 	async deleteCacheFile(path: string, action?: number) {
 		try {
+			// let relativePathFile = this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath));
+			// let destinationFile = upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder + '/' + relativePathFile);
+			// if (action == WATCHER_ACTION.DELETE_FOLDER) {
+			// 	return removeSync(destinationFile);
+			// }
+			// unlinkSync(destinationFile);
 			let relativePathFile = this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath));
-			let destinationFile = upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder + '/' + relativePathFile);
 			if (action == WATCHER_ACTION.DELETE_FOLDER) {
-				return removeSync(destinationFile);
+				return await this.deleteHashRecordParentPath(relativePathFile)
 			}
-			unlinkSync(destinationFile);
+			// console.log("relativePathFile :: ", relativePathFile)
+			await this.deleteHashRecord(relativePathFile)
 		} catch (ex: any) {
 			process.stdout.write(chalk.red('Devsync | '));
 			process.stdout.write(ex.message + '\n');
@@ -535,34 +699,63 @@ export default class Watcher {
 				case 'unlinkDir':
 				default:
 					/* This process get much eat ram if check many file suddenly, so try looking alternative or create parallel app maybe */
-					pool.proxy().then((worker: any) => {
-						return worker.testCache({
-							path: path,
-							localPath: this.config.localPath,
-							tempFolder: this.tempFolder,
-							relativePathFile: this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath))
-						})
-					})
-						.then(function (self: any, args: any, res: any) {
+					// pool.proxy().then((worker: any) => {
+					// 	return worker.testCache({
+					// 		path: path,
+					// 		localPath: this.config.localPath,
+					// 		tempFolder: this.tempFolder,
+					// 		relativePathFile: this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath))
+					// 	})
+					// })
+					// 	.then(function (self: any, args: any, res: any) {
+					// 		/* For unlink and unlinkDir its always false */
+					// 		/* because there is no compare with deleted file */
+					// 		if (method == "unlink" || method == "unlinkDir") { } else {
+					// 			if (res == true) {
+					// 				return;
+					// 			}
+					// 		}
+					// 		let tt: {
+					// 			[key: string]: any
+					// 		} = self;
+					// 		// If not, continue as ususal
+					// 		tt[method](...args);
+					// 		self._getPendingTerminate();
+					// 	}.bind(null, this, args))
+					// 	.catch((err: any) => {
+					// 		console.error(err);
+					// 		this._getPendingTerminate();
+					// 	})
+
+					let relativePath = this.removeSameString(upath.normalizeSafe(path), upath.normalizeSafe(this.config.localPath))
+					if (method == "unlink" || method == "unlinkDir" || method == "add") {
+						let tt: {
+							[key: string]: any
+						} = this;
+						// If not, continue as ususal
+						tt[method](...args);
+					} else {
+						this.getHashRecordByPath(relativePath).then((res: Array<any>) => {
 							/* For unlink and unlinkDir its always false */
 							/* because there is no compare with deleted file */
-							if (method == "unlink" || method == "unlinkDir") { } else {
-								if (res == true) {
+							// console.log('res', res);
+							if (res.length > 0) {
+								const salute = fs.readFileSync(path);
+								const buf_salute = Buffer.from(salute);
+								let key = xxhash.XXHash32.hash(buf_salute).toString('hex');
+								if (key == res[0].key) {
 									return;
 								}
 							}
 							let tt: {
 								[key: string]: any
-							} = self;
+							} = this;
 							// If not, continue as ususal
 							tt[method](...args);
-							self._getPendingTerminate();
-						}.bind(null, this, args))
-						.catch((err: any) => {
+						}).catch((err: any) => {
 							console.error(err);
-							this._getPendingTerminate();
 						})
-
+					}
 					return;
 			}
 		}
@@ -641,7 +834,7 @@ export default class Watcher {
 			// process.stdout.write(chalk.green('Ups get 2x change :: ' + path) + '\n');
 			this._onListener({
 				action: "2_TIME_CHANGE",
-				return : path
+				return: path
 			})
 			this._sameChangePath = null;
 		} else {
@@ -718,6 +911,15 @@ export default class Watcher {
 			process.stdout.write(remote + '\n');
 		}).catch((err) => {
 			this.deleteCacheFile(path, WATCHER_ACTION.DELETE_FOLDER);
+			this.uploader.unlinkFolder(path).then(remote => {
+				process.stdout.write(chalk.green('Devsync | '));
+				process.stdout.write(chalk.white('UNLINKDIR DONE :: '));
+				process.stdout.write(remote + '\n');
+			}).catch((err) => {
+				process.stdout.write(chalk.red('Devsync | '));
+				process.stdout.write(chalk.red('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
+				process.stdout.write(chalk.red(err.message + '\n'));
+			});
 			process.stdout.write(chalk.red('Devsync | '));
 			process.stdout.write(chalk.red('UNLINKDIR ERR :: ' + upath.normalizeTrim(path.replace(this.config.localPath, "")) + ", "));
 			process.stdout.write(chalk.red(err.message + '\n'));

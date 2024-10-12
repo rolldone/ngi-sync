@@ -12,6 +12,7 @@ var os = require('os');
 import rl, { ReadLine } from 'readline';
 import { stripAnsi } from "@root/tool/Helpers";
 import { Writable } from "stream";
+import Queue from "better-queue"
 
 
 declare var masterData: MasterDataInterface;
@@ -29,7 +30,143 @@ export default class Uploader {
 	_stripAnsi(text: string): string {
 		return stripAnsi(text);
 	}
+	queue: Queue
 	constructor(public config: ConfigInterface, private cli: CliInterface) {
+		var debounceClose: any = null;
+		var _closeIfPossible = (_client: Client, whatFile: string) => {
+			let _remainingOrder = Object.keys(this._pendingUpload).length;
+			if (debounceClose != null) {
+				// console.log('UPLOAD :: waiting for close');
+				debounceClose.cancel();
+			}
+			debounceClose = debounce(() => {
+				if (_remainingOrder > 0) {
+					this.onListener('ONGOING', {
+						return: 'Remaining ' + _remainingOrder + ' files still uploading'// 'Sync is done!'
+					})
+				} else {
+					this.onListener('UPLOADED', {
+						return: 'Last Synchronize: ' + whatFile// 'Sync is done!'
+					})
+				}
+			}, 3000 /* 10000 */);
+			debounceClose();
+		}
+		this.queue = new Queue(async (entry, cb) => {
+
+			// Some processing here ...
+			// console.log("result :: ", entry);
+			var remote = entry.path;
+			var resolve = entry.resolve;
+			var reject = entry.reject;
+			var fileName = entry.fileName;
+			var action = entry.action;
+
+			if (this.client == null) {
+				return;
+			}
+
+			var next = () => {
+				_closeIfPossible(this.client, upath.normalizeSafe(fileName));
+				cb(null, null);
+			}
+
+			switch (action) {
+				case 'add_change':
+					/* Check the size of file first */
+					let stats = statSync(upath.normalizeSafe(fileName));
+					let size_limit = this.config.size_limit;
+					if (size_limit == null) {
+						size_limit = 5;
+					}
+					size_limit = size_limit * 1000000;
+					if (stats.size > size_limit) {
+						// console.log('size_limit', size_limit);
+						// console.log('stats', stats);
+						this.onListener('WARNING', {
+							return: 'File size more than ' + this.config.size_limit + 'MB : ' + upath.normalizeSafe(fileName)
+						})
+					}
+
+					try {
+						await this.client.mkdir(upath.dirname(remote), true)
+						await this.client.chmod(upath.dirname(remote), 0o775)
+						this.client.client.removeAllListeners('error');
+					} catch (ex) {
+						this.queue.push(entry)
+						return next()
+					}
+
+					// deleteQueueFunc();
+					/* Dont let file edited by server upload to server again! */
+					let fileEditFromServer: any = masterData.getData('file_edit_from_server', {});
+					if (fileEditFromServer[upath.normalizeSafe(fileName)] != null) {
+						if (fileEditFromServer[upath.normalizeSafe(fileName)] == true) {
+							this.onListener('REJECTED', {
+								return: 'File edited by system dont let uploaded.'  // upath.normalizeSafe(fileName)
+							})
+							// delete this._pendingQueue[remote];
+							masterData.updateData('file_edit_from_server', {
+								[upath.normalizeSafe(fileName)]: false
+							});
+							reject({
+								message: 'File edited by system dont let uploaded.',  // upath.normalizeSafe(fileName)
+								error: ""
+							});
+							next();
+							return;
+						}
+					}
+					// Uplad the file
+					this.client.put(fileName, remote, { mode: 0o774 }).then(() => {
+						/* This is use for prevent upload to remote. */
+						/* Is use on watcher */
+						let fileUploadRecord = masterData.getData('FILE_UPLOAD_RECORD', {}) as any;
+						fileUploadRecord[fileName] = true;
+						masterData.saveData('FILE_UPLOAD_RECORD', fileUploadRecord);
+						// console.log('remote - done ',remote)
+						resolve(remote);
+						next();
+					}).catch((err: any) => {
+						if (err) {
+							this.onListener('REJECTED', {
+								return: err.message
+							});
+						}
+						// console.log('remote - done ',remote)
+						resolve(remote);
+						next();
+					});
+					break;
+				case 'delete_file':
+					this.client.delete(remote).then(() => {
+						// deleteQueueFunc();
+						resolve(remote);
+						next();
+					}).catch((err: any) => {
+						// deleteQueueFunc();
+						reject(err.message);
+						next();
+					})
+					this.client.client.removeAllListeners('error');
+					break;
+				case 'delete_folder':
+					this.client.rmdir(remote, true).then(() => {
+						// deleteQueueFunc();
+						resolve(remote);
+						next();
+					}).catch((err: any) => {
+						// deleteQueueFunc();
+						// console.log("cannot delete :: ", err)
+						reject(err.message);
+						next();
+					})
+					this.client.client.removeAllListeners('error');
+					break;
+			}
+		}, {
+			concurrent: this._concurent
+		})
 	}
 	_pendingQueue: {
 		[key: string]: any
@@ -592,7 +729,7 @@ export default class Uploader {
 		return upath.normalizeSafe(remotePath);
 	}
 	_index: number = 0
-	_concurent: number = 8
+	_concurent: number = 16
 	_pendingUpload: {
 		[key: string]: DebouncedFunc<any>
 	} = {}
@@ -834,29 +971,37 @@ export default class Uploader {
 				this._orders = {};
 			}
 
-			if (Object.keys(this._orders).length < this._concurent) {
-				/* If concurent ready run it */
-				this._exeHandlePush({
-					path: remote,
-					queue_no: this._index,
-					resolve: resolve,
-					reject: reject,
-					fileName: fileName,
-					action: 'add_change'
-				}, 100 * (this._index == 0 ? 1 : this._index + 1));
-			} else {
-				/* If get limit concurent put in to pending queue */
-				if (this._pendingQueue[remote] == null) {
-					this._pendingQueue[remote] = {
-						path: remote,
-						queue_no: this._index,
-						resolve: resolve,
-						reject: reject,
-						fileName: fileName,
-						action: 'add_change'
-					};
-				}
-			}
+			// if (Object.keys(this._orders).length < this._concurent) {
+			// 	/* If concurent ready run it */
+			// 	this._exeHandlePush({
+			// 		path: remote,
+			// 		queue_no: this._index,
+			// 		resolve: resolve,
+			// 		reject: reject,
+			// 		fileName: fileName,
+			// 		action: 'add_change'
+			// 	}, 100 * (this._index == 0 ? 1 : this._index + 1));
+			// } else {
+			// 	/* If get limit concurent put in to pending queue */
+			// 	if (this._pendingQueue[remote] == null) {
+			// 		this._pendingQueue[remote] = {
+			// 			path: remote,
+			// 			queue_no: this._index,
+			// 			resolve: resolve,
+			// 			reject: reject,
+			// 			fileName: fileName,
+			// 			action: 'add_change'
+			// 		};
+			// 	}
+			// }
+			this.queue.push({
+				path: remote,
+				queue_no: this._index,
+				resolve: resolve,
+				reject: reject,
+				fileName: fileName,
+				action: 'add_change'
+			})
 			this._index += 1;
 		});
 	}
@@ -873,31 +1018,39 @@ export default class Uploader {
 				this._orders = {};
 			}
 
-			if (Object.keys(this._orders).length < this._concurent) {
-				/* If concurent ready run it */
-				this._exeHandlePush({
-					path: remote,
-					queue_no: this._index,
-					resolve: resolve,
-					reject: reject,
-					fileName: fileName,
-					action: 'delete_file'
-				}, 100 * (this._index == 0 ? 1 : this._index + 1));
+			// if (Object.keys(this._orders).length < this._concurent) {
+			// 	/* If concurent ready run it */
+			// 	this._exeHandlePush({
+			// 		path: remote,
+			// 		queue_no: this._index,
+			// 		resolve: resolve,
+			// 		reject: reject,
+			// 		fileName: fileName,
+			// 		action: 'delete_file'
+			// 	}, 100 * (this._index == 0 ? 1 : this._index + 1));
 
-			} else {
+			// } else {
 
-				/* If get limit concurent put in to pending queue */
-				if (this._pendingQueue[remote] == null) {
-					this._pendingQueue[remote] = {
-						path: remote,
-						queue_no: this._index,
-						resolve: resolve,
-						reject: reject,
-						fileName: fileName,
-						action: 'delete_file'
-					};
-				}
-			}
+			// 	/* If get limit concurent put in to pending queue */
+			// 	if (this._pendingQueue[remote] == null) {
+			// 		this._pendingQueue[remote] = {
+			// 			path: remote,
+			// 			queue_no: this._index,
+			// 			resolve: resolve,
+			// 			reject: reject,
+			// 			fileName: fileName,
+			// 			action: 'delete_file'
+			// 		};
+			// 	}
+			// }
+			this.queue.push({
+				path: remote,
+				queue_no: this._index,
+				resolve: resolve,
+				reject: reject,
+				fileName: fileName,
+				action: 'delete_file'
+			})
 			this._index += 1;
 		});
 	}
@@ -914,29 +1067,37 @@ export default class Uploader {
 				this._orders = {};
 			}
 
-			if (Object.keys(this._orders).length < this._concurent) {
-				/* If concurent ready run it */
-				this._exeHandlePush({
-					path: remote,
-					queue_no: this._index,
-					resolve: resolve,
-					reject: reject,
-					fileName: folderPath,
-					action: 'delete_folder'
-				}, 100 * (this._index == 0 ? 1 : this._index + 1));
-			} else {
-				/* If get limit concurent put in to pending queue */
-				if (this._pendingQueue[remote] == null) {
-					this._pendingQueue[remote] = {
-						path: remote,
-						queue_no: this._index,
-						resolve: resolve,
-						reject: reject,
-						fileName: folderPath,
-						action: 'delete_folder'
-					};
-				}
-			}
+			// if (Object.keys(this._orders).length < this._concurent) {
+			// 	/* If concurent ready run it */
+			// 	this._exeHandlePush({
+			// 		path: remote,
+			// 		queue_no: this._index,
+			// 		resolve: resolve,
+			// 		reject: reject,
+			// 		fileName: folderPath,
+			// 		action: 'delete_folder'
+			// 	}, 100 * (this._index == 0 ? 1 : this._index + 1));
+			// } else {
+			// 	/* If get limit concurent put in to pending queue */
+			// 	if (this._pendingQueue[remote] == null) {
+			// 		this._pendingQueue[remote] = {
+			// 			path: remote,
+			// 			queue_no: this._index,
+			// 			resolve: resolve,
+			// 			reject: reject,
+			// 			fileName: folderPath,
+			// 			action: 'delete_folder'
+			// 		};
+			// 	}
+			// }
+			this.queue.push({
+				path: remote,
+				queue_no: this._index,
+				resolve: resolve,
+				reject: reject,
+				fileName: folderPath,
+				action: 'delete_folder'
+			})
 			this._index += 1;
 		});
 	}

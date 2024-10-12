@@ -531,7 +531,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           /* Remove file path to be dirname only */
           let _extrawatchPath = dirname(extraWatchs[index].path);
           // If _extrawatchPath equal . remove it
-          if(_extrawatchPath == "."){
+          if (_extrawatchPath == ".") {
             _extrawatchPath = "";
           }
           _extrawatchPath = this._removeSameString(_local_path, _extrawatchPath); // sql/text.txt <-> sql = /text.txt
@@ -666,94 +666,97 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
         let _is_file = false;
         if (extraWatchs[index] != null) {
 
+          // Disable the cache first
           _local_path = path.relative(upath.normalizeSafe(path.resolve("")), upath.normalizeSafe(_local_path + '/' + extraWatchs[index].path));
-          let _remote_path = extraWatchs[index].path;
-          if (isFile == true) {
-            /* Remove file path to be dirname only */
-            _remote_path = dirname(_remote_path);
-            let _parse_local_path = upath.parse(_local_path);
-            _remote_path = _remote_path + "/" + _parse_local_path.base;
-          } else {
-            _local_path = upath.normalizeSafe('./' + _local_path + '/')
-          }
+          // console.log("local_path :: ", _local_path);
+          resolve()
 
-          process.stdout.write(chalk.yellow('Rsync Upload Cache | ') + _local_path + ' >> ' + upath.normalize(this.tempFolder + "/" + _remote_path) + '\n');
+          // let _remote_path = extraWatchs[index].path;
+          // if (isFile == true) {
+          //   /* Remove file path to be dirname only */
+          //   _remote_path = dirname(_remote_path);
+          //   let _parse_local_path = upath.parse(_local_path);
+          //   _remote_path = _remote_path + "/" + _parse_local_path.base;
+          // } else {
+          //   _local_path = upath.normalizeSafe('./' + _local_path + '/')
+          // }
 
-          let _delete_mode_active = config.mode == "hard" ? true : false;
-          _delete_mode_active = extraWatchs[index].includes.length > 0 ? false : _delete_mode_active
-          var rsync = Rsync.build({
-            /* Support multiple source too */
-            source: _local_path,
-            // source : upath.normalize(_local_path+'/'),
-            destination: upath.normalize(this.tempFolder + "/" + _remote_path),
-            /* Include First */
-            include: extraWatchs[index].includes,
-            /* Exclude after include */
-            exclude: extraWatchs[index].ignores,
-            // set: '--usermap=*:' + this._config.username + ' --groupmap=*:' + this._config.username + ' --chmod=D2775,F775 --size-only --checksum ' + (_delete_mode_active == true ? '--force --delete' : ''),
-            // flags : '-vt',
-            flags: '-avzLm',
-            // shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
-          });
+          // process.stdout.write(chalk.yellow('Rsync Upload Cache | ') + _local_path + ' >> ' + upath.normalize(this.tempFolder + "/" + _remote_path) + '\n');
 
-          // console.log("rsync commandnya :: ", rsync.command());
-          // process.stdout.write(chalk.green('Rsync Upload Cache | ') + 'rsync command -> ' + rsync.command() + '\n');
+          // let _delete_mode_active = config.mode == "hard" ? true : false;
+          // _delete_mode_active = extraWatchs[index].includes.length > 0 ? false : _delete_mode_active
+          // var rsync = Rsync.build({
+          //   /* Support multiple source too */
+          //   source: _local_path,
+          //   // source : upath.normalize(_local_path+'/'),
+          //   destination: upath.normalize(this.tempFolder + "/" + _remote_path),
+          //   /* Include First */
+          //   include: extraWatchs[index].includes,
+          //   /* Exclude after include */
+          //   exclude: extraWatchs[index].ignores,
+          //   // set: '--usermap=*:' + this._config.username + ' --groupmap=*:' + this._config.username + ' --chmod=D2775,F775 --size-only --checksum ' + (_delete_mode_active == true ? '--force --delete' : ''),
+          //   // flags : '-vt',
+          //   flags: '-avzLm',
+          //   // shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
+          // });
 
-          var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
-          var ptyProcess = this.iniPtyProcess(shell, []);
-          if (_is_file == false) {
-            ptyProcess.write('ls ' + _local_path + ' ' + '\r');
-          }
-          setTimeout(() => {
-            if (ptyProcess != null) {
-              ptyProcess.write(rsync.command() + '\r');
-            }
-          }, 2000);
+          // // console.log("rsync commandnya :: ", rsync.command());
+          // // process.stdout.write(chalk.green('Rsync Upload Cache | ') + 'rsync command -> ' + rsync.command() + '\n');
 
-          ptyProcess.on('data', (data: any) => {
-            // console.log(data)
-            // let _text = this._stripAnsi(data.toString());
-            let _split = data.split(/\n/);// this._stripAnsi(data.toString());
-            if (_split != "") {
-              for (var a = 0; a < _split.length; a++) {
-                switch (_split[a]) {
-                  case '':
-                  case '\r':
-                  case '\u001b[32m\r':
-                    break;
-                  default:
-                    break;
-                }
-              }
-            }
-            if (data.includes('Not a directory')) {
-              _is_file = true;
-              ptyProcess.write('exit' + '\r');
-            }
-          });
+          // var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+          // var ptyProcess = this.iniPtyProcess(shell, []);
+          // if (_is_file == false) {
+          //   ptyProcess.write('ls ' + _local_path + ' ' + '\r');
+          // }
+          // setTimeout(() => {
+          //   if (ptyProcess != null) {
+          //     ptyProcess.write(rsync.command() + '\r');
+          //   }
+          // }, 2000);
 
-          ptyProcess.on('exit', (exitCode: any, signal: any) => {
-            // process.stdin.off('keypress', theCallback);
-            ptyProcess.kill();
-            ptyProcess = null;
-            if (extraWatchs[index + 1] != null) {
-              if (_is_file == true) {
-                this._cacheToTemp(extraWatchs, index, _is_file);
-              } else {
-                // You dont need it
-                // this._cacheToTemp(extraWatchs, index + 1);
-                resolve();
-              }
-            } else {
-              if (_is_file == true) {
-                this._cacheToTemp(extraWatchs, index, _is_file);
-                return;
-              }
-              resolve();
-            }
-          });
+          // ptyProcess.on('data', (data: any) => {
+          //   // console.log(data)
+          //   // let _text = this._stripAnsi(data.toString());
+          //   let _split = data.split(/\n/);// this._stripAnsi(data.toString());
+          //   if (_split != "") {
+          //     for (var a = 0; a < _split.length; a++) {
+          //       switch (_split[a]) {
+          //         case '':
+          //         case '\r':
+          //         case '\u001b[32m\r':
+          //           break;
+          //         default:
+          //           break;
+          //       }
+          //     }
+          //   }
+          //   if (data.includes('Not a directory')) {
+          //     _is_file = true;
+          //     ptyProcess.write('exit' + '\r');
+          //   }
+          // });
 
-          // recursive();
+          // ptyProcess.on('exit', (exitCode: any, signal: any) => {
+          //   // process.stdin.off('keypress', theCallback);
+          //   ptyProcess.kill();
+          //   ptyProcess = null;
+          //   if (extraWatchs[index + 1] != null) {
+          //     if (_is_file == true) {
+          //       this._cacheToTemp(extraWatchs, index, _is_file);
+          //     } else {
+          //       // You dont need it
+          //       // this._cacheToTemp(extraWatchs, index + 1);
+          //       resolve();
+          //     }
+          //   } else {
+          //     if (_is_file == true) {
+          //       this._cacheToTemp(extraWatchs, index, _is_file);
+          //       return;
+          //     }
+          //     resolve();
+          //   }
+          // });
+
         }
       } catch (ex) {
         console.log('_recursiveRsync - ex ', ex);
