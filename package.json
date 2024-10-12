@@ -12,7 +12,7 @@
     "dev": "npx webpack --watch",
     "build": "npx webpack --config webpack.config.prod.js",
     "compile-win": "pkg . --targets node16-win-x64",
-    "compile-linux": "pkg . --targets node14-linux"
+    "compile-linux": "pkg . --targets node18-linux"
   },
   "pkg": {
     "scripts": [
@@ -24,7 +24,7 @@
     ],
     "targets": [
       "node16-win-x64",
-      "node14-linux"
+      "node18-linux"
     ],
     "outputPath": "dist_prod"
   },
@@ -52,15 +52,20 @@
     "@babel/preset-env": "^7.13.15",
     "@babel/preset-typescript": "^7.13.0",
     "@types/async": "^3.2.6",
+    "@types/better-queue": "^3.8.6",
+    "@types/better-sqlite3": "^7.6.10",
     "@types/fs-extra": "^9.0.12",
     "@types/jsonwebtoken": "^8.5.1",
     "@types/lodash": "^4.14.168",
     "@types/minimist": "^1.2.1",
     "@types/node-redis-pubsub": "^3.0.0",
     "@types/restore-cursor": "^3.1.0",
+    "@types/sqlite3": "^3.1.11",
     "@types/ssh2": "^0.5.48",
     "@types/yaml": "^1.9.7",
     "async": "^3.2.0",
+    "better-queue": "^3.8.12",
+    "better-sqlite3": "^11.0.0",
     "chalk": "^4.1.1",
     "chokidar": "3.5.2",
     "death": "^1.1.0",
@@ -89,6 +94,7 @@
     "node-multithread": "^1.0.4",
     "node-notifier": "^10.0.0",
     "node-pty": "^0.10.1",
+    "node-sqlite3-wasm": "^0.8.16",
     "object-scan": "^17.0.0",
     "observatory": "^1.0.0",
     "parse-gitignore": "^1.0.1",
@@ -98,6 +104,8 @@
     "scp2": "^0.5.0",
     "serialize-error": "^8.0.1",
     "source-map-support": "^0.5.21",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "ssh-config": "^4.0.6",
     "ssh2": "0.8.9",
     "ssh2-config": "^0.1.0",
@@ -113,6 +121,7 @@
     "webpack": "^5.70.0",
     "window-size": "^1.1.1",
     "workerpool": "^6.1.5",
+    "xxhash-addon": "^2.0.3",
     "yaml": "^2.4.2"
   }
 }
