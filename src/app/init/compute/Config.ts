@@ -240,9 +240,9 @@ const Config = BaseModel.extend<ConfigInterface>({
             let newObject = this._config as any;
             testStringValue = JSON.stringify(this._config);
             let match = testStringValue.match(/=[^=|'|"|\\| ]+/g);
-            match = uniq(match);
-            for (var a = 0; a < match.length; a++) {
-              match[a] = match[a].replace('=', '');
+            let match_arr = uniq(match);
+            for (var a = 0; a < match_arr.length; a++) {
+              match_arr[a] = match_arr[a].replace('=', '');
             }
 
             this._config = JSON.parse(testStringValue);
@@ -317,19 +317,19 @@ const Config = BaseModel.extend<ConfigInterface>({
           let newObject = this._config as any;
           testStringValue = JSON.stringify(this._config);
           let match = testStringValue.match(/=[^=|'|"|\\| ]+/g);
-          match = uniq(match);
-          for (var a = 0; a < match.length; a++) {
-            match[a] = match[a].replace('=', '');
+          let match_arr = uniq(match);
+          for (var a = 0; a < match_arr.length; a++) {
+            match_arr[a] = match_arr[a].replace('=', '');
           }
           var checkData = () => {
-            for (var a = 0; a < match.length; a++) {
-              let testValue = this.safeJSON(newObject, match[a], null);
+            for (var a = 0; a < match_arr.length; a++) {
+              let testValue = this.safeJSON(newObject, match_arr[a], null);
               switch (true) {
                 case typeof testValue === "string":
-                  testStringValue = testStringValue.replace(new RegExp('=' + match[a], 'g'), upath.normalizeSafe(this.safeJSON(newObject, match[a], '')))
+                  testStringValue = testStringValue.replace(new RegExp('=' + match_arr[a], 'g'), upath.normalizeSafe(this.safeJSON(newObject, match_arr[a], '')))
                   break;
                 case typeof testValue === "number":
-                  testStringValue = testStringValue.replace(new RegExp('=' + match[a], 'g'), this.safeJSON(newObject, match[a], ''))
+                  testStringValue = testStringValue.replace(new RegExp('=' + match_arr[a], 'g'), this.safeJSON(newObject, match_arr[a], ''))
                   break;
                 default:
                   break;
