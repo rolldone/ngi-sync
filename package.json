@@ -11,8 +11,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npx webpack --watch",
     "build": "npx webpack --config webpack.config.prod.js",
-    "compile-win": "pkg . --targets node16-win-x64",
-    "compile-linux": "pkg . --targets node14-linux"
+    "compile-win": "pkg . --targets node18-win-x64",
+    "compile-linux": "pkg . --targets node18-linux"
   },
   "pkg": {
     "scripts": [
@@ -23,8 +23,8 @@
       "dist/example.yaml"
     ],
     "targets": [
-      "node16-win-x64",
-      "node14-linux"
+      "node18-win-x64",
+      "node18-linux"
     ],
     "outputPath": "dist_prod"
   },
@@ -60,6 +60,8 @@
     "@types/ssh2": "^0.5.48",
     "@types/yaml": "^1.9.7",
     "async": "^3.2.0",
+    "better-queue": "^3.8.12",
+    "better-sqlite3": "^11.3.0",
     "chalk": "^4.1.1",
     "chokidar": "3.5.2",
     "death": "^1.1.0",
@@ -112,6 +114,7 @@
     "webpack": "^5.70.0",
     "window-size": "^1.1.1",
     "workerpool": "^6.1.5",
+    "xxhash-addon": "^2.0.3",
     "yaml": "^2.4.2"
   }
 }
