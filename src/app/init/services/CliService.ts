@@ -141,7 +141,8 @@ const CliService = BaseService.extend<CliInterface>({
    * Stop printing dots when process ends
    */
   stopProgress() {
-    clearInterval(this.pdTime.pop());
+    let stopVal = this.pdTime.pop()
+    clearInterval(stopVal as unknown as number);
   },
 
   /**
