@@ -631,7 +631,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
             } else {
               if (this.is_single_sync == false) {
                 // Cache it to temp
-                await this._cacheToTemp(extraWatchs, index, isFile);
+                // await this._cacheToTemp(extraWatchs, index, isFile);
               }
               // And next recursive
               this._recursiveRsync(extraWatchs, index + 1);
@@ -643,7 +643,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
             }
             if (this.is_single_sync == false) {
               // Cache it to temp
-              await this._cacheToTemp(extraWatchs, index, isFile);
+              // await this._cacheToTemp(extraWatchs, index, isFile);
             }
             // ANd exit
             this._onListener({
