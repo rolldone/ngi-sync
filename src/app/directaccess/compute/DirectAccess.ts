@@ -175,7 +175,7 @@ const DirectAccess = BaseModel.extend<Omit<DirectAccessInterface, 'model'>>({
     this._onListener = onListener;
   },
   iniPtyProcess(props: Array<string> = []) {
-    var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+    var shell = os.platform() === 'win32' ? "C:\\Windows\\System32\\cmd.exe" : 'bash';
 
     var autoComplete = function completer(line: string): Array<string> {
       const completions = ''.split(' ');

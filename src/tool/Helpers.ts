@@ -53,7 +53,7 @@ const executeDataDone: {
 } = {};
 export const executeLocalCommand = (key: string, config: ConfigInterface, command: string, callback: Function) => {
   let isDone = false;
-  var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+  var shell = os.platform() === 'win32' ? "C:\\Windows\\System32\\cmd.exe" : 'bash';
   if (executeData[key] == null) {
     executeDataDone[key] = false;
     executeData[key] = pty.spawn(shell, [], {

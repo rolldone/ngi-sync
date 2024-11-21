@@ -83,7 +83,7 @@ const OpenConsoleService = BaseService.extend<OpenConsoleServiceInterface>({
   },
   construct: function (cli, props = []) {
     this._currentConf = this.returnConfig(cli);
-    var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+    var shell = os.platform() === 'win32' ? "C:\\Windows\\System32\\cmd.exe" : 'bash';
     var ptyProcess = this.iniPtyProcess(shell, props);
     var _readLine = this.initReadLine();
     var theCallback = (key: any, data: any) => {

@@ -21,6 +21,9 @@ import rl, { ReadLine } from 'readline';
 var size = require('window-size');
 const chalk = require('chalk');
 
+const RSYNC_EXE = 'cwrsync/bin/rsync.exe';
+const SSH_EXE = 'cwrsync/bin/ssh.exe';
+
 export interface SyncPushInterface extends BaseModelInterface {
   _currentConf?: ConfigInterface
   returnConfig?: { (cli: CliInterface): ConfigInterface }
@@ -35,6 +38,8 @@ export interface SyncPushInterface extends BaseModelInterface {
       ignores: Array<string>
     }
   }
+  
+  getCWRSYNC?: {(rsync_command:string): string } 
   submitPush: { (): void }
   submitPushSelective: { (): void }
   construct: { (cli: CliInterface, config: RsyncOptions): void }
@@ -95,6 +100,17 @@ export interface RsyncOptions {
 const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
   _stripAnsi: (string) => {
     return stripAnsi(string);
+  },
+  getCWRSYNC: function(rsync_command){
+    if (os.platform() == 'win32') {
+      const isLocal = typeof process.pkg === 'undefined';
+      let rsync_command_exe = isLocal ? upath.normalizeSafe(path.join(__dirname, "") + '/' + RSYNC_EXE) : path.dirname(process.execPath) + `/${RSYNC_EXE}`;
+      let ssh_command_exe = isLocal ? upath.normalizeSafe(path.join(__dirname, "") + '/' + SSH_EXE) : path.dirname(process.execPath) + `/${SSH_EXE}`;
+      rsync_command = rsync_command.replace("rsync ", rsync_command_exe + " ")
+      rsync_command = rsync_command.replace("ssh -i ", ssh_command_exe + " -i")
+      console.log("rsync_command :: ", rsync_command)
+    }
+    return rsync_command
   },
   returnConfig: function (cli) {
     return Config.create(cli);
@@ -572,16 +588,21 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           shell: 'ssh -i ' + config.privateKeyPath + ' -p ' + config.port
         });
 
+        let rsync_command = rsync.command() as string
+
+        // Check if rsync is running on win32 so translate it
+        rsync_command = this.getCWRSYNC(rsync_command)
+
         process.stdout.write(chalk.green('Rsync Upload | ') + 'rsync command -> ' + rsync.command() + '\n');
 
-        var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+        var shell = os.platform() === 'win32' ? "C:\\Windows\\System32\\cmd.exe" : 'bash';
         var ptyProcess = this.iniPtyProcess(shell, []);
         if (_is_file == false) {
           ptyProcess.write('ls ' + _local_path + ' ' + '\r');
         }
         setTimeout(() => {
           if (ptyProcess != null) {
-            ptyProcess.write(rsync.command() + '\r');
+            ptyProcess.write(rsync_command + '\r');
           }
         }, 2000);
 
@@ -702,7 +723,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
           // console.log("rsync commandnya :: ", rsync.command());
           // process.stdout.write(chalk.green('Rsync Upload Cache | ') + 'rsync command -> ' + rsync.command() + '\n');
 
-          var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+          var shell = os.platform() === 'win32' ? "C:\\Windows\\System32\\cmd.exe" : 'bash';
           var ptyProcess = this.iniPtyProcess(shell, []);
           if (_is_file == false) {
             ptyProcess.write('ls ' + _local_path + ' ' + '\r');

@@ -231,7 +231,9 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
     try {
       this._server.close();
       this._server = null;
-      this._ptyProcess.kill();
+      if (os.platform() != 'win32' ){
+        this._ptyProcess.kill();
+      }
     } catch (ex) {
       try {
         this._ptyProcess.kill('SIGKILL');
@@ -411,7 +413,7 @@ const HttpEvent = BaseModel.extend<Omit<HttpEventInterface, 'model'>>({
   },
   iniPtyProcess: function (sshCommand, props = []) {
     let isLoginFinish = false;
-    var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+    var shell = os.platform() === 'win32' ? "C:\\Windows\\System32\\cmd.exe" : 'bash';
     let _ptyProcess = pty.spawn(shell, props, {
       name: 'xterm-color',
       cols: size.width,

@@ -82,10 +82,16 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
 
         process.stdout.write(chalk.green("Rsync Download | ") + 'rsync command -> ' + rsync.command() + '\n');
 
-        var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+        var shell = os.platform() === 'win32' ? "C:\\Windows\\System32\\cmd.exe" : 'bash';
         // Remember command exit is called on initPtyProcess, check it
         var ptyProcess = this.iniPtyProcess(shell, []);
-        ptyProcess.write(rsync.command() + '\r');
+
+        let rsync_command = rsync.command() as string
+        
+        // Check if rsync is running on win32 so translate it
+        rsync_command = this.getCWRSYNC(rsync_command)
+
+        ptyProcess.write(rsync_command + '\r');
         let firstString = null;
         ptyProcess.onData((data: any) => {
           let _split = data.split(/\n/);// this._stripAnsi(data.toString());
@@ -111,7 +117,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
           }
         });
 
-        ptyProcess.onExit(async ({exitCode, signal}) => {
+        ptyProcess.onExit(async ({ exitCode, signal }) => {
           // process.stdin.off('keypress', theCallback);
           ptyProcess.kill();
           ptyProcess = null;
@@ -131,7 +137,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
             } else {
               // Cache it to temp
               if (this.is_single_sync == false) {
-                await this._cacheToTemp(extraWatchs, index, isFile);
+                // await this._cacheToTemp(extraWatchs, index, isFile);
               }
               // And next recursive
               this._recursiveRsync(extraWatchs, index + 1);
@@ -143,7 +149,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
             }
             if (this.is_single_sync == false) {
               // Cache it to temp
-              await this._cacheToTemp(extraWatchs, index, isFile);
+              // await this._cacheToTemp(extraWatchs, index, isFile);
             }
             // ANd exit
             this._onListener({
@@ -211,7 +217,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
           // console.log("rsync commandnya :: ", rsync.command());
           // process.stdout.write(chalk.green('Rsync Upload Cache | ') + 'rsync command -> ' + rsync.command() + '\n');
 
-          var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+          var shell = os.platform() === 'win32' ? "C:\\Windows\\System32\\cmd.exe" : 'bash';
           var ptyProcess = this.iniPtyProcess(shell, []);
           if (_is_file == false) {
             ptyProcess.write('ls ' + _local_path + ' ' + '\r');
@@ -246,7 +252,7 @@ const SyncPull = SyncPush.extend<Omit<SynPullInterface, 'model'>>({
             }
           });
 
-          ptyProcess.onExit(({exitCode, signal}) => {
+          ptyProcess.onExit(({ exitCode, signal }) => {
             // process.stdin.off('keypress', theCallback);
             ptyProcess.kill();
             ptyProcess = null;

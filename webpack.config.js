@@ -98,6 +98,7 @@ module.exports = {
       patterns: [
         { from: "src/public", to: "public" },
         { from: "src/ngi-sync-agent-linux.tar.gz", to: "ngi-sync-agent-linux.tar.gz" },
+        { from: "src/cwrsync", to: "cwrsync" },
         { from: "src/example.yaml", to: "example.yaml" },
       ],
     }),

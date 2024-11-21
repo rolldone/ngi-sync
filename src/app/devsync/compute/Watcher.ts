@@ -447,7 +447,9 @@ export default class Watcher {
 		/* generate .sync_temp */
 		if (this.config.reset_cache == true) {
 			if (existsSync(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder)) == true) {
-				this.deleteFolderRecursive(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder));
+				try {
+					this.deleteFolderRecursive(upath.normalizeSafe(this.config.localPath + '/' + this.tempFolder));
+				} catch (error) {}
 			}
 		}
 
