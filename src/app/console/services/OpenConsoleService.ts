@@ -77,7 +77,7 @@ const OpenConsoleService = BaseService.extend<OpenConsoleServiceInterface>({
 
     let execPathFileName = path.basename(process.execPath);
     execPathFileName = (execPathFileName == "node" || execPathFileName == "node.exe") ? "ngi-sync" : process.execPath;
-    _ptyProcess.write(`${upath.normalize(execPathFileName)}\r`);
+    // _ptyProcess.write(`${upath.normalize(execPathFileName)}\r`);
 
     return _ptyProcess;
   },
