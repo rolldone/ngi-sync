@@ -54,6 +54,7 @@ const OpenConsoleService = BaseService.extend<OpenConsoleServiceInterface>({
       cwd: process.cwd(),
       env: {
         ...process.env,
+        // ...process.env,
         /* Override this value always from parent */
         IS_PROCESS: "open_console"
       },
