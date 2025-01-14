@@ -38,8 +38,8 @@ export interface SyncPushInterface extends BaseModelInterface {
       ignores: Array<string>
     }
   }
-  
-  getCWRSYNC?: {(rsync_command:string): string } 
+
+  getCWRSYNC?: { (rsync_command: string): string }
   submitPush: { (): void }
   submitPushSelective: { (): void }
   construct: { (cli: CliInterface, config: RsyncOptions): void }
@@ -101,7 +101,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
   _stripAnsi: (string) => {
     return stripAnsi(string);
   },
-  getCWRSYNC: function(rsync_command){
+  getCWRSYNC: function (rsync_command) {
     if (os.platform() == 'win32') {
       const isLocal = typeof process.pkg === 'undefined';
       let rsync_command_exe = isLocal ? upath.normalizeSafe(path.join(__dirname, "") + '/' + RSYNC_EXE) : path.dirname(process.execPath) + `/${RSYNC_EXE}`;
@@ -184,23 +184,34 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
     });
     _ptyProcess.write('cd ' + this._currentConf.localPath + '\r');
     _ptyProcess.on('data', (data: string) => {
-      // console.log(data)
       /* Disable pty stdout print */
       // process.stdout.write(data);
       switch (true) {
         case data.includes('Are you sure you want to continue connecting'):
-          _ptyProcess.write('yes\r')
+          _ptyProcess.write('yes')
+          setTimeout(() => {
+            _ptyProcess.write('\r')
+          }, 1000);
           break;
         case data.includes('Enter passphrase for key'):
         case data.includes('password:'):
-          _ptyProcess.write(this._currentConf.password + '\r')
+          _ptyProcess.write(this._currentConf.password)
+          setTimeout(() => {
+            _ptyProcess.write('\r')
+          }, 2000);
           break;
         case data.includes('total size'):
-          _ptyProcess.write('exit' + '\r')
+          _ptyProcess.write('exit')
+          setTimeout(() => {
+            _ptyProcess.write('\r')
+          }, 100);
           break;
         case data.includes('No such file or directory'):
         case data.includes('rsync error:'):
-          _ptyProcess.write('exit' + '\r')
+          _ptyProcess.write('exit')
+          setTimeout(() => {
+            _ptyProcess.write('\r')
+          }, 100);
           break;
       }
     });
@@ -474,7 +485,7 @@ const SyncPush = BaseModel.extend<Omit<SyncPushInterface, 'model'>>({
       ..._filterPatternRules.ignores,
     ];
 
-    if(this._config.privateKeyPath != null){
+    if (this._config.privateKeyPath != null) {
       _filterPatternRules.ignores.push(this._config.privateKeyPath)
     }
 
