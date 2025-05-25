@@ -2,7 +2,7 @@ import BaseModel, { BaseModelInterface } from "@root/base/BaseModel";
 import { CliInterface, EXIT_CODE } from "../services/CliService";
 import path, { join as pathJoin } from "path";
 import { readFileSync, existsSync, statSync, createReadStream, chmod, chmodSync } from "fs";
-import { String, uniq } from "lodash";
+import { String, uniq, template as lodashTemplate, templateSettings } from "lodash";
 import upath from 'upath';
 const { parse } = require("jsonplus");
 import YAML from 'yaml'
@@ -10,7 +10,6 @@ import os from 'os';
 import { MasterDataInterface } from "@root/bootstrap/StartMasterData";
 import filendir from 'filendir';
 import { execSync } from "child_process";
-import mustache from "mustache"
 import dotenv from 'dotenv';
 dotenv.config();  // Load environment variables from .env file 
 const customTags = ['${', '}'];
@@ -233,9 +232,17 @@ const Config = BaseModel.extend<ConfigInterface>({
         let configraw = null;
         if (configraw = readFileSync(this._filename)) {
           let testStringValue = "";
-          configraw = mustache.render(configraw.toString(), process.env, {}, customTags);
+          // Use lodash template for ${} interpolation
+          const compiled = lodashTemplate(configraw.toString());
           try {
-            this._config = YAML.parse(configraw.toString()) as any;
+            let newConfigraw = compiled(process.env);
+            configraw = newConfigraw;
+          } catch (e) {
+            // ignore
+            configraw = configraw.toString();
+          }
+          try {
+            this._config = YAML.parse(configraw) as any;
             this._originConfig = Object.assign({}, this._config);
             let newObject = this._config as any;
             testStringValue = JSON.stringify(this._config);
@@ -310,7 +317,15 @@ const Config = BaseModel.extend<ConfigInterface>({
       let configraw;
       if (configraw = readFileSync(this._filename)) {
         let testStringValue = "";
-        configraw = mustache.render(configraw.toString(), process.env, {}, customTags);
+        // Use lodash template for ${} interpolation
+        const compiled = lodashTemplate(configraw.toString());
+        try {
+          let newConfigraw = compiled(process.env);
+          configraw = newConfigraw;
+        } catch (e) {
+          // ignore
+          configraw = configraw.toString();
+        }
         try {
           this._config = YAML.parse(configraw) as any;
           this._originConfig = Object.assign({}, this._config);
@@ -386,5 +401,8 @@ const Config = BaseModel.extend<ConfigInterface>({
     }
   }
 });
+
+// Set lodash template to use ${} for interpolation
+templateSettings.interpolate = /\$\{([\s\S]+?)\}/g;
 
 export default Config;
