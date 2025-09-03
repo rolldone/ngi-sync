@@ -54,6 +54,7 @@ const OpenConsoleService = BaseService.extend<OpenConsoleServiceInterface>({
       cwd: process.cwd(),
       env: {
         ...process.env,
+        // ...process.env,
         /* Override this value always from parent */
         IS_PROCESS: "open_console"
       },
@@ -77,13 +78,13 @@ const OpenConsoleService = BaseService.extend<OpenConsoleServiceInterface>({
 
     let execPathFileName = path.basename(process.execPath);
     execPathFileName = (execPathFileName == "node" || execPathFileName == "node.exe") ? "ngi-sync" : process.execPath;
-    _ptyProcess.write(`${upath.normalize(execPathFileName)}\r`);
+    // _ptyProcess.write(`${upath.normalize(execPathFileName)}\r`);
 
     return _ptyProcess;
   },
   construct: function (cli, props = []) {
     this._currentConf = this.returnConfig(cli);
-    var shell = os.platform() === 'win32' ? "C:\\Program Files\\Git\\bin\\bash.exe" : 'bash';
+    var shell = os.platform() === 'win32' ? "C:\\Windows\\System32\\cmd.exe" : 'bash';
     var ptyProcess = this.iniPtyProcess(shell, props);
     var _readLine = this.initReadLine();
     var theCallback = (key: any, data: any) => {
